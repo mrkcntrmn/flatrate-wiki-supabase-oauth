@@ -101,3 +101,13 @@
 .item-signUp {
   display: none !important;
 }
+
+// Password and email credentials are managed by FlatRate.wiki / Supabase, not
+// by the local forum account. Flarum Nicknames adds Change Nickname here when
+// the member permission and nickname display driver are active.
+.SettingsPage {
+  .item-changePassword,
+  .item-changeEmail {
+    display: none !important;
+  }
+}
