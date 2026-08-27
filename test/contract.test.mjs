@@ -34,12 +34,16 @@ test("provider requires S256 and immutable sub identity", async () => {
 
 test("public routing handle is neutral and nickname is separately configurable", async () => {
   const provider = await text("src/Providers/FlatRate.php");
+  const handleMethod = provider.slice(
+    provider.indexOf("private function neutralHandle"),
+    provider.indexOf("private function neutralNickname")
+  );
 
-  assert.match(provider, /neutralHandle/);
-  assert.match(provider, /'tech_'\.substr\(hash\('sha256', \$sub\), 0, 8\)/);
+  assert.match(provider, /->suggestUsername\(\$handle\)/);
   assert.match(provider, /->suggest\('nickname', \$this->neutralNickname\(\$sub\)\)/);
-  assert.doesNotMatch(provider, /payload\['email'\].*suggestUsername/s);
-  assert.doesNotMatch(provider, /preferred_username.*suggestUsername/s);
+  assert.match(handleMethod, /'tech_'\.substr\(hash\('sha256', \$sub\), 0, 8\)/);
+  assert.doesNotMatch(handleMethod, /email/i);
+  assert.doesNotMatch(handleMethod, /preferred_username/i);
 });
 
 test("nickname migration selects nickname display and grants self-edit", async () => {
@@ -50,6 +54,9 @@ test("nickname migration selects nickname display and grants self-edit", async (
   assert.match(migration, /'flarum-nicknames\.random_username'\s*=>\s*'0'/);
   assert.match(migration, /user\.editOwnNickname/);
   assert.match(migration, /Group::MEMBER_ID/);
+  assert.match(migration, /login_providers/);
+  assert.match(migration, /where\('provider', 'flatrate'\)/);
+  assert.match(migration, /'tech_'\.\$suffix/);
 });
 
 test("verified Supabase email activates only the matching OAuth registration", async () => {
