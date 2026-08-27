@@ -62,9 +62,11 @@ test("ordinary native password login and password signup are blocked server-side
 });
 
 test("forum login UI exposes one readable branded FlatRate.wiki CTA", async () => {
+  const provider = await text("src/Providers/FlatRate.php");
   const css = await text("resources/less/forum.less");
   const locale = await text("resources/locale/en.yml");
 
+  assert.match(provider, /fas fa-sign-in-alt/);
   assert.match(css, /\.LogInModal[\s\S]*\.Form/);
   assert.match(css, /\.Modal-footer/);
   assert.match(css, /LogInButtonContainer--flatrate/);
