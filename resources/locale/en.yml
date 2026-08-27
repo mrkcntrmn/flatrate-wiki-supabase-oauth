@@ -1,0 +1,19 @@
+fof-oauth:
+  admin:
+    settings:
+      providers:
+        flatrate:
+          description: Use FlatRate Wiki / Supabase OAuth 2.1. Register the exact callback URL shown below as a confidential OAuth app using client_secret_post.
+          project_url_label: Supabase Project URL
+          client_id_label: Client ID
+          client_secret_label: Client Secret
+
+  forum:
+    log_in:
+      with_flatrate_button: Continue with FlatRate Wiki
+    providers:
+      flatrate: FlatRate Wiki
+
+  lib:
+    providers:
+      flatrate: FlatRate Wiki
