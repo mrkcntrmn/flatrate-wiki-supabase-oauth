@@ -10,10 +10,10 @@ fof-oauth:
 
   forum:
     log_in:
-      with_flatrate_button: Continue with FlatRate Wiki
+      with_flatrate_button: Continue with FlatRate.wiki
     providers:
-      flatrate: FlatRate Wiki
+      flatrate: FlatRate.wiki
 
   lib:
     providers:
-      flatrate: FlatRate Wiki
+      flatrate: FlatRate.wiki

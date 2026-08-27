@@ -61,15 +61,19 @@ test("ordinary native password login and password signup are blocked server-side
   assert.match(middleware, /flatrate_sso_required/);
 });
 
-test("forum login UI exposes only the FlatRate Wiki provider", async () => {
+test("forum login UI exposes one readable branded FlatRate.wiki CTA", async () => {
   const css = await text("resources/less/forum.less");
   const locale = await text("resources/locale/en.yml");
 
   assert.match(css, /\.LogInModal[\s\S]*\.Form/);
   assert.match(css, /\.Modal-footer/);
   assert.match(css, /LogInButtonContainer--flatrate/);
+  assert.match(css, /max-width:\s*420px/);
+  assert.match(css, /min-height:\s*54px/);
+  assert.match(css, /\.Button-labelText[\s\S]*text-overflow:\s*clip/);
+  assert.match(css, /@media \(max-width: 767px\)/);
   assert.match(css, /\.item-signUp/);
-  assert.match(locale, /Continue with FlatRate Wiki/);
+  assert.match(locale, /Continue with FlatRate\.wiki/);
 });
 
 test("operator docs bind the confidential client to client_secret_post and S256", async () => {

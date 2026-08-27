@@ -9,16 +9,90 @@
   }
 
   .LogInButtons {
-    margin-bottom: 0;
+    width: calc(100% - 32px);
+    max-width: 420px;
+    margin: 0 auto;
   }
 
   .LogInButtonContainer:not(.LogInButtonContainer--flatrate) {
     display: none !important;
   }
 
-  .LogInButtonContainer--flatrate,
+  .LogInButtonContainer--flatrate {
+    width: 100%;
+    margin: 0;
+  }
+
   .LogInButtonContainer--flatrate .Button {
     width: 100%;
+    min-height: 54px;
+    padding: 14px 20px;
+    gap: 10px;
+    border: 1px solid #0f172a;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+  }
+
+  .LogInButtonContainer--flatrate .Button:hover,
+  .LogInButtonContainer--flatrate .Button:focus-visible {
+    background: #1e293b;
+    border-color: #1e293b;
+    color: #ffffff;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.24);
+    text-decoration: none;
+  }
+
+  .LogInButtonContainer--flatrate .Button:active {
+    background: #020617;
+    border-color: #020617;
+    transform: translateY(1px);
+  }
+
+  .LogInButtonContainer--flatrate .Button-icon {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 18px;
+  }
+
+  // Flarum's block-button defaults ellipsize Button-labelText. This provider
+  // is the only login path, so the full brand/action must always remain visible.
+  .LogInButtonContainer--flatrate .Button-label,
+  .LogInButtonContainer--flatrate .Button-labelText {
+    min-width: 0;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .LogInButtonContainer--flatrate .Button-labelText {
+    text-align: center;
+  }
+}
+
+@media (max-width: 767px) {
+  .LogInModal {
+    .Modal-body {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .LogInButtons {
+      width: 100%;
+      max-width: none;
+    }
+
+    .LogInButtonContainer--flatrate .Button {
+      min-height: 56px;
+      padding-left: 18px;
+      padding-right: 18px;
+      font-size: 16px;
+    }
   }
 }
 
