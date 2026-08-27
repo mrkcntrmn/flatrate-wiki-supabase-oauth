@@ -72,17 +72,23 @@ final class FlatRate extends Provider
             throw new RuntimeException('Supabase UserInfo response is missing sub.');
         }
 
-        // Deliberately suggest, rather than provide, the email. Flarum 1.8
-        // auto-links a provider to an existing account when a provider marks an
-        // email as "provided". FlatRate Wiki forbids heuristic cross-system
-        // account linking by email; the immutable OAuth identifier is `sub`.
+        // Email remains the private account/login address. Deliberately suggest,
+        // rather than provide, it so Flarum never heuristically links an existing
+        // account solely because the email address happens to match.
         $email = trim((string) ($payload['email'] ?? ''));
         if ($email !== '') {
             $registration->suggestEmail($email);
         }
 
+        $handle = $this->neutralHandle($sub);
+
         $registration
-            ->suggestUsername($this->usernameSuggestion($payload, $sub))
+            // Flarum's username is exposed in routes/API, so it must never be the
+            // email address. Keep it as an opaque, stable public handle instead.
+            ->suggestUsername($handle)
+            // Flarum Nicknames owns the user-configurable public display name.
+            // Start neutral and let the member change it from Settings.
+            ->suggest('nickname', $this->neutralNickname($sub))
             ->setPayload($payload);
 
         $picture = trim((string) ($payload['picture'] ?? ''));
@@ -91,24 +97,13 @@ final class FlatRate extends Provider
         }
     }
 
-    private function usernameSuggestion(array $payload, string $sub): string
+    private function neutralHandle(string $sub): string
     {
-        // Never derive the public forum username from email address or display
-        // name. If the identity provider explicitly supplies a preferred public
-        // username we may use that as a hint; otherwise use a neutral handle.
-        $candidate = trim((string) ($payload['preferred_username'] ?? ''));
-        $candidate = strtolower((string) preg_replace('/[^a-zA-Z0-9_-]+/', '_', $candidate));
-        $candidate = trim($candidate, '_-');
+        return 'tech_'.substr(hash('sha256', $sub), 0, 8);
+    }
 
-        if ($candidate === '') {
-            $candidate = 'tech';
-        }
-
-        // Flarum ultimately owns the public username. This only produces a
-        // collision-resistant suggestion; it is not the cross-system identity.
-        $suffix = substr(hash('sha256', $sub), 0, 8);
-        $prefix = substr($candidate, 0, 18);
-
-        return $prefix.'_'.$suffix;
+    private function neutralNickname(string $sub): string
+    {
+        return 'Tech '.strtoupper(substr(hash('sha256', $sub), 0, 4));
     }
 }
