@@ -8,11 +8,12 @@ async function text(path) {
   return readFile(new URL(path, packageDir), "utf8");
 }
 
-test("package pins the PKCE-capable Flarum/FoF floor", async () => {
+test("package pins the PKCE-capable Flarum/FoF floor and Nicknames", async () => {
   const composer = JSON.parse(await text("composer.json"));
 
   assert.equal(composer.name, "flatrate/wiki-supabase-oauth");
   assert.equal(composer.require["flarum/core"], "^1.8.1");
+  assert.equal(composer.require["flarum/nicknames"], "^1.8.3");
   assert.equal(composer.require["fof/oauth"], "^1.7.4");
   assert.equal(composer.require["fof/extend"], "^1.3.4");
   assert.equal(composer.require["league/oauth2-client"], "^2.7");
@@ -31,14 +32,24 @@ test("provider requires S256 and immutable sub identity", async () => {
   assert.match(provider, /suggestEmail/);
 });
 
-test("public username suggestion never falls back to email or display name", async () => {
+test("public routing handle is neutral and nickname is separately configurable", async () => {
   const provider = await text("src/Providers/FlatRate.php");
-  const usernameMethod = provider.slice(provider.indexOf("private function usernameSuggestion"));
 
-  assert.match(usernameMethod, /preferred_username/);
-  assert.match(usernameMethod, /candidate = 'tech'/);
-  assert.doesNotMatch(usernameMethod, /payload\['email'\]/);
-  assert.doesNotMatch(usernameMethod, /payload\['name'\]/);
+  assert.match(provider, /neutralHandle/);
+  assert.match(provider, /'tech_'\.substr\(hash\('sha256', \$sub\), 0, 8\)/);
+  assert.match(provider, /->suggest\('nickname', \$this->neutralNickname\(\$sub\)\)/);
+  assert.doesNotMatch(provider, /payload\['email'\].*suggestUsername/s);
+  assert.doesNotMatch(provider, /preferred_username.*suggestUsername/s);
+});
+
+test("nickname migration selects nickname display and grants self-edit", async () => {
+  const migration = await text("migrations/2026_08_27_000000_enable_public_nicknames.php");
+
+  assert.match(migration, /'display_name_driver'\s*=>\s*'nickname'/);
+  assert.match(migration, /'flarum-nicknames\.set_on_registration'\s*=>\s*'1'/);
+  assert.match(migration, /'flarum-nicknames\.random_username'\s*=>\s*'0'/);
+  assert.match(migration, /user\.editOwnNickname/);
+  assert.match(migration, /Group::MEMBER_ID/);
 });
 
 test("verified Supabase email activates only the matching OAuth registration", async () => {
@@ -61,7 +72,7 @@ test("ordinary native password login and password signup are blocked server-side
   assert.match(middleware, /flatrate_sso_required/);
 });
 
-test("forum login UI exposes one readable branded FlatRate.wiki CTA", async () => {
+test("forum UI exposes one branded SSO CTA and removes local credential controls", async () => {
   const provider = await text("src/Providers/FlatRate.php");
   const css = await text("resources/less/forum.less");
   const locale = await text("resources/locale/en.yml");
@@ -75,6 +86,8 @@ test("forum login UI exposes one readable branded FlatRate.wiki CTA", async () =
   assert.match(css, /\.Button-labelText[\s\S]*text-overflow:\s*clip/);
   assert.match(css, /@media \(max-width: 767px\)/);
   assert.match(css, /\.item-signUp/);
+  assert.match(css, /\.item-changePassword/);
+  assert.match(css, /\.item-changeEmail/);
   assert.match(locale, /Continue with FlatRate\.wiki/);
 });
 
