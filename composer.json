@@ -3,6 +3,19 @@
   "description": "FlatRate Wiki Supabase OAuth 2.1 SSO provider and public-auth gate for Flarum 1.8.",
   "type": "flarum-extension",
   "license": "MIT",
+  "keywords": [
+    "flarum",
+    "supabase",
+    "oauth",
+    "oauth2",
+    "pkce",
+    "sso"
+  ],
+  "homepage": "https://flatrate.wiki",
+  "support": {
+    "issues": "https://github.com/mrkcntrmn/flatrate-wiki-supabase-oauth/issues",
+    "source": "https://github.com/mrkcntrmn/flatrate-wiki-supabase-oauth"
+  },
   "require": {
     "php": ">=8.1",
     "flarum/core": "^1.8.1",
