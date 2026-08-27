@@ -18,7 +18,7 @@ final class FlatRate extends Provider
 
     public function icon(): string
     {
-        return 'fas fa-wrench';
+        return 'fas fa-sign-in-alt';
     }
 
     public function link(): string
