@@ -9,18 +9,33 @@ The extension is designed for FlatRate Wiki's account model: Supabase Auth is th
 - OAuth 2.1 authorization-code flow with PKCE `S256`.
 - Supabase UserInfo `sub` is the external identity key.
 - Email is never used to infer or auto-link an existing Flarum account.
-- Public usernames are never derived from email address or display name.
-- Without an explicit `preferred_username`, the suggested handle is `tech_<stable-hash>`.
+- The verified email remains the private account/login address in Supabase and Flarum.
+- Flarum's `username` is **not** treated as an internal email field because Flarum exposes it in public routes and API responses.
+- The Flarum username is instead an opaque routing handle: `tech_<stable-hash>` derived only from OAuth `sub`.
+- Flarum Nicknames is the public display-name layer. New accounts start with a neutral `Tech XXXX` nickname and members can change their own nickname from Settings.
 - A new OAuth registration is activated without a second Flarum confirmation only when Supabase returns `email_verified=true` and the registration email exactly matches that address.
 - Ordinary native Flarum password login and native public signup are blocked server-side.
 - Native administrator password login remains available as an unadvertised recovery path.
-- The public Flarum login modal exposes only **Continue with FlatRate Wiki**.
+- The public Flarum login modal exposes only **Continue with FlatRate.wiki**.
+- Local Change Password / Change Email controls are hidden for ordinary forum use because account credentials are managed through FlatRate.wiki / Supabase.
 - OAuth client secrets remain in Flarum private settings and are never compiled into browser assets.
+
+### Identity fields
+
+| Concern | Source of truth | Example | Public? |
+| --- | --- | --- | --- |
+| Authentication identity | Supabase `sub` | UUID-like subject | No |
+| Login/account address | Supabase/Flarum email | `tech@example.com` | No |
+| Flarum routing username | Derived from `sub` | `tech_a1b2c3d4` | Yes |
+| Display name / nickname | User-configurable Flarum Nickname | `EV Tech` | Yes |
+
+This split is deliberate. A literal email cannot safely be used as Flarum's `username` because Flarum includes usernames in profile URLs and serialized user data.
 
 ## Requirements
 
 - PHP `>=8.1`
 - Flarum `^1.8.1`
+- `flarum/nicknames:^1.8.3`
 - `fof/oauth:^1.7.4`
 - `fof/extend:^1.3.4`
 - `league/oauth2-client:^2.7`
@@ -45,7 +60,15 @@ No custom Composer repository or `COMPOSER_HOME` override should be required onc
 
 ## Flarum configuration
 
-Enable **FoF OAuth** and **FlatRate Wiki Login**. In the FlatRate Wiki provider settings enter:
+Enable these extensions in dependency order:
+
+1. **Nicknames**
+2. **FoF OAuth**
+3. **FlatRate Wiki Login**
+
+The FlatRate Wiki migration configures Nicknames as the display-name driver, allows members to edit their own nickname, enables nickname capture during OAuth registration, and repairs early FlatRate-linked accounts that used email-derived usernames by replacing them with the deterministic `tech_<hash>` handle.
+
+In the FlatRate Wiki provider settings enter:
 
 ```text
 Supabase Project URL: https://<project-ref>.supabase.co
@@ -93,6 +116,8 @@ The extension intentionally makes FlatRate Wiki the only public account authorit
 
 - hides Flarum's public username/password login controls;
 - hides forgot-password and public native signup affordances;
+- hides local password/email change buttons from the ordinary Settings page;
+- exposes the Nicknames **Change Nickname** control as the user-editable public identity;
 - rejects ordinary native password authentication server-side;
 - rejects native public user creation unless a valid OAuth registration token is present;
 - preserves administrator native login for recovery.
@@ -103,7 +128,7 @@ This is defense in depth: hiding the controls is not treated as an authenticatio
 
 Do not automatically link an existing Flarum account because its email matches a Supabase account. The cross-system key is OAuth `sub`, not email, username, or display name.
 
-Accounts created by older pre-release builds with email-derived usernames are not renamed automatically.
+The nickname migration repairs accounts already linked to the `flatrate` provider: it derives a neutral routing username from the stored provider identifier (`sub`) and sets a neutral nickname only when the user has not already chosen one. It never restores an email-derived username on rollback.
 
 ## Development
 
