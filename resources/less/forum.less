@@ -1,0 +1,29 @@
+// FlatRate Wiki is the only public authentication authority for the forum.
+// Keep the FoF OAuth provider button visible, but remove Flarum's native
+// username/password controls and public signup affordances.
+
+.LogInModal {
+  .Form,
+  .Modal-footer {
+    display: none !important;
+  }
+
+  .LogInButtons {
+    margin-bottom: 0;
+  }
+
+  .LogInButtonContainer:not(.LogInButtonContainer--flatrate) {
+    display: none !important;
+  }
+
+  .LogInButtonContainer--flatrate,
+  .LogInButtonContainer--flatrate .Button {
+    width: 100%;
+  }
+}
+
+// OAuth registration still uses Flarum's SignUpModal when a valid provider
+// registration token is present. We only remove the public/manual signup entry.
+.item-signUp {
+  display: none !important;
+}
