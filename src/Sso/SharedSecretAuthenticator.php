@@ -2,6 +2,7 @@
 
 namespace FlatRate\SupabaseOAuth\Sso;
 
+use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\User;
 use Illuminate\Database\QueryException;
 use Psr\Http\Message\ServerRequestInterface;
@@ -11,9 +12,13 @@ final class SharedSecretAuthenticator
     private const MAX_CLOCK_SKEW_SECONDS = 60;
     private const NONCE_TTL_SECONDS = 120;
 
+    public function __construct(private SettingsRepositoryInterface $settings)
+    {
+    }
+
     public function authenticate(ServerRequestInterface $request): void
     {
-        $secret = trim((string) getenv('FORUM_SSO_SHARED_SECRET'));
+        $secret = $this->sharedSecret();
         if (strlen($secret) < 32) {
             throw new SsoException('forum_sso_not_configured', 503);
         }
@@ -75,5 +80,18 @@ final class SharedSecretAuthenticator
             // request replay even when the HMAC itself is otherwise valid.
             throw new SsoException('replayed_sso_request', 401);
         }
+    }
+
+    private function sharedSecret(): string
+    {
+        // Prefer deployment environment configuration. PikaPods and similar
+        // managed hosts can instead store the same value in the private FlatRate
+        // OAuth provider settings when arbitrary env vars are unavailable.
+        $environmentSecret = trim((string) getenv('FORUM_SSO_SHARED_SECRET'));
+        if (strlen($environmentSecret) >= 32) {
+            return $environmentSecret;
+        }
+
+        return trim((string) $this->settings->get('fof-oauth.flatrate.sso_shared_secret'));
     }
 }
