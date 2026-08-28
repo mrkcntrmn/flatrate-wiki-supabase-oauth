@@ -1,27 +1,27 @@
 # FlatRate Wiki Supabase OAuth
 
-Flarum 1.8 extension that connects a forum to a Supabase OAuth 2.1 identity provider through FriendsOfFlarum OAuth.
+Flarum 1.8 extension for FlatRate Wiki identity integration.
 
-The extension is designed for FlatRate Wiki's account model: Supabase Auth is the canonical account authority and Flarum keeps only the local forum identity/state linked to the immutable OAuth `sub`.
+Supabase Auth remains the canonical credential/account authority. Flarum keeps only local community identity/state linked to the immutable Supabase/OIDC `sub`.
+
+The production target has two complementary paths:
+
+1. **Primary product path:** FlatRate.wiki provisions the linked Flarum identity server-to-server and enters Community with a short-lived, opaque, one-time session ticket. Users do not see an OAuth consent/callback flow when they click Community.
+2. **Rollback/fallback path:** the existing OAuth 2.1 authorization-code flow with PKCE `S256` remains available during migration and for explicit legacy-account linking.
 
 ## Security and identity contract
 
-- OAuth 2.1 authorization-code flow with PKCE `S256`.
-- Supabase UserInfo `sub` is the external identity key.
-- Email is never used to infer or auto-link an existing Flarum account.
-- The verified email remains the private account/login address in Supabase and Flarum.
-- Flarum's `username` is **not** treated as an internal email field because Flarum exposes it in public routes and API responses.
-- The Flarum username is instead an opaque routing handle: `tech_<stable-hash>` derived only from OAuth `sub`.
-- Flarum Nicknames is the public display-name layer. New accounts start with a neutral `Tech XXXX` nickname and members can change their own nickname from Settings.
-- A genuinely new FlatRate OAuth identity silently provisions its local Flarum row only when Supabase UserInfo returns the same immutable `sub`, a non-empty email, and `email_verified=true`.
-- New OAuth users therefore reach the forum with **no second Flarum Sign Up confirmation** and no need to approve the generated routing username.
-- If the verified email already belongs to a Flarum account, silent provisioning fails closed with `existing_account_requires_explicit_link`; it never joins accounts by email.
-- Existing native accounts are linked explicitly while authenticated as that Flarum user through FoF OAuth's `linkTo` flow.
-- Ordinary native Flarum password login and native public signup are blocked server-side.
-- Native administrator password login remains available as an unadvertised recovery path.
-- The public Flarum login modal exposes only **Continue with FlatRate.wiki**.
-- Local Change Password / Change Email controls are hidden for ordinary forum use because account credentials are managed through FlatRate.wiki / Supabase.
-- OAuth client secrets remain in Flarum private settings and are never compiled into browser assets.
+- Supabase `sub` is the only cross-system identity key.
+- Email is a private attribute and is never used to infer or auto-link an unrelated Flarum account.
+- Flarum routing usernames are deterministic opaque handles: `tech_<stable-hash(sub)>`.
+- Flarum Nicknames is the user-editable public display-name layer.
+- New forum identities require a non-empty verified email attribute, but linkage remains keyed to `sub`.
+- If a verified email is already owned by an unrelated local Flarum account, provisioning fails closed with `existing_account_requires_explicit_link`.
+- Ordinary native Flarum password login/signup are blocked server-side; native administrator password login remains an unadvertised recovery path.
+- FlatRate.wiki and Flarum do **not** share authentication cookies.
+- Supabase access tokens, refresh tokens, passwords, and service-role credentials never appear in forum-entry URLs.
+- Internal bridge requests require a deployment-only HMAC secret, timestamp, and nonce.
+- Forum-entry tickets are cryptographically random, hashed at rest, expire after 45 seconds, and are atomically single-use.
 
 ### Identity fields
 
@@ -30,9 +30,7 @@ The extension is designed for FlatRate Wiki's account model: Supabase Auth is th
 | Authentication identity | Supabase `sub` | UUID-like subject | No |
 | Login/account address | Supabase/Flarum email | `tech@example.com` | No |
 | Flarum routing username | Derived from `sub` | `tech_a1b2c3d4` | Yes |
-| Display name / nickname | User-configurable Flarum Nickname | `EV Tech` | Yes |
-
-This split is deliberate. A literal email cannot safely be used as Flarum's `username` because Flarum includes usernames in profile URLs and serialized user data.
+| Display name / nickname | Flarum Nicknames | `EV Tech` | Yes |
 
 ## Requirements
 
@@ -43,53 +41,144 @@ This split is deliberate. A literal email cannot safely be used as Flarum's `use
 - `fof/extend:^1.3.4`
 - `league/oauth2-client:^2.7`
 
-Composer installs the dependencies automatically.
-
 ## Install
-
-After this repository is registered on Packagist and a stable release is tagged:
 
 ```bash
 composer require flatrate/wiki-supabase-oauth:^0.2
 ```
 
-For managed Flarum images that restore extensions from a persistent list, persist:
+For the managed PikaPods/Flarum image, persist the package in `/data/extensions/list` so it is restored after restart.
 
-```text
-flatrate/wiki-supabase-oauth:^0.2
-```
-
-No custom Composer repository or `COMPOSER_HOME` override should be required once Packagist indexes the package.
-
-## Flarum configuration
-
-Enable these extensions in dependency order:
+Enable dependencies in this order:
 
 1. **Nicknames**
 2. **FoF OAuth**
 3. **FlatRate Wiki Login**
 
-The FlatRate Wiki migration configures Nicknames as the display-name driver, allows members to edit their own nickname, enables nickname capture during OAuth registration, and repairs early FlatRate-linked accounts that used email-derived usernames by replacing them with the deterministic `tech_<hash>` handle.
+## Seamless product-to-forum flow
 
-In the FlatRate Wiki provider settings enter:
-
-```text
-Supabase Project URL: https://<project-ref>.supabase.co
-Client ID: <Supabase OAuth app client ID>
-Client Secret: <Supabase OAuth app client secret>
-```
-
-The provider callback is generated by FoF OAuth. Register the **exact callback shown by the live provider settings** in Supabase. For the current FlatRate Wiki deployment it is:
+The normal user journey is intentionally not a browser OAuth flow:
 
 ```text
-https://forum.flatrate.wiki/auth/flatrate
+FlatRate.wiki signup / confirmation
+  -> authenticated Supabase user
+  -> POST forum /api/flatrate-sso/provision (server-to-server)
+  -> Flarum user + flatrate LoginProvider keyed by sub
+
+User clicks Community
+  -> FlatRate.wiki verifies/refreshes its Supabase session
+  -> POST forum /api/flatrate-sso/ticket (server-to-server)
+  -> short-lived opaque one-time ticket
+  -> browser GET forum /auth/flatrate/session?ticket=<opaque>
+  -> Flarum consumes ticket atomically
+  -> Flarum issues its own normal remember/session cookie
+  -> redirect directly to requested Community path
 ```
 
-Create the Supabase OAuth client as confidential and use `client_secret_post` for token-endpoint authentication.
+The single top-level request to `forum.flatrate.wiki` is necessary so the forum can issue its own host-scoped cookie. There is no second password, popup, consent page, authorization-code callback page, or shared parent-domain cookie.
 
-## Supabase OAuth server
+## Internal bridge configuration
 
-The provider uses:
+Set the same high-entropy deployment secret on both the FlatRate.wiki server and the Flarum/PikaPods runtime:
+
+```text
+FORUM_SSO_SHARED_SECRET=<at-least-32-random-characters>
+```
+
+Do not commit the value to GitHub or Flarum public assets.
+
+Internal requests use these headers:
+
+```text
+X-FlatRate-Timestamp: <unix-seconds>
+X-FlatRate-Nonce: <random-base64url-or-hex>
+X-FlatRate-Signature: v1=<hex-hmac-sha256>
+```
+
+Canonical signing input:
+
+```text
+<timestamp>\n
+<nonce>\n
+<METHOD>\n
+<request-path>\n
+<sha256(raw-request-body)>
+```
+
+The receiver rejects stale timestamps, malformed signatures, and duplicate nonces. Nonce hashes are stored only long enough to enforce replay protection.
+
+## Internal endpoints
+
+### `POST /api/flatrate-sso/provision`
+
+Authenticated server-to-server only.
+
+Request body:
+
+```json
+{
+  "sub": "immutable-supabase-sub",
+  "email": "private@example.com",
+  "email_verified": true
+}
+```
+
+Behavior is idempotent:
+
+- return the user already linked by `login_providers(provider=flatrate, identifier=sub)`; or
+- create exactly one Flarum user with deterministic routing username and neutral nickname;
+- create the `flatrate` provider link keyed to `sub`;
+- never join an unrelated account solely because email matches.
+
+The provisioner uses Flarum's own `RegistrationToken` + `RegisterUserHandler` path so core validation/events, nickname persistence, email activation, and provider-link persistence remain intact.
+
+### `POST /api/flatrate-sso/ticket`
+
+Authenticated server-to-server only. It accepts the same identity fields plus a relative `return_to` path. It idempotently ensures the linked forum user exists and returns an opaque entry path with a 45-second TTL.
+
+Example response shape:
+
+```json
+{
+  "ok": true,
+  "entry_path": "/auth/flatrate/session?ticket=<opaque>",
+  "expires_in": 45
+}
+```
+
+### `GET /auth/flatrate/session?ticket=<opaque>`
+
+Browser entry endpoint. It:
+
+1. hashes and looks up the ticket;
+2. locks the row and confirms it is unexpired/unconsumed;
+3. marks it consumed in the same transaction;
+4. creates Flarum's normal `RememberAccessToken`;
+5. sets the normal Flarum remember cookie;
+6. redirects to the ticket-bound relative forum path.
+
+Responses use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. Tickets contain no email, JWT, refresh token, or other PII.
+
+## Signup and self-healing provisioning
+
+FlatRate.wiki should call `/provision` whenever a Supabase account becomes verified/authenticated:
+
+- immediately after signup if Supabase returns a session;
+- after email-confirmation verification;
+- after accepting a confirmed callback session;
+- on ordinary login as an idempotent repair path.
+
+Community entry should call `/ticket`, which also runs the same idempotent provisioner. This means a missed signup webhook/callback cannot permanently strand the account.
+
+## Existing accounts
+
+Existing `login_providers(provider=flatrate, identifier=sub)` rows created by the OAuth flow are reused unchanged by the new bridge. No migration to a new identity key is required.
+
+Do not automatically link an existing Flarum-native account because its email matches a Supabase account. Use explicit linking for legacy accounts.
+
+## OAuth rollback/fallback path
+
+The OAuth provider remains configured during rollout. It still uses:
 
 ```text
 /auth/v1/oauth/authorize
@@ -103,7 +192,7 @@ with scopes:
 openid email profile
 ```
 
-The outgoing authorization request must contain:
+and requires:
 
 ```text
 response_type=code
@@ -111,91 +200,63 @@ code_challenge=<non-empty value>
 code_challenge_method=S256
 ```
 
-Absence of the PKCE challenge is a deployment blocker.
-
-## First-login provisioning
-
-For a new Supabase subject, the extension uses Flarum's own `RegistrationToken` and `RegisterUserHandler` server-side. It does not synthesize database rows and it does not auto-submit the stock browser Sign Up modal.
-
-The server-side path is:
+The Flarum callback remains:
 
 ```text
-Supabase UserInfo
-  -> verify sub == OAuth identifier
-  -> require email_verified=true
-  -> require email not already owned locally
-  -> derive tech_<hash(sub)> + neutral nickname
-  -> Flarum RegistrationToken
-  -> Flarum RegisterUserHandler
-  -> flatrate LoginProvider keyed to sub
-  -> logged-in response
+https://forum.flatrate.wiki/auth/flatrate
 ```
 
-Using the normal Flarum registration handler preserves core validation/events, the `RegisteringFromProvider` hook, nickname persistence, email activation, and provider-link persistence. Repeated sign-ins resolve the existing `LoginProvider` and do not create another local user.
+The Supabase OAuth client is confidential and uses `client_secret_post`.
 
-If a local Flarum user already owns the verified email, the extension throws:
+A new identity arriving through this fallback path delegates to the same reusable `FlatRateUserProvisioner`, so OAuth and the ticket bridge cannot create divergent forum identities.
 
-```text
-existing_account_requires_explicit_link
-```
+### Explicit legacy account linking
 
-That is intentional. Email may corroborate account state, but it is never the cross-system identity key.
-
-## Explicitly linking an existing native account
-
-Existing Flarum-native users must prove control of the local account before attaching a Supabase `sub`. This includes the native recovery administrator.
-
-While already signed into the target Flarum account, start FoF OAuth's authenticated link flow:
+While signed into the target native Flarum account, use:
 
 ```text
 https://forum.flatrate.wiki/auth/flatrate?linkTo=<FLARUM_USER_ID>
 ```
 
-FoF OAuth verifies that the authenticated actor ID exactly matches `linkTo` before creating the `flatrate` LoginProvider record. The OAuth provider identifier stored on that record is the Supabase `sub`.
+FoF OAuth verifies that the authenticated actor matches `linkTo` before creating the provider record. Keep this primarily for migration/recovery; ordinary product navigation should use the seamless ticket bridge.
 
-For the administrator migration:
+## Public-auth behavior
 
-1. Keep the native administrator password login working.
-2. Sign into the forum with that native administrator account.
-3. Determine that Flarum user's numeric ID.
-4. Open `/auth/flatrate?linkTo=<FLARUM_USER_ID>` in the same authenticated browser.
-5. Authenticate/consent at FlatRate.wiki using the intended Supabase administrator identity.
-6. Return to the forum and verify the link succeeds.
-7. Sign out, then prove **Continue with FlatRate.wiki** logs back into the same administrator row.
-8. Keep the native password path only as the recovery path.
+The extension:
 
-Do not create a duplicate administrator and do not change an email solely to make account matching work.
-
-## Public-auth cutover behavior
-
-The extension intentionally makes FlatRate Wiki the only public account authority for the forum:
-
-- hides Flarum's public username/password login controls;
-- hides forgot-password and public native signup affordances;
-- hides local password/email change buttons from the ordinary Settings page;
-- exposes the Nicknames **Change Nickname** control as the user-editable public identity;
+- hides public native username/password login controls;
+- hides public signup and forgot-password affordances;
+- hides local Change Password / Change Email controls for ordinary users;
+- exposes Nicknames for public identity management;
 - rejects ordinary native password authentication server-side;
-- rejects native public user creation unless a valid OAuth registration token is present;
-- silently completes verified FlatRate OAuth registrations without the stock Sign Up confirmation modal;
-- preserves administrator native login for recovery.
+- rejects native public user creation without an OAuth registration token;
+- preserves native administrator password login for recovery.
 
-This is defense in depth: hiding the controls is not treated as an authentication boundary.
+## Production proof gate
 
-## Existing accounts
+Before removing the OAuth product path, verify:
 
-Do not automatically link an existing Flarum account because its email matches a Supabase account. The cross-system key is OAuth `sub`, not email, username, or display name.
-
-The nickname migration repairs accounts already linked to the `flatrate` provider: it derives a neutral routing username from the stored provider identifier (`sub`) and sets a neutral nickname only when the user has not already chosen one. It never restores an email-derived username on rollback.
+- a new confirmed FlatRate.wiki account creates exactly one linked Flarum identity without opening the forum;
+- repeat provisioning creates no duplicates;
+- existing linked users resolve the same Flarum row;
+- clicking Community lands already authenticated at the requested forum path;
+- clicking Community Settings lands at `/settings` already authenticated;
+- reused, expired, malformed, and tampered tickets fail closed;
+- replayed/stale HMAC requests fail closed;
+- changing the Supabase email does not create a second forum identity;
+- Flarum bans/suspensions still apply;
+- PikaPods restart restores the extension and migrations;
+- no bridge secret, Supabase token, password, or PII appears in browser URLs, logs, GitHub, or public assets.
 
 ## Development
 
-Run the static contract tests with Node 20+:
+Run static contract tests:
 
 ```bash
 node --test test/*.test.mjs
 ```
 
-Run PHP syntax validation with:
+Run PHP syntax validation:
 
 ```bash
 find . -name '*.php' -print0 | xargs -0 -n1 php -l
