@@ -76,6 +76,9 @@ test("trusted bridge exposes provision, ticket, and session routes", async () =>
 test("internal requests require fresh HMAC plus replay-resistant nonce", async () => {
   const auth = await text("src/Sso/SharedSecretAuthenticator.php");
   assert.match(auth, /FORUM_SSO_SHARED_SECRET/);
+  assert.match(auth, /SettingsRepositoryInterface/);
+  assert.match(auth, /fof-oauth\.flatrate\.sso_shared_secret/);
+  assert.match(auth, /strlen\(\$environmentSecret\) >= 32/);
   assert.match(auth, /X-FlatRate-Timestamp/);
   assert.match(auth, /X-FlatRate-Nonce/);
   assert.match(auth, /X-FlatRate-Signature/);
@@ -84,6 +87,18 @@ test("internal requests require fresh HMAC plus replay-resistant nonce", async (
   assert.match(auth, /hash_equals/);
   assert.match(auth, /flatrate_sso_nonces/);
   assert.match(auth, /replayed_sso_request/);
+});
+
+test("managed hosts may store the bridge secret in private FlatRate provider settings", async () => {
+  const provider = await text("src/Providers/FlatRate.php");
+  const locale = await text("resources/locale/en.yml");
+  const readme = await text("README.md");
+
+  assert.match(provider, /'sso_shared_secret'\s*=>\s*'nullable\|string\|min:32\|max:512'/);
+  assert.match(locale, /sso_shared_secret_label:\s*Community SSO Shared Secret/);
+  assert.match(readme, /managed host/i);
+  assert.match(readme, /private FlatRate provider setting/i);
+  assert.match(readme, /environment.*preferred/is);
 });
 
 test("forum entry tickets are opaque, short-lived, and consumed atomically", async () => {
