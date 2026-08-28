@@ -2,6 +2,7 @@
 
 namespace FlatRate\SupabaseOAuth\Providers;
 
+use FlatRate\SupabaseOAuth\Identity\NeutralIdentity;
 use Flarum\Forum\Auth\Registration;
 use FoF\OAuth\Provider;
 use InvalidArgumentException;
@@ -73,37 +74,27 @@ final class FlatRate extends Provider
         }
 
         // Email remains the private account/login address. Deliberately suggest,
-        // rather than provide, it so Flarum never heuristically links an existing
-        // account solely because the email address happens to match.
+        // rather than provide, it so upstream Flarum behavior can never
+        // heuristically join an existing account solely because email matches.
+        // FlatRate's response factory separately performs verified, silent
+        // provisioning for genuinely new identities.
         $email = trim((string) ($payload['email'] ?? ''));
         if ($email !== '') {
             $registration->suggestEmail($email);
         }
 
-        $handle = $this->neutralHandle($sub);
-
         $registration
             // Flarum's username is exposed in routes/API, so it must never be the
             // email address. Keep it as an opaque, stable public handle instead.
-            ->suggestUsername($handle)
+            ->suggestUsername(NeutralIdentity::handle($sub))
             // Flarum Nicknames owns the user-configurable public display name.
             // Start neutral and let the member change it from Settings.
-            ->suggest('nickname', $this->neutralNickname($sub))
+            ->suggest('nickname', NeutralIdentity::nickname($sub))
             ->setPayload($payload);
 
         $picture = trim((string) ($payload['picture'] ?? ''));
         if ($picture !== '') {
             $this->provideAvatar($registration, $picture);
         }
-    }
-
-    private function neutralHandle(string $sub): string
-    {
-        return 'tech_'.substr(hash('sha256', $sub), 0, 8);
-    }
-
-    private function neutralNickname(string $sub): string
-    {
-        return 'Tech '.strtoupper(substr(hash('sha256', $sub), 0, 4));
     }
 }
