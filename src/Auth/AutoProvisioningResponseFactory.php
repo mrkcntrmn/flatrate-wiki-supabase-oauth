@@ -145,6 +145,11 @@ final class AutoProvisioningResponseFactory extends ResponseFactory
             $json
         );
 
+        // Strip the PHP source-only escaping for double quotes. In a single-
+        // quoted PHP string, escaped double quotes would otherwise be emitted
+        // literally into JavaScript and cause a syntax error.
+        $content = str_replace('\\"', '"', $content);
+
         return new HtmlResponse($content);
     }
 }
