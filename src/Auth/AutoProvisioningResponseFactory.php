@@ -140,16 +140,10 @@ final class AutoProvisioningResponseFactory extends ResponseFactory
         // Preserve the normal same-origin popup contract for forum-initiated
         // sign-in. If there is no usable opener (including a cross-origin
         // opener), continue in this tab to Community Settings instead.
-        $content = sprintf(
-            '<script>(function(){var payload=%s;try{if(window.opener&&window.opener.app&&typeof window.opener.app.authenticationComplete==="function"){window.opener.app.authenticationComplete(payload);window.close();return;}}catch(error){}window.location.replace("/settings");})();</script>',
-            $json
-        );
+        $template = <<<'HTML'
+<script>(function(){var payload=%s;try{if(window.opener&&window.opener.app&&typeof window.opener.app.authenticationComplete==='function'){window.opener.app.authenticationComplete(payload);window.close();return;}}catch(error){}window.location.replace('/settings');})();</script>
+HTML;
 
-        // Strip the PHP source-only escaping for double quotes. In a single-
-        // quoted PHP string, escaped double quotes would otherwise be emitted
-        // literally into JavaScript and cause a syntax error.
-        $content = str_replace('\\"', '"', $content);
-
-        return new HtmlResponse($content);
+        return new HtmlResponse(sprintf($template, $json));
     }
 }
