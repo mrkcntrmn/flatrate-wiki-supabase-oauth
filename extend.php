@@ -20,6 +20,13 @@ return [
     (new Extend\Event())
         ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class),
 
+    (new Extend\Routes('api'))
+        ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
+        ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class),
+
+    (new Extend\Routes('forum'))
+        ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),
+
     (new Extend\Middleware('forum'))
         ->add(Middleware\RequireFlatRateIdentity::class),
 
