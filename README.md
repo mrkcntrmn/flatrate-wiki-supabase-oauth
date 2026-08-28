@@ -79,13 +79,17 @@ The single top-level request to `forum.flatrate.wiki` is necessary so the forum 
 
 ## Internal bridge configuration
 
-Set the same high-entropy deployment secret on both the FlatRate.wiki server and the Flarum/PikaPods runtime:
+Set the same high-entropy deployment secret on both the FlatRate.wiki server and the Flarum/PikaPods runtime.
+
+Environment configuration is preferred when the host exposes arbitrary environment variables:
 
 ```text
 FORUM_SSO_SHARED_SECRET=<at-least-32-random-characters>
 ```
 
-Do not commit the value to GitHub or Flarum public assets.
+On a managed host that does not expose that environment variable, open the **FlatRate Wiki** provider settings under FoF OAuth and enter the same value in **Community SSO Shared Secret**. The extension reads the environment variable first and otherwise falls back to the private FlatRate provider setting `fof-oauth.flatrate.sso_shared_secret`.
+
+The provider setting is intended only as a managed-host deployment fallback. Do not reuse the OAuth client secret, and do not commit either secret to GitHub or public Flarum assets.
 
 Internal requests use these headers:
 

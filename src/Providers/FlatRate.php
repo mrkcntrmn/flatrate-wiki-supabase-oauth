@@ -33,6 +33,11 @@ final class FlatRate extends Provider
             'project_url' => 'required|url',
             'client_id' => 'required',
             'client_secret' => 'required',
+            // Managed hosts do not always expose arbitrary environment variables.
+            // This private Flarum setting is therefore an optional fallback for
+            // the server-to-server SSO bridge secret. Environment configuration
+            // remains preferred when it is available.
+            'sso_shared_secret' => 'nullable|string|min:32|max:512',
         ];
     }
 
