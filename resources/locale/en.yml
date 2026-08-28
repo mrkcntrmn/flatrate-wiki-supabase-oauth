@@ -3,10 +3,11 @@ fof-oauth:
     settings:
       providers:
         flatrate:
-          description: Use FlatRate Wiki / Supabase OAuth 2.1. Register the exact callback URL shown below as a confidential OAuth app using client_secret_post.
+          description: Use FlatRate Wiki / Supabase OAuth 2.1. Register the exact callback URL shown below as a confidential OAuth app using client_secret_post. The SSO shared secret is optional here when FORUM_SSO_SHARED_SECRET is configured in the runtime environment.
           project_url_label: Supabase Project URL
           client_id_label: Client ID
           client_secret_label: Client Secret
+          sso_shared_secret_label: Community SSO Shared Secret
 
   forum:
     log_in:
