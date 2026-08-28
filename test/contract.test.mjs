@@ -69,6 +69,18 @@ test("FlatRate OAuth silently provisions only verified new identities", async ()
   assert.match(extension, /register\(ServiceProvider::class\)/);
 });
 
+test("FlatRate OAuth success supports popup login and top-level Community Settings handoff", async () => {
+  const factory = await text("src/Auth/AutoProvisioningResponseFactory.php");
+
+  assert.match(factory, /private bool \$flatRateFlow = false/);
+  assert.match(factory, /return parent::makeResponse\(\$payload\)/);
+  assert.match(factory, /window\.opener&&window\.opener\.app/);
+  assert.match(factory, /authenticationComplete/);
+  assert.match(factory, /window\.close\(\)/);
+  assert.match(factory, /window\.location\.replace\('\/settings'\)/);
+  assert.match(factory, /finally\s*\{\s*\$this->flatRateFlow = false;/);
+});
+
 test("nickname migration selects nickname display and grants self-edit", async () => {
   const migration = await text("migrations/2026_08_27_000000_enable_public_nicknames.php");
 
