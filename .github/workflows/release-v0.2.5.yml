@@ -1,0 +1,25 @@
+name: Release v0.2.5
+
+on:
+  push:
+    branches:
+      - chore/release-v0.2.5
+    paths:
+      - .github/workflows/release-v0.2.5.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.2.5 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.2.5 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 127201e1415f5d0e6e2b5ad8371e426530ceb1bf \
+            --title "v0.2.5" \
+            --notes "SSO-005 managed-host deployment support: FORUM_SSO_SHARED_SECRET remains preferred, with an optional private FlatRate/FoF OAuth provider setting fallback for hosts that cannot expose arbitrary environment variables."
