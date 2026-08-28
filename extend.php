@@ -12,6 +12,9 @@ return [
 
     new Extend\Locales(__DIR__.'/resources/locale'),
 
+    (new Extend\ServiceProvider())
+        ->register(ServiceProvider::class),
+
     new OAuthExtend\RegisterProvider(Providers\FlatRate::class),
 
     (new Extend\Event())
