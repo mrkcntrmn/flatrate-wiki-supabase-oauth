@@ -32,18 +32,41 @@ test("provider requires S256 and immutable sub identity", async () => {
   assert.match(provider, /suggestEmail/);
 });
 
-test("public routing handle is neutral and nickname is separately configurable", async () => {
+test("public routing handle and neutral nickname derive only from immutable sub", async () => {
   const provider = await text("src/Providers/FlatRate.php");
-  const handleMethod = provider.slice(
-    provider.indexOf("private function neutralHandle"),
-    provider.indexOf("private function neutralNickname")
-  );
+  const identity = await text("src/Identity/NeutralIdentity.php");
 
-  assert.match(provider, /->suggestUsername\(\$handle\)/);
-  assert.match(provider, /->suggest\('nickname', \$this->neutralNickname\(\$sub\)\)/);
-  assert.match(handleMethod, /'tech_'\.substr\(hash\('sha256', \$sub\), 0, 8\)/);
-  assert.doesNotMatch(handleMethod, /email/i);
-  assert.doesNotMatch(handleMethod, /preferred_username/i);
+  assert.match(provider, /NeutralIdentity::handle\(\$sub\)/);
+  assert.match(provider, /NeutralIdentity::nickname\(\$sub\)/);
+  assert.match(identity, /'tech_'\.substr\(hash\('sha256', \$sub\), 0, 8\)/);
+  assert.match(identity, /'Tech '\.strtoupper\(substr\(hash\('sha256', \$sub\), 0, 4\)\)/);
+  assert.doesNotMatch(identity, /email/i);
+  assert.doesNotMatch(identity, /preferred_username/i);
+});
+
+test("FlatRate OAuth silently provisions only verified new identities", async () => {
+  const factory = await text("src/Auth/AutoProvisioningResponseFactory.php");
+  const serviceProvider = await text("src/ServiceProvider.php");
+  const extension = await text("extend.php");
+
+  assert.match(factory, /extends ResponseFactory/);
+  assert.match(factory, /\$provider !== 'flatrate'/);
+  assert.match(factory, /LoginProvider::logIn\(\$provider, \$identifier\)/);
+  assert.match(factory, /email_verified/);
+  assert.match(factory, /hash_equals\(\$identifier, \$sub\)/);
+  assert.match(factory, /User::where\('email', \$email\)->exists\(\)/);
+  assert.match(factory, /existing_account_requires_explicit_link/);
+  assert.match(factory, /RegistrationToken::generate/);
+  assert.match(factory, /RegisterUserHandler/);
+  assert.match(factory, /new Guest\(\)/);
+  assert.match(factory, /->transaction\(/);
+  assert.match(factory, /->makeLoggedInResponse\(\$user\)/);
+  assert.match(factory, /NeutralIdentity::handle\(\$sub\)/);
+  assert.match(factory, /NeutralIdentity::nickname\(\$sub\)/);
+
+  assert.match(serviceProvider, /bind\(ResponseFactory::class, AutoProvisioningResponseFactory::class\)/);
+  assert.match(extension, /Extend\\ServiceProvider/);
+  assert.match(extension, /register\(ServiceProvider::class\)/);
 });
 
 test("nickname migration selects nickname display and grants self-edit", async () => {
@@ -98,11 +121,15 @@ test("forum UI exposes one branded SSO CTA and removes local credential controls
   assert.match(locale, /Continue with FlatRate\.wiki/);
 });
 
-test("operator docs bind the confidential client to client_secret_post and S256", async () => {
+test("operator docs bind the confidential client to S256 and explicit existing-account linking", async () => {
   const readme = await text("README.md");
 
   assert.match(readme, /client_secret_post/);
   assert.match(readme, /code_challenge_method=S256/);
   assert.match(readme, /exact callback shown by the live provider settings/i);
   assert.match(readme, /email is never used to infer or auto-link/i);
+  assert.match(readme, /silently provisions/i);
+  assert.match(readme, /existing_account_requires_explicit_link/);
+  assert.match(readme, /linkTo=<FLARUM_USER_ID>/);
+  assert.match(readme, /no second Flarum Sign Up confirmation/i);
 });

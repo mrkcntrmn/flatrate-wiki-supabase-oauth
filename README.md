@@ -13,7 +13,10 @@ The extension is designed for FlatRate Wiki's account model: Supabase Auth is th
 - Flarum's `username` is **not** treated as an internal email field because Flarum exposes it in public routes and API responses.
 - The Flarum username is instead an opaque routing handle: `tech_<stable-hash>` derived only from OAuth `sub`.
 - Flarum Nicknames is the public display-name layer. New accounts start with a neutral `Tech XXXX` nickname and members can change their own nickname from Settings.
-- A new OAuth registration is activated without a second Flarum confirmation only when Supabase returns `email_verified=true` and the registration email exactly matches that address.
+- A genuinely new FlatRate OAuth identity silently provisions its local Flarum row only when Supabase UserInfo returns the same immutable `sub`, a non-empty email, and `email_verified=true`.
+- New OAuth users therefore reach the forum with **no second Flarum Sign Up confirmation** and no need to approve the generated routing username.
+- If the verified email already belongs to a Flarum account, silent provisioning fails closed with `existing_account_requires_explicit_link`; it never joins accounts by email.
+- Existing native accounts are linked explicitly while authenticated as that Flarum user through FoF OAuth's `linkTo` flow.
 - Ordinary native Flarum password login and native public signup are blocked server-side.
 - Native administrator password login remains available as an unadvertised recovery path.
 - The public Flarum login modal exposes only **Continue with FlatRate.wiki**.
@@ -110,6 +113,59 @@ code_challenge_method=S256
 
 Absence of the PKCE challenge is a deployment blocker.
 
+## First-login provisioning
+
+For a new Supabase subject, the extension uses Flarum's own `RegistrationToken` and `RegisterUserHandler` server-side. It does not synthesize database rows and it does not auto-submit the stock browser Sign Up modal.
+
+The server-side path is:
+
+```text
+Supabase UserInfo
+  -> verify sub == OAuth identifier
+  -> require email_verified=true
+  -> require email not already owned locally
+  -> derive tech_<hash(sub)> + neutral nickname
+  -> Flarum RegistrationToken
+  -> Flarum RegisterUserHandler
+  -> flatrate LoginProvider keyed to sub
+  -> logged-in response
+```
+
+Using the normal Flarum registration handler preserves core validation/events, the `RegisteringFromProvider` hook, nickname persistence, email activation, and provider-link persistence. Repeated sign-ins resolve the existing `LoginProvider` and do not create another local user.
+
+If a local Flarum user already owns the verified email, the extension throws:
+
+```text
+existing_account_requires_explicit_link
+```
+
+That is intentional. Email may corroborate account state, but it is never the cross-system identity key.
+
+## Explicitly linking an existing native account
+
+Existing Flarum-native users must prove control of the local account before attaching a Supabase `sub`. This includes the native recovery administrator.
+
+While already signed into the target Flarum account, start FoF OAuth's authenticated link flow:
+
+```text
+https://forum.flatrate.wiki/auth/flatrate?linkTo=<FLARUM_USER_ID>
+```
+
+FoF OAuth verifies that the authenticated actor ID exactly matches `linkTo` before creating the `flatrate` LoginProvider record. The OAuth provider identifier stored on that record is the Supabase `sub`.
+
+For the administrator migration:
+
+1. Keep the native administrator password login working.
+2. Sign into the forum with that native administrator account.
+3. Determine that Flarum user's numeric ID.
+4. Open `/auth/flatrate?linkTo=<FLARUM_USER_ID>` in the same authenticated browser.
+5. Authenticate/consent at FlatRate.wiki using the intended Supabase administrator identity.
+6. Return to the forum and verify the link succeeds.
+7. Sign out, then prove **Continue with FlatRate.wiki** logs back into the same administrator row.
+8. Keep the native password path only as the recovery path.
+
+Do not create a duplicate administrator and do not change an email solely to make account matching work.
+
 ## Public-auth cutover behavior
 
 The extension intentionally makes FlatRate Wiki the only public account authority for the forum:
@@ -120,6 +176,7 @@ The extension intentionally makes FlatRate Wiki the only public account authorit
 - exposes the Nicknames **Change Nickname** control as the user-editable public identity;
 - rejects ordinary native password authentication server-side;
 - rejects native public user creation unless a valid OAuth registration token is present;
+- silently completes verified FlatRate OAuth registrations without the stock Sign Up confirmation modal;
 - preserves administrator native login for recovery.
 
 This is defense in depth: hiding the controls is not treated as an authentication boundary.
