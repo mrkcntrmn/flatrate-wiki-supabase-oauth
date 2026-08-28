@@ -152,8 +152,7 @@ test("forum UI keeps branded fallback SSO and removes local credential controls"
 test("operator docs describe seamless ticket bridge and OAuth rollback path", async () => {
   const readme = await text("README.md");
   assert.match(readme, /FORUM_SSO_SHARED_SECRET/);
-  assert.match(readme, /one-time/i);
-  assert.match(readme, /session bootstrap/i);
+  assert.match(readme, /one-time session ticket/i);
   assert.match(readme, /OAuth.*fallback|fallback.*OAuth/is);
   assert.match(readme, /existing_account_requires_explicit_link/);
 });
