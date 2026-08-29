@@ -37,7 +37,9 @@ test("routing identity stays hash-based while default nickname is sequential", a
   assert.match(identity, /nickname\(int \$userNumber\)/);
   assert.match(identity, /return 'tech_'\.\$userNumber/);
   assert.doesNotMatch(identity, /nickname\(string \$sub\)/);
-  assert.match(provisioner, /LoginProvider::where\('provider', 'flatrate'\)->count\(\) \+ 1/);
+  assert.match(provisioner, /LoginProvider::where\('provider', 'flatrate'\)/);
+  assert.match(provisioner, /->lockForUpdate\(\)/);
+  assert.match(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
   assert.match(provisioner, /NeutralIdentity::nickname\(\$userNumber\)/);
 });
 
