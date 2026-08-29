@@ -8,8 +8,7 @@ use FoF\OAuth\Extend as OAuthExtend;
 
 return [
     (new Extend\Frontend('forum'))
-        ->css(__DIR__.'/resources/less/forum.less')
-        ->js(__DIR__.'/resources/js/forum.js'),
+        ->css(__DIR__.'/resources/less/forum.less'),
 
     new Extend\Locales(__DIR__.'/resources/locale'),
 
