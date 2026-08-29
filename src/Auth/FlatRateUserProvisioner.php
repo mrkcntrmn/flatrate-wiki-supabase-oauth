@@ -66,10 +66,14 @@ final class FlatRateUserProvisioner
                 }
 
                 // The public default nickname is intentionally human-readable
-                // and sequential. The immutable routing username remains the
-                // hashed Supabase-sub handle above, and users may still edit
-                // their nickname later through Flarum Nicknames.
-                $userNumber = LoginProvider::where('provider', 'flatrate')->count() + 1;
+                // and sequential. Lock the existing FlatRate provider rows so
+                // concurrent registrations allocate different numbers. The
+                // immutable routing username remains the hashed Supabase-sub
+                // handle above, and users may still edit their nickname later.
+                $linkedUsers = LoginProvider::where('provider', 'flatrate')
+                    ->lockForUpdate()
+                    ->get(['user_id']);
+                $userNumber = $linkedUsers->count() + 1;
                 $nickname = NeutralIdentity::nickname($userNumber);
 
                 $token = RegistrationToken::generate(
