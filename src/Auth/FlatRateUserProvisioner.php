@@ -50,12 +50,11 @@ final class FlatRateUserProvisioner
         ]);
 
         $username = NeutralIdentity::handle($sub);
-        $nickname = NeutralIdentity::nickname($sub);
         $connection = (new User())->getConnection();
 
         try {
             /** @var User $user */
-            $user = $connection->transaction(function () use ($sub, $email, $payload, $username, $nickname) {
+            $user = $connection->transaction(function () use ($sub, $email, $payload, $username) {
                 // Re-check inside the transaction so retries and concurrent
                 // requests converge on an already-linked account when possible.
                 if ($linked = $this->linkedUser($sub)) {
@@ -65,6 +64,13 @@ final class FlatRateUserProvisioner
                 if (User::where('email', $email)->exists()) {
                     throw new AuthenticationException('existing_account_requires_explicit_link');
                 }
+
+                // The public default nickname is intentionally human-readable
+                // and sequential. The immutable routing username remains the
+                // hashed Supabase-sub handle above, and users may still edit
+                // their nickname later through Flarum Nicknames.
+                $userNumber = LoginProvider::where('provider', 'flatrate')->count() + 1;
+                $nickname = NeutralIdentity::nickname($userNumber);
 
                 $token = RegistrationToken::generate(
                     'flatrate',
