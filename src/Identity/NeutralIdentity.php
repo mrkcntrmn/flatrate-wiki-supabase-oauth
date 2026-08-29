@@ -9,8 +9,8 @@ final class NeutralIdentity
         return 'tech_'.substr(hash('sha256', $sub), 0, 8);
     }
 
-    public static function nickname(string $sub): string
+    public static function nickname(int $userNumber): string
     {
-        return 'Tech '.strtoupper(substr(hash('sha256', $sub), 0, 4));
+        return 'tech_'.$userNumber;
     }
 }
