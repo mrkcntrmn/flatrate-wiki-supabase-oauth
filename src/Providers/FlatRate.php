@@ -92,9 +92,9 @@ final class FlatRate extends Provider
             // Flarum's username is exposed in routes/API, so it must never be the
             // email address. Keep it as an opaque, stable public handle instead.
             ->suggestUsername(NeutralIdentity::handle($sub))
-            // Flarum Nicknames owns the user-configurable public display name.
-            // Start neutral and let the member change it from Settings.
-            ->suggest('nickname', NeutralIdentity::nickname($sub))
+            // Do not synthesize the public nickname here. The reusable provisioner
+            // allocates tech_<user count> while holding the provider-row lock, so
+            // the ticket bridge and OAuth fallback share one race-safe sequence.
             ->setPayload($payload);
 
         $picture = trim((string) ($payload['picture'] ?? ''));

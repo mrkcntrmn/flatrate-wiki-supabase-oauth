@@ -33,6 +33,7 @@ test("provider keeps PKCE S256 and immutable Supabase sub identity", async () =>
 test("routing identity stays hash-based while default nickname is sequential", async () => {
   const identity = await text("src/Identity/NeutralIdentity.php");
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
+  const provider = await text("src/Providers/FlatRate.php");
   assert.match(identity, /'tech_'\.substr\(hash\('sha256', \$sub\), 0, 8\)/);
   assert.match(identity, /nickname\(int \$userNumber\)/);
   assert.match(identity, /return 'tech_'\.\$userNumber/);
@@ -41,6 +42,8 @@ test("routing identity stays hash-based while default nickname is sequential", a
   assert.match(provisioner, /->lockForUpdate\(\)/);
   assert.match(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
   assert.match(provisioner, /NeutralIdentity::nickname\(\$userNumber\)/);
+  assert.doesNotMatch(provider, /NeutralIdentity::nickname\(/);
+  assert.match(provider, /allocates tech_<user count>/);
 });
 
 test("reusable provisioner is idempotent and never links by email", async () => {
