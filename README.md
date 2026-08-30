@@ -1,6 +1,6 @@
 # FlatRate Wiki Supabase OAuth
 
-Flarum 1.8 extension for FlatRate Wiki identity integration.
+Flarum 1.8 extension for FlatRate Wiki identity integration and forum metadata.
 
 Supabase Auth remains the canonical credential/account authority. Flarum keeps only local community identity/state linked to the immutable Supabase/OIDC `sub`.
 
@@ -236,6 +236,17 @@ The extension:
 - rejects native public user creation without an OAuth registration token;
 - preserves native administrator password login for recovery.
 
+## Reply Job Breakdown marker
+
+The extension owns the META-001 reply marker as local Flarum post metadata, not as a Flarum tag and not as Supabase profile data.
+
+- The `flatrate_post_markers` table stores the controlled `job-breakdown` marker by post ID.
+- API post payloads expose the marker as `attributes.flatRateJobBreakdown`.
+- Reply and edit composers show a compact **Job Breakdown** checkbox for replies.
+- Marked replies render a **Job Breakdown** badge in the post header.
+- Discussion starters are not valid marker targets, and the backend fails closed if a request tries to mark one.
+- Deleting a post deletes its local marker rows.
+
 ## Production proof gate
 
 Before removing the OAuth product path, verify:
@@ -250,6 +261,7 @@ Before removing the OAuth product path, verify:
 - changing the Supabase email does not create a second forum identity;
 - Flarum bans/suspensions still apply;
 - PikaPods restart restores the extension and migrations;
+- reply Job Breakdown markers can be created, edited, rendered, and deleted without changing forum tags;
 - no bridge secret, Supabase token, password, or PII appears in browser URLs, logs, GitHub, or public assets.
 
 ## Development
