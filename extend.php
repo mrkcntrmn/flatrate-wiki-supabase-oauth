@@ -2,7 +2,10 @@
 
 namespace FlatRate\SupabaseOAuth;
 
+use Flarum\Api\Serializer\PostSerializer;
 use Flarum\Extend;
+use Flarum\Post\Event\Deleted;
+use Flarum\Post\Event\Saving;
 use Flarum\User\Event\RegisteringFromProvider;
 use FoF\OAuth\Extend as OAuthExtend;
 
@@ -19,7 +22,12 @@ return [
     new OAuthExtend\RegisterProvider(Providers\FlatRate::class),
 
     (new Extend\Event())
-        ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class),
+        ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class)
+        ->listen(Saving::class, Markers\SaveJobBreakdownMarker::class)
+        ->listen(Deleted::class, Markers\DeletePostMarkers::class),
+
+    (new Extend\ApiSerializer(PostSerializer::class))
+        ->attribute('flatRateJobBreakdown', Api\SerializePostJobBreakdownMarker::class),
 
     (new Extend\Routes('api'))
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
