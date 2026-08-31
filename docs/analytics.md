@@ -68,6 +68,15 @@ Provide one small FlatRate-owned analytics helper with a strict event/dimension 
 
 The existing Job Breakdown marker persistence owned by this extension is the canonical boundary for `job_breakdown_marked`.
 
+## Delivery plan
+
+1. Implement contribution outcomes first: `discussion_created`, `reply_created`, and `job_breakdown_marked`.
+2. Verify those events in GA4 Realtime/DebugView before enabling any forum key-event configuration.
+3. Promote `job_breakdown_marked` as the first forum key-event candidate once persistence and privacy proof pass.
+4. Add engagement diagnostics next: `forum_search`, `reaction_added`, and `discussion_followed`.
+5. Keep `discussion_shared` optional until FlatRate owns a stable share action and completion boundary.
+6. Keep ordinary forum navigation as standard SPA/history `page_view`; never add duplicate custom page-view events.
+
 ## Acceptance
 
 - normal GA4 SPA/history `page_view` measurement remains intact;
