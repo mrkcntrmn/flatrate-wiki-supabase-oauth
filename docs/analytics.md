@@ -1,6 +1,6 @@
 # Forum analytics contract
 
-`forum.flatrate.wiki` uses the same GA4 property as FlatRate.wiki. Normal Flarum SPA/history navigation remains standard `page_view` measurement. This extension owns only FlatRate-specific forum behavior events that need authoritative Flarum persistence boundaries.
+`forum.flatrate.wiki` uses the same GA4 property as FlatRate.wiki. Normal Flarum SPA/history navigation remains standard `page_view` measurement. This extension owns only FlatRate-specific forum behavior events.
 
 ## Principle
 
@@ -35,7 +35,7 @@ These are authoritative outcomes. Composer opens, submit clicks, optimistic clie
 
 ### Engagement diagnostics
 
-- `forum_search` — after a forum search action is submitted; never send the query.
+- `forum_search` — after a search action is actually submitted; never send the query.
 - `reaction_added` — after a supported reaction persists; omit reaction type unless a later bounded taxonomy is approved.
 - `discussion_followed` — after follow/subscription state persists.
 - `discussion_shared` — optional, only for a FlatRate-controlled share action with a clear completion boundary.
@@ -64,7 +64,12 @@ forum page_view
 
 ## Implementation rule
 
-Provide one small FlatRate-owned analytics helper with a strict event/dimension allowlist. Invoke it only from reviewed Flarum success boundaries. Tests must prove sensitive/high-cardinality fields cannot reach the analytics call.
+Provide one small FlatRate-owned analytics helper with a strict event/dimension allowlist.
+
+- Contribution outcomes must be invoked only after reviewed Flarum persistence success.
+- Engagement diagnostics must be invoked only after a reviewed completed-action boundary; do not infer them from unrelated DOM changes or page views.
+
+Tests must prove sensitive/high-cardinality fields cannot reach the analytics call.
 
 The existing Job Breakdown marker persistence owned by this extension is the canonical boundary for `job_breakdown_marked`.
 
@@ -85,5 +90,6 @@ The existing Job Breakdown marker persistence owned by this extension is the can
 - no discussion/post IDs, URLs, titles, body text, or search terms are sent;
 - discussion/reply events fire only after persistence succeeds;
 - Job Breakdown event fires only after marker persistence succeeds;
+- diagnostic events fire only at their reviewed action-completion boundaries;
 - retries/double-submit paths do not knowingly double-count one logical outcome;
 - production GA4 Realtime/DebugView proof precedes key-event promotion.
