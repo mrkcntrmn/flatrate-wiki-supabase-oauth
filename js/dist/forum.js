@@ -48,11 +48,11 @@
 
     app.initializers.add('flatrate-wiki-reply-job-breakdown', function () {
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
-        var extendModule = compat['flarum/common/extend'] || compat['flarum/extend'];
+        var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
-        var ReplyComposer = compat['flarum/forum/components/ReplyComposer'];
-        var EditPostComposer = compat['flarum/forum/components/EditPostComposer'];
-        var CommentPost = compat['flarum/forum/components/CommentPost'];
+        var ReplyComposer = compat['components/ReplyComposer'] || compat['flarum/forum/components/ReplyComposer'];
+        var EditPostComposer = compat['components/EditPostComposer'] || compat['flarum/forum/components/EditPostComposer'];
+        var CommentPost = compat['components/CommentPost'] || compat['flarum/forum/components/CommentPost'];
 
         ReplyComposer = ReplyComposer && (ReplyComposer.default || ReplyComposer);
         EditPostComposer = EditPostComposer && (EditPostComposer.default || EditPostComposer);
