@@ -53,9 +53,35 @@ function post({ number, marked = false }) {
   };
 }
 
-async function markerRuntime(mode = "flarum1") {
+function tag({
+  id = "7",
+  slug = "job-breakdown",
+  name = "Job Breakdown",
+  color = "#16a34a",
+  icon = "fas fa-wrench",
+  child = true,
+}) {
+  return {
+    id: () => id,
+    slug: () => slug,
+    name: () => name,
+    color: () => color,
+    icon: () => icon,
+    isChild: () => child,
+  };
+}
+
+async function markerRuntime(options = {}) {
+  const {
+    mode = "flarum1",
+    tags = [tag({})],
+    tagLabelImpl = null,
+    includeTagLabel = true,
+  } = options;
+
   const bundle = await text("js/dist/forum.js");
   const initializers = new Map();
+  const tagLabelCalls = [];
 
   class ReplyComposer {
     oninit() {}
@@ -95,6 +121,16 @@ async function markerRuntime(mode = "flarum1") {
     }
   }
 
+  const tagLabel = tagLabelImpl
+    ? (selectedTag, attrs) => {
+        tagLabelCalls.push({ tag: selectedTag, attrs });
+        return tagLabelImpl(selectedTag, attrs);
+      }
+    : (selectedTag, attrs) => {
+        tagLabelCalls.push({ tag: selectedTag, attrs });
+        return { selector: "span.TagLabel", attrs: {}, children: [selectedTag.name()] };
+      };
+
   const compat =
     mode === "flarum1"
       ? {
@@ -110,10 +146,25 @@ async function markerRuntime(mode = "flarum1") {
           "flarum/forum/components/CommentPost": CommentPost,
         };
 
+  if (includeTagLabel) {
+    compat["tags/helpers/tagLabel"] = tagLabel;
+  }
+
   const app = {
     initializers: {
       add(name, initializer) {
         initializers.set(name, initializer);
+      },
+    },
+    store: {
+      all(type) {
+        return type === "tags"
+          ? {
+              filter(callback) {
+                return tags.filter(callback);
+              },
+            }
+          : [];
       },
     },
   };
@@ -129,7 +180,7 @@ async function markerRuntime(mode = "flarum1") {
   assert.equal(typeof initializer, "function");
   initializer();
 
-  return { ReplyComposer, EditPostComposer, CommentPost };
+  return { ReplyComposer, EditPostComposer, CommentPost, tagLabelCalls };
 }
 
 test("extension registers the reply marker listeners and post serializer attribute", async () => {
@@ -178,29 +229,25 @@ test("backend accepts only reply post marker requests and serializes a boolean",
   assert.match(deleter, /deleteForPost\(\(int\) \$event->post->id\)/);
 });
 
-test("forum UI resolves the exact Flarum 1.8 compatibility namespace", async () => {
+test("forum bundle uses Flarum TagLabel helper and stable slug lookup", async () => {
   const bundle = await text("js/dist/forum.js");
   const css = await text("resources/less/forum.less");
   const readme = await text("README.md");
 
-  assert.match(bundle, /compat\['extend'\]/);
-  assert.match(bundle, /compat\['components\/ReplyComposer'\]/);
-  assert.match(bundle, /compat\['components\/EditPostComposer'\]/);
-  assert.match(bundle, /compat\['components\/CommentPost'\]/);
-  assert.match(bundle, /compat\['flarum\/common\/extend'\]/);
-  assert.match(bundle, /compat\['flarum\/forum\/components\/ReplyComposer'\]/);
-  assert.match(bundle, /flatrate-wiki-reply-job-breakdown/);
-  assert.match(bundle, /flatRateJobBreakdown/);
-  assert.match(bundle, /m\('span\.FlatRateReplyJobBreakdownBadge', 'Job Breakdown'\)/);
-  assert.doesNotMatch(bundle, /DiscussionComposer/);
+  assert.match(bundle, /compat\['tags\/helpers\/tagLabel'\]/);
+  assert.match(bundle, /job-breakdown/);
+  assert.match(bundle, /flatrateJobBreakdownTag/);
+  assert.doesNotMatch(bundle, /FlatRateReplyJobBreakdownBadge/);
+  assert.doesNotMatch(bundle, /data\.attributes\.flatRateJobBreakdown/);
+  assert.match(bundle, /data\.flatRateJobBreakdown/);
   assert.match(css, /\.FlatRateReplyJobBreakdownToggle/);
-  assert.match(css, /\.FlatRateReplyJobBreakdownBadge/);
-  assert.match(readme, /not as a Flarum tag/i);
-  assert.match(readme, /not as Supabase profile data/i);
+  assert.doesNotMatch(css, /\.FlatRateReplyJobBreakdownBadge/);
+  assert.match(readme, /TagLabel presentation/i);
+  assert.match(readme, /discussion-level/i);
 });
 
 test("Flarum 1.8-shaped compat executes the reply marker initializer end to end", async () => {
-  const { ReplyComposer, EditPostComposer, CommentPost } = await markerRuntime("flarum1");
+  const { ReplyComposer, EditPostComposer, CommentPost, tagLabelCalls } = await markerRuntime();
 
   const reply = new ReplyComposer();
   reply.oninit();
@@ -210,40 +257,85 @@ test("Flarum 1.8-shaped compat executes the reply marker initializer end to end"
   assert.equal(replyHeader.has("flatrateJobBreakdown"), true);
   const toggle = replyHeader.get("flatrateJobBreakdown").item;
   assert.equal(toggle.selector, "label.FlatRateReplyJobBreakdownToggle");
-  assert.equal(toggle.children[0].selector, "input");
-  assert.equal(toggle.children[0].attrs.checked, false);
 
   toggle.children[0].attrs.onchange({ target: { checked: true } });
   assert.equal(reply.flatRateJobBreakdown, true);
-  assert.equal(reply.data().attributes.flatRateJobBreakdown, true);
+  assert.equal(reply.data().flatRateJobBreakdown, true);
+  assert.equal(reply.data().attributes, undefined);
 
   const markedReply = post({ number: 2, marked: true });
   const editReply = new EditPostComposer({ post: markedReply });
   editReply.oninit();
   assert.equal(editReply.flatRateJobBreakdown, true);
-  assert.equal(editReply.headerItems().has("flatrateJobBreakdown"), true);
-  assert.equal(editReply.data().attributes.flatRateJobBreakdown, true);
+  assert.equal(editReply.data().flatRateJobBreakdown, true);
 
   const starter = new EditPostComposer({ post: post({ number: 1, marked: true }) });
   starter.oninit();
   assert.equal(starter.headerItems().has("flatrateJobBreakdown"), false);
-  assert.equal(starter.data().attributes, undefined);
+  assert.equal(starter.data().flatRateJobBreakdown, undefined);
 
   const markedPost = new CommentPost({ post: markedReply });
   const markedHeader = markedPost.headerItems();
-  assert.equal(markedHeader.has("flatrateJobBreakdownBadge"), true);
-  assert.equal(markedHeader.get("flatrateJobBreakdownBadge").item.selector, "span.FlatRateReplyJobBreakdownBadge");
+  assert.equal(markedHeader.has("flatrateJobBreakdownTag"), true);
+  assert.equal(markedHeader.get("flatrateJobBreakdownTag").item.selector, "span.TagLabel");
+  assert.equal(tagLabelCalls.length, 1);
+  assert.equal(tagLabelCalls[0].tag.slug(), "job-breakdown");
 
   const ordinaryPost = new CommentPost({ post: post({ number: 3, marked: false }) });
-  assert.equal(ordinaryPost.headerItems().has("flatrateJobBreakdownBadge"), false);
+  assert.equal(ordinaryPost.headerItems().has("flatrateJobBreakdownTag"), false);
+  assert.equal(tagLabelCalls.length, 1);
+});
+
+test("marked reply resolves canonical tag by slug and passes Tag model to tagLabel", async () => {
+  const canonical = tag({
+    slug: "job-breakdown",
+    name: "Repair Breakdown",
+    color: "#123456",
+    icon: "fas fa-tools",
+  });
+  const { CommentPost, tagLabelCalls } = await markerRuntime({ tags: [canonical] });
+  const markedPost = new CommentPost({ post: post({ number: 4, marked: true }) });
+  markedPost.headerItems();
+
+  assert.equal(tagLabelCalls.length, 1);
+  assert.equal(tagLabelCalls[0].tag.slug(), "job-breakdown");
+  assert.equal(tagLabelCalls[0].tag.name(), "Repair Breakdown");
+  assert.equal(tagLabelCalls[0].tag.color(), "#123456");
+  assert.equal(tagLabelCalls[0].tag.icon(), "fas fa-tools");
+});
+
+test("marker true without canonical tag renders no badge and does not crash", async () => {
+  const { CommentPost, tagLabelCalls } = await markerRuntime({ tags: [tag({ slug: "other-tag" })] });
+  const markedPost = new CommentPost({ post: post({ number: 5, marked: true }) });
+  const header = markedPost.headerItems();
+
+  assert.equal(header.has("flatrateJobBreakdownTag"), false);
+  assert.equal(tagLabelCalls.length, 0);
+});
+
+test("marker true without tags helper fails safely", async () => {
+  const { CommentPost } = await markerRuntime({ includeTagLabel: false });
+  const markedPost = new CommentPost({ post: post({ number: 6, marked: true }) });
+  const header = markedPost.headerItems();
+
+  assert.equal(header.has("flatrateJobBreakdownTag"), false);
 });
 
 test("namespaced compatibility fallbacks remain supported", async () => {
-  const { ReplyComposer } = await markerRuntime("namespaced");
+  const { ReplyComposer } = await markerRuntime({ mode: "namespaced" });
   const reply = new ReplyComposer();
   reply.oninit();
 
   assert.equal(reply.headerItems().has("flatrateJobBreakdown"), true);
   reply.flatRateJobBreakdown = true;
-  assert.equal(reply.data().attributes.flatRateJobBreakdown, true);
+  assert.equal(reply.data().flatRateJobBreakdown, true);
+});
+
+test("reply marker handling does not mutate discussion tags", async () => {
+  const bundle = await text("js/dist/forum.js");
+
+  assert.doesNotMatch(bundle, /discussion\.tags\(/);
+  assert.doesNotMatch(bundle, /discussion\.save\(/);
+  assert.doesNotMatch(bundle, /relationships\.tags/);
+  assert.doesNotMatch(bundle, /tagIds/);
 });

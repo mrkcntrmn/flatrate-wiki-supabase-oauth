@@ -53,6 +53,12 @@
         var ReplyComposer = compat['components/ReplyComposer'] || compat['flarum/forum/components/ReplyComposer'];
         var EditPostComposer = compat['components/EditPostComposer'] || compat['flarum/forum/components/EditPostComposer'];
         var CommentPost = compat['components/CommentPost'] || compat['flarum/forum/components/CommentPost'];
+        var tagLabelModule =
+            compat['tags/helpers/tagLabel'] ||
+            compat['tags/common/helpers/tagLabel'] ||
+            compat['flarum/tags/common/helpers/tagLabel'];
+        var tagLabel = tagLabelModule && (tagLabelModule.default || tagLabelModule);
+        var jobBreakdownTagSlug = 'job-breakdown';
 
         ReplyComposer = ReplyComposer && (ReplyComposer.default || ReplyComposer);
         EditPostComposer = EditPostComposer && (EditPostComposer.default || EditPostComposer);
@@ -78,6 +84,36 @@
             return postNumber(post) === 1;
         }
 
+        function resolveJobBreakdownTag() {
+            if (!app || !app.store || typeof app.store.all !== 'function') {
+                return null;
+            }
+
+            var tags = app.store.all('tags');
+            if (!tags || typeof tags.filter !== 'function') {
+                return null;
+            }
+
+            return (
+                tags.filter(function (tag) {
+                    return tag && typeof tag.slug === 'function' && tag.slug() === jobBreakdownTagSlug;
+                })[0] || null
+            );
+        }
+
+        function renderJobBreakdownTagLabel() {
+            if (typeof tagLabel !== 'function') {
+                return null;
+            }
+
+            var tag = resolveJobBreakdownTag();
+            if (!tag) {
+                return null;
+            }
+
+            return tagLabel(tag);
+        }
+
         function markerControl(component) {
             return m('label.FlatRateReplyJobBreakdownToggle', [
                 m('input', {
@@ -92,8 +128,7 @@
         }
 
         function applyMarkerAttribute(component, data) {
-            data.attributes = data.attributes || {};
-            data.attributes.flatRateJobBreakdown = !!component.flatRateJobBreakdown;
+            data.flatRateJobBreakdown = !!component.flatRateJobBreakdown;
         }
 
         if (ReplyComposer) {
@@ -130,8 +165,13 @@
 
         if (CommentPost) {
             extend(CommentPost.prototype, 'headerItems', function (items) {
-                if (markerEnabled(this.attrs && this.attrs.post)) {
-                    items.add('flatrateJobBreakdownBadge', m('span.FlatRateReplyJobBreakdownBadge', 'Job Breakdown'), 85);
+                if (!markerEnabled(this.attrs && this.attrs.post)) {
+                    return;
+                }
+
+                var label = renderJobBreakdownTagLabel();
+                if (label) {
+                    items.add('flatrateJobBreakdownTag', label, 85);
                 }
             });
         }
