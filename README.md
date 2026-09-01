@@ -238,14 +238,17 @@ The extension:
 
 ## Reply Job Breakdown marker
 
-The extension owns the META-001 reply marker as local Flarum post metadata, not as a Flarum tag and not as Supabase profile data.
+Reply classification is stored as FlatRate-owned post metadata because Flarum tags are discussion-level relationships. The extension does not attach native Flarum tags to individual posts.
+
+When marked, the reply reuses the existing Flarum **Job Breakdown** secondary tag's TagLabel presentation (name, color, icon) without modifying the discussion's tag relationship.
 
 - The `flatrate_post_markers` table stores the controlled `job-breakdown` marker by post ID.
 - API post payloads expose the marker as `attributes.flatRateJobBreakdown`.
 - Reply and edit composers show a compact **Job Breakdown** checkbox for replies.
-- Marked replies render a **Job Breakdown** badge in the post header.
+- Marked replies resolve the canonical Flarum tag by slug `job-breakdown` and render Flarum's own `tags/helpers/tagLabel` output in the post header.
 - Discussion starters are not valid marker targets, and the backend fails closed if a request tries to mark one.
 - Deleting a post deletes its local marker rows.
+- Marking a reply never adds or removes `discussion.tags()`.
 
 ## Production proof gate
 
