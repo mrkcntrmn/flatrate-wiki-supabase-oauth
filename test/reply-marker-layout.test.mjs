@@ -29,8 +29,17 @@ test("marked reply TagLabel is right-aligned without changing native post header
     css,
     /\.item-flatrateJobBreakdownTag\s*\{[^}]*margin-right:\s*0;/s,
   );
+  assert.match(
+    css,
+    /\.item-flatrateJobBreakdownTag\s*\{[^}]*margin-left:\s*10px;/s,
+  );
   assert.doesNotMatch(
     css,
     /\.Post-header\s*>\s*ul\s*\{[^}]*display:\s*flex;/s,
   );
+  assert.doesNotMatch(
+    css,
+    /\.TagLabel\s*\{[^}]*float:\s*right/s,
+  );
+  assert.doesNotMatch(css, /\.FlatRateReplyJobBreakdownBadge/);
 });
