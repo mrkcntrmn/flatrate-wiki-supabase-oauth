@@ -177,5 +177,80 @@
         }
     });
 
+    app.initializers.add('flatrate-wiki-affiliated-brand', function () {
+        var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
+        var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
+        var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
+        var PostUser = compat['components/PostUser'] || compat['flarum/forum/components/PostUser'];
+        var affiliatedBrandFieldName = 'Affiliated Brand';
+
+        PostUser = PostUser && (PostUser.default || PostUser);
+
+        if (typeof extend !== 'function' || typeof m !== 'function' || !PostUser) {
+            return;
+        }
+
+        function resolveAffiliatedBrandField() {
+            if (!app || !app.store || typeof app.store.all !== 'function') {
+                return null;
+            }
+
+            var fields = app.store.all('masquerade-field');
+            if (!fields || typeof fields.filter !== 'function') {
+                return null;
+            }
+
+            var matches = fields.filter(function (field) {
+                if (!field || typeof field.attribute !== 'function') {
+                    return false;
+                }
+
+                return (
+                    field.attribute('name') === affiliatedBrandFieldName &&
+                    field.attribute('type') === 'select' &&
+                    !field.attribute('deleted_at')
+                );
+            });
+
+            return matches.length === 1 ? matches[0] : null;
+        }
+
+        function affiliatedBrandForUser(user) {
+            var field = resolveAffiliatedBrandField();
+
+            if (!field || !user || typeof user.masqueradeAnswers !== 'function') {
+                return null;
+            }
+
+            var answers = user.masqueradeAnswers() || [];
+            var fieldId = String(field.id());
+            var answer = answers.filter(function (candidate) {
+                return (
+                    candidate &&
+                    typeof candidate.attribute === 'function' &&
+                    String(candidate.attribute('fieldId')) === fieldId
+                );
+            })[0];
+
+            if (!answer) {
+                return null;
+            }
+
+            var value = String(answer.attribute('content') || '').trim();
+
+            return value || null;
+        }
+
+        extend(PostUser.prototype, 'userViewItems', function (items, user) {
+            var brand = affiliatedBrandForUser(user);
+
+            if (!brand) {
+                return;
+            }
+
+            items.add('flatrateAffiliatedBrand', m('span.FlatRateAffiliatedBrand', brand), 95);
+        });
+    });
+
     module.exports = {};
 })();

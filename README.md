@@ -250,6 +250,19 @@ When marked, the reply reuses the existing Flarum **Job Breakdown** secondary ta
 - Deleting a post deletes its local marker rows.
 - Marking a reply never adds or removes `discussion.tags()`.
 
+## Optional Affiliated Brand presentation
+
+When **FoF Masquerade** is installed and enabled, the forum bundle can render one optional self-declared profile value directly beneath the author's username in discussion posts and replies.
+
+- Masquerade field name: `Affiliated Brand` (Dropdown / `select`, optional).
+- The renderer resolves the unique active Masquerade field by exact name and type from the already-loaded `masquerade-field` store; it does not hardcode production field IDs.
+- User answers are read from the loaded `user.masqueradeAnswers()` relationship; the bundle does not issue per-post API requests.
+- Presentation is plain text (`span.FlatRateAffiliatedBrand`), not a TagLabel, badge, or OEM logo.
+- Blank or missing values render nothing (no spacer line).
+- Masquerade is optional at runtime: if the extension or field is absent, SSO and other forum behavior continue unchanged.
+
+This value is self-declared profile metadata only. It does not indicate employment, certification, dealership status, or OEM verification; it is not mirrored to Supabase; and it does not mutate discussion vehicle-make tags or Job Breakdown metadata.
+
 ## Production proof gate
 
 Before removing the OAuth product path, verify:
