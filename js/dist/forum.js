@@ -171,7 +171,7 @@
 
                 var label = renderJobBreakdownTagLabel();
                 if (label) {
-                    items.add('flatrateJobBreakdownTag', label, 85);
+                    items.add('flatrateJobBreakdownTag', label, -5);
                 }
             });
         }
