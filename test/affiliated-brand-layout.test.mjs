@@ -5,21 +5,24 @@ import test from "node:test";
 const packageDir = new URL("../", import.meta.url);
 const text = (path) => readFile(new URL(path, packageDir), "utf8");
 
-test("affiliation layout uses scoped PostUser-name grid, not avatar offsets", async () => {
+test("affiliation layout uses scoped PostUser-name grid with display:contents link", async () => {
   const css = await text("resources/less/forum.less");
 
   assert.match(css, /\.PostUser-name:has\(\.FlatRateAffiliatedBrand\)[\s\S]*display:\s*inline-grid/s);
+  assert.match(css, /\.PostUser-name:has\(\.FlatRateAffiliatedBrand\)\s*>\s*a[\s\S]*display:\s*contents/s);
   assert.match(css, /\.FlatRateAffiliatedBrand[\s\S]*grid-column:\s*2/s);
   assert.match(css, /\.FlatRateAffiliatedBrand[\s\S]*grid-row:\s*2/s);
+  assert.match(css, /\.PostUser-avatar[\s\S]*grid-row-start:\s*1[\s\S]*grid-row-end:\s*-1/s);
   assert.match(
     css,
-    /\.item-user:has\(\.FlatRateAffiliatedBrand\)[\s\S]*vertical-align:\s*top/s,
+    /\.Post-header > ul:has\(\.FlatRateAffiliatedBrand\) > \.item-user[\s\S]*vertical-align:\s*top/s,
   );
   assert.match(
     css,
-    /\.item-user:has\(\.FlatRateAffiliatedBrand\)\s*\+\s*\.item-meta[\s\S]*vertical-align:\s*top/s,
+    /\.Post-header > ul:has\(\.FlatRateAffiliatedBrand\) > \.item-meta[\s\S]*vertical-align:\s*top/s,
   );
   assert.doesNotMatch(css, /\.FlatRateAffiliatedBrand[\s\S]*margin-left:\s*\d+px/s);
+  assert.doesNotMatch(css, /grid-row:\s*1\s*\/\s*-1/s);
 });
 
 test("affiliation layout avoids global header and PostUser flex rewrites", async () => {

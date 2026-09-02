@@ -144,9 +144,8 @@
   margin-left: 10px;
 }
 
-// Affiliated brand lives inside PostUser-name (linkChildren), beneath the nickname.
-// Use a scoped inline-grid on the name row so row 1 keeps avatar + nickname inline
-// with native PostMeta, while row 2 holds the brand aligned to the nickname column.
+// Affiliated brand stacks beneath the nickname inside PostUser-name.
+// Row 1 in the post header stays item-user + item-meta inline; row 2 is brand only.
 .PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand),
 .PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) {
   display: inline-grid;
@@ -158,12 +157,20 @@
   vertical-align: top;
 }
 
+// PostUser-name wraps avatar + nickname in a profile link; display: contents lets
+// those descendants participate in the h3 grid instead of collapsing inline.
+.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) > a,
+.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) > a {
+  display: contents;
+}
+
 .PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .PostUser-avatar,
 .PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .Avatar,
 .PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .PostUser-avatar,
 .PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .Avatar {
   grid-column: 1;
-  grid-row: 1 / -1;
+  grid-row-start: 1;
+  grid-row-end: -1;
   align-self: start;
 }
 
@@ -193,8 +200,8 @@
 
 // Keep native item-user + item-meta on the first header row when a second brand
 // row expands the author block vertically.
-.Post-header > ul > .item-user:has(.FlatRateAffiliatedBrand),
-.Post-header > ul > .item-user:has(.FlatRateAffiliatedBrand) + .item-meta {
+.Post-header > ul:has(.FlatRateAffiliatedBrand) > .item-user,
+.Post-header > ul:has(.FlatRateAffiliatedBrand) > .item-meta {
   vertical-align: top;
 }
 
