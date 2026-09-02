@@ -248,15 +248,15 @@
                 return;
             }
 
-            var usernameItem = items.get('username');
+            var usernameVnode = items.get('username');
 
             items.add(
                 'username',
                 m('span.FlatRatePostUserIdentityStack', [
-                    usernameItem.item,
+                    usernameVnode,
                     m('span.FlatRateAffiliatedBrand', brand)
                 ]),
-                usernameItem.priority
+                items.getPriority('username')
             );
         });
     });
