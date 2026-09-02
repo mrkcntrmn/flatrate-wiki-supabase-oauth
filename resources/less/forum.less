@@ -144,50 +144,21 @@
   margin-left: 10px;
 }
 
-// Affiliated brand stacks beneath the nickname inside PostUser-name.
-// Row 1 in the post header stays item-user + item-meta inline; row 2 is brand only.
-.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand),
-.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) {
+// Affiliated brand stacks beneath the nickname while avatar, online dot, and post
+// time keep Flarum's native inline header flow.
+.PostUser .FlatRatePostUserIdentityStack {
   display: inline-grid;
-  grid-template-columns: auto minmax(0, max-content);
   grid-template-rows: auto auto;
-  column-gap: 5px;
   row-gap: 2px;
-  align-items: baseline;
+  align-items: start;
   vertical-align: top;
 }
 
-// PostUser-name wraps avatar + nickname in a profile link; display: contents lets
-// those descendants participate in the h3 grid instead of collapsing inline.
-.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) > a,
-.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) > a {
-  display: contents;
-}
-
-.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .PostUser-avatar,
-.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .Avatar,
-.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .PostUser-avatar,
-.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .Avatar {
-  grid-column: 1;
-  grid-row-start: 1;
-  grid-row-end: -1;
-  align-self: start;
-}
-
-.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .UserOnline,
-.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .UserOnline {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .username,
-.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .username {
-  grid-column: 2;
+.PostUser .FlatRatePostUserIdentityStack .username {
   grid-row: 1;
 }
 
 .PostUser .FlatRateAffiliatedBrand {
-  grid-column: 2;
   grid-row: 2;
   display: block;
   margin: 0;
@@ -198,8 +169,7 @@
   word-break: break-word;
 }
 
-// Keep native item-user + item-meta on the first header row when a second brand
-// row expands the author block vertically.
+// Keep post time on row 1 beside the nickname when the author block grows.
 .Post-header > ul:has(.FlatRateAffiliatedBrand) > .item-user,
 .Post-header > ul:has(.FlatRateAffiliatedBrand) > .item-meta {
   vertical-align: top;
