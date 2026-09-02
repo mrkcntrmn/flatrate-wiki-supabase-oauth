@@ -144,10 +144,46 @@
   margin-left: 10px;
 }
 
-// Self-declared affiliated brand sits beneath the username inside PostUser.
+// Affiliated brand lives inside PostUser-name (linkChildren), beneath the nickname.
+// Use a scoped inline-grid on the name row so row 1 keeps avatar + nickname inline
+// with native PostMeta, while row 2 holds the brand aligned to the nickname column.
+.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand),
+.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, max-content);
+  grid-template-rows: auto auto;
+  column-gap: 5px;
+  row-gap: 2px;
+  align-items: baseline;
+  vertical-align: top;
+}
+
+.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .PostUser-avatar,
+.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .Avatar,
+.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .PostUser-avatar,
+.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .Avatar {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: start;
+}
+
+.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .UserOnline,
+.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .UserOnline {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.PostUser h3.PostUser-name:has(.FlatRateAffiliatedBrand) .username,
+.PostUser .PostUser-name:has(.FlatRateAffiliatedBrand) .username {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 .PostUser .FlatRateAffiliatedBrand {
+  grid-column: 2;
+  grid-row: 2;
   display: block;
-  margin-top: 2px;
+  margin: 0;
   color: @muted-color;
   font-size: 12px;
   font-weight: 600;
@@ -155,12 +191,14 @@
   word-break: break-word;
 }
 
-// Desktop/tablet: avatar sits outside the nickname column, so no extra indent.
-// Mobile: Flarum keeps the avatar inline ahead of the nickname inside PostUser-name
-// (.Post-header .Avatar 32px + 5px margin-right). Indent the brand line to the
-// nickname column, not the avatar edge.
-@media (max-width: 767.98px) {
-  .PostUser .FlatRateAffiliatedBrand {
-    margin-left: 37px;
-  }
+// Keep native item-user + item-meta on the first header row when a second brand
+// row expands the author block vertically.
+.Post-header > ul > .item-user:has(.FlatRateAffiliatedBrand),
+.Post-header > ul > .item-user:has(.FlatRateAffiliatedBrand) + .item-meta {
+  vertical-align: top;
+}
+
+.PostUser:has(.FlatRateAffiliatedBrand) {
+  display: inline-block;
+  vertical-align: top;
 }

@@ -5,23 +5,38 @@ import test from "node:test";
 const packageDir = new URL("../", import.meta.url);
 const text = (path) => readFile(new URL(path, packageDir), "utf8");
 
-test("affiliated brand aligns with nickname column on mobile, not avatar edge", async () => {
+test("affiliation layout uses scoped PostUser-name grid, not avatar offsets", async () => {
+  const css = await text("resources/less/forum.less");
+
+  assert.match(css, /\.PostUser-name:has\(\.FlatRateAffiliatedBrand\)[\s\S]*display:\s*inline-grid/s);
+  assert.match(css, /\.FlatRateAffiliatedBrand[\s\S]*grid-column:\s*2/s);
+  assert.match(css, /\.FlatRateAffiliatedBrand[\s\S]*grid-row:\s*2/s);
+  assert.match(
+    css,
+    /\.item-user:has\(\.FlatRateAffiliatedBrand\)[\s\S]*vertical-align:\s*top/s,
+  );
+  assert.match(
+    css,
+    /\.item-user:has\(\.FlatRateAffiliatedBrand\)\s*\+\s*\.item-meta[\s\S]*vertical-align:\s*top/s,
+  );
+  assert.doesNotMatch(css, /\.FlatRateAffiliatedBrand[\s\S]*margin-left:\s*\d+px/s);
+});
+
+test("affiliation layout avoids global header and PostUser flex rewrites", async () => {
+  const css = await text("resources/less/forum.less");
+
+  assert.doesNotMatch(css, /\.Post-header\s*>\s*ul\s*\{[^}]*display:\s*flex;/s);
+  assert.doesNotMatch(css, /^\.PostUser\s*\{[^}]*display:\s*flex;/ms);
+  assert.doesNotMatch(css, /\.PostMeta\s*\{/s);
+  assert.doesNotMatch(css, /\.PostMeta-time\s*\{/s);
+});
+
+test("affiliation layout keeps Job Breakdown float contract untouched", async () => {
   const css = await text("resources/less/forum.less");
 
   assert.match(
     css,
-    /@media\s*\(\s*max-width:\s*767\.98px\s*\)\s*\{[^}]*\.PostUser\s+\.FlatRateAffiliatedBrand[^}]*margin-left:\s*37px/s,
+    /\.Post-header\s*>\s*ul\s*>\s*\.item-flatrateJobBreakdownTag\s*\{[^}]*float:\s*right;/s,
   );
-  assert.doesNotMatch(
-    css,
-    /@media\s*\(\s*min-width:\s*768px\s*\)\s*\{[^}]*\.FlatRateAffiliatedBrand[^}]*margin-left/s,
-  );
-  assert.doesNotMatch(css, /\.Post-header\s*>\s*ul\s*\{[^}]*display:\s*flex;/s);
-});
-
-test("affiliated brand mobile indent is scoped to PostUser only", async () => {
-  const css = await text("resources/less/forum.less");
-
-  assert.match(css, /\.PostUser\s+\.FlatRateAffiliatedBrand/);
-  assert.doesNotMatch(css, /\.Post-header\s+\.FlatRateAffiliatedBrand/);
+  assert.doesNotMatch(css, /\.item-flatrateJobBreakdownTag[\s\S]*display:\s*flex/s);
 });

@@ -241,14 +241,14 @@
             return value || null;
         }
 
-        extend(PostUser.prototype, 'userViewItems', function (items, user) {
+        extend(PostUser.prototype, 'linkChildren', function (items, user) {
             var brand = affiliatedBrandForUser(user);
 
             if (!brand) {
                 return;
             }
 
-            items.add('flatrateAffiliatedBrand', m('span.FlatRateAffiliatedBrand', brand), 95);
+            items.add('flatrateAffiliatedBrand', m('span.FlatRateAffiliatedBrand', brand), 70);
         });
     });
 
