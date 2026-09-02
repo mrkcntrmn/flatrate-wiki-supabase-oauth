@@ -179,3 +179,72 @@
   display: inline-block;
   vertical-align: top;
 }
+
+// Flarum moves the normal index title/new-discussion controls into the phone
+// header. Keep this extra vehicle-make navigation in normal document flow so
+// technicians can jump directly to a make without opening the select dropdown.
+.FlatRateMobileBrandSidebar,
+.IndexPage-nav > ul > .item-flatrateMobileBrandLinks {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .IndexPage-nav > ul > .item-flatrateMobileBrandLinks {
+    display: block;
+    width: 100%;
+    margin: 6px 0 0;
+    white-space: normal;
+  }
+
+  .FlatRateMobileBrandSidebar {
+    display: block;
+    width: 100%;
+    padding: 8px 0 2px;
+  }
+
+  .FlatRateMobileBrandSidebar-title {
+    margin-bottom: 8px;
+    color: @muted-color;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .FlatRateMobileBrandSidebar-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 8px;
+  }
+
+  .FlatRateMobileBrandSidebar-link.Button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 0;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 1px solid @control-bg;
+    border-radius: 8px;
+    background: @control-bg;
+    color: @text-color;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .FlatRateMobileBrandSidebar-link.Button:hover,
+  .FlatRateMobileBrandSidebar-link.Button:focus-visible {
+    color: @primary-color;
+    text-decoration: none;
+  }
+
+  .FlatRateMobileBrandSidebar-link.Button.active {
+    color: @primary-color;
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 @primary-color;
+  }
+}
