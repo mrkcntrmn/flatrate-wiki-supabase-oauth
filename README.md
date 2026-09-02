@@ -263,6 +263,8 @@ When **FoF Masquerade** is installed and enabled, the forum bundle can render on
 
 This value is self-declared profile metadata only. It does not indicate employment, certification, dealership status, or OEM verification; it is not mirrored to Supabase; and it does not mutate discussion vehicle-make tags or Job Breakdown metadata.
 
+FoF Masquerade stores dropdown option lists in `fof_masquerade_fields.validation` as a comma-separated `in:` rule. The upstream default column is `VARCHAR(255)`, which truncates long brand lists. This extension widens that column to `TEXT` when Masquerade is present so the full Affiliated Brand vocabulary can be saved.
+
 ## Production proof gate
 
 Before removing the OAuth product path, verify:

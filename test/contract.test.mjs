@@ -180,3 +180,9 @@ test("operator docs describe seamless ticket bridge and OAuth rollback path", as
   assert.match(readme, /OAuth.*fallback|fallback.*OAuth/is);
   assert.match(readme, /existing_account_requires_explicit_link/);
 });
+
+test("masquerade dropdown validation column widens beyond varchar 255", async () => {
+  const migration = await text("migrations/2026_09_01_000000_widen_masquerade_field_validation.php");
+  assert.match(migration, /fof_masquerade_fields/);
+  assert.match(migration, /text\('validation'\)/);
+});
