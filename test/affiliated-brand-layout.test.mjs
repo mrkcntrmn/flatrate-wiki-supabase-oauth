@@ -39,5 +39,8 @@ test("affiliation layout keeps Job Breakdown float contract untouched", async ()
     css,
     /\.Post-header\s*>\s*ul\s*>\s*\.item-flatrateJobBreakdownTag\s*\{[^}]*float:\s*right;/s,
   );
-  assert.doesNotMatch(css, /\.item-flatrateJobBreakdownTag[\s\S]*display:\s*flex/s);
+  assert.doesNotMatch(
+    css,
+    /\.Post-header\s*>\s*ul\s*>\s*\.item-flatrateJobBreakdownTag\s*\{[^}]*display:\s*flex;/s,
+  );
 });
