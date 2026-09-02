@@ -183,7 +183,7 @@ test("mobile brand sidebar fails closed when tag data is unavailable", async () 
   assert.equal(items.has("nav"), true);
 });
 
-test("mobile brand sidebar styling is phone-only and uses a compact two-column grid", async () => {
+test("mobile brand sidebar styling is phone-only and uses a single-column navigation list", async () => {
   const less = await text("resources/less/forum.less");
 
   assert.match(
@@ -191,6 +191,8 @@ test("mobile brand sidebar styling is phone-only and uses a compact two-column g
     /\.FlatRateMobileBrandSidebar,\s*\.IndexPage-nav > ul > \.item-flatrateMobileBrandLinks\s*\{\s*display: none;/s,
   );
   assert.match(less, /@media \(max-width: 767px\)[\s\S]*\.item-flatrateMobileBrandLinks[\s\S]*display: block;/);
-  assert.match(less, /\.FlatRateMobileBrandSidebar-links\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(less, /\.FlatRateMobileBrandSidebar-links\s*\{[\s\S]*display: block;[\s\S]*width: 100%;/);
+  assert.doesNotMatch(less, /\.FlatRateMobileBrandSidebar-links\s*\{[^}]*grid-template-columns:/s);
+  assert.match(less, /\.FlatRateMobileBrandSidebar-link\.Button\s*\{[\s\S]*width: 100%;[\s\S]*background: transparent;/);
   assert.match(less, /\.FlatRateMobileBrandSidebar-link\.Button\.active\s*\{[\s\S]*@primary-color/);
 });
