@@ -94,6 +94,10 @@ async function brandRuntime(options = {}) {
   const initializers = new Map();
 
   class PostUser {
+    linkChildren(user) {
+      return new ItemList();
+    }
+
     userViewItems(user) {
       return new ItemList();
     }
@@ -152,28 +156,41 @@ test("bundle resolves Flarum 1.x PostUser compat key", async () => {
   assert.match(bundle, /compat\['flarum\/forum\/components\/PostUser'\]/);
 });
 
+test("affiliated brand attaches inside PostUser-name via linkChildren", async () => {
+  const bundle = await text("js/dist/forum.js");
+
+  assert.match(bundle, /extend\(PostUser\.prototype, 'linkChildren'/);
+  assert.doesNotMatch(bundle, /extend\(PostUser\.prototype, 'userViewItems'[\s\S]*flatrateAffiliatedBrand/);
+});
+
 test("affiliated brand field resolves by exact name and select type", async () => {
   const { PostUser, userModel } = await brandRuntime();
-  const postUser = new PostUser();
-  const items = postUser.userViewItems(userModel);
+  const items = new PostUser().linkChildren(userModel);
 
   assert.equal(items.has("flatrateAffiliatedBrand"), true);
   const entry = items.get("flatrateAffiliatedBrand");
-  assert.equal(entry.priority, 95);
+  assert.equal(entry.priority, 70);
   assert.equal(entry.item.selector, "span.FlatRateAffiliatedBrand");
   assert.equal(entry.item.children[0], "Toyota");
 });
 
+test("affiliated brand does not add a top-level userViewItems entry", async () => {
+  const { PostUser, userModel } = await brandRuntime();
+  const items = new PostUser().userViewItems(userModel);
+
+  assert.equal(items.has("flatrateAffiliatedBrand"), false);
+});
+
 test("namespaced PostUser compat fallback is supported", async () => {
   const { PostUser, userModel } = await brandRuntime({ mode: "namespaced" });
-  const items = new PostUser().userViewItems(userModel);
+  const items = new PostUser().linkChildren(userModel);
 
   assert.equal(items.has("flatrateAffiliatedBrand"), true);
 });
 
 test("zero matching fields fail closed", async () => {
   const { PostUser } = await brandRuntime({ masqueradeFields: [] });
-  const items = new PostUser().userViewItems(
+  const items = new PostUser().linkChildren(
     user({ answers: [masqueradeAnswer({ fieldId: "3", content: "Toyota" })] }),
   );
 
@@ -183,7 +200,7 @@ test("zero matching fields fail closed", async () => {
 test("duplicate matching fields fail closed", async () => {
   const duplicateFields = [masqueradeField({ id: "1" }), masqueradeField({ id: "2" })];
   const { PostUser } = await brandRuntime({ masqueradeFields: duplicateFields });
-  const items = new PostUser().userViewItems(user({ answers: [masqueradeAnswer({ fieldId: "1" })] }));
+  const items = new PostUser().linkChildren(user({ answers: [masqueradeAnswer({ fieldId: "1" })] }));
 
   assert.equal(items.has("flatrateAffiliatedBrand"), false);
 });
@@ -192,7 +209,7 @@ test("deleted field fails closed", async () => {
   const { PostUser } = await brandRuntime({
     masqueradeFields: [masqueradeField({ deleted_at: "2026-01-01" })],
   });
-  const items = new PostUser().userViewItems(
+  const items = new PostUser().linkChildren(
     user({ answers: [masqueradeAnswer({ fieldId: "3", content: "Toyota" })] }),
   );
 
@@ -203,7 +220,7 @@ test("wrong field type fails closed", async () => {
   const { PostUser } = await brandRuntime({
     masqueradeFields: [masqueradeField({ type: "text" })],
   });
-  const items = new PostUser().userViewItems(
+  const items = new PostUser().linkChildren(
     user({ answers: [masqueradeAnswer({ fieldId: "3", content: "Toyota" })] }),
   );
 
@@ -214,7 +231,7 @@ test("blank trimmed answer suppresses brand line", async () => {
   const { PostUser } = await brandRuntime({
     userModel: user({ answers: [masqueradeAnswer({ content: "   " })] }),
   });
-  const items = new PostUser().userViewItems(
+  const items = new PostUser().linkChildren(
     user({ answers: [masqueradeAnswer({ content: "   " })] }),
   );
 
@@ -223,8 +240,7 @@ test("blank trimmed answer suppresses brand line", async () => {
 
 test("missing masqueradeAnswers suppresses brand line", async () => {
   const { PostUser } = await brandRuntime();
-  const bareUser = {};
-  const items = new PostUser().userViewItems(bareUser);
+  const items = new PostUser().linkChildren({});
 
   assert.equal(items.has("flatrateAffiliatedBrand"), false);
 });
@@ -239,6 +255,7 @@ test("affiliated brand renderer does not fetch or mutate tags or markers", async
   assert.doesNotMatch(brandBlock, /app\.request\(/);
   assert.doesNotMatch(brandBlock, /discussion\.tags\(/);
   assert.doesNotMatch(brandBlock, /flatRateJobBreakdown/);
+  assert.doesNotMatch(brandBlock, /PostMeta/);
   assert.doesNotMatch(css, /\.Post-header\s*>\s*ul\s*\{[^}]*display:\s*flex;/s);
   assert.doesNotMatch(css, /\.TagLabel\s*\{[^}]*float:\s*right/s);
 });
