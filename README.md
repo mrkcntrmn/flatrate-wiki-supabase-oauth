@@ -258,6 +258,7 @@ When **FoF Masquerade** is installed and enabled, the forum bundle can render on
 - The renderer resolves the unique active Masquerade field by exact name and type from the already-loaded `masquerade-field` store; it does not hardcode production field IDs.
 - User answers are read from the loaded `user.masqueradeAnswers()` relationship; the bundle does not issue per-post API requests.
 - Presentation is plain text (`span.FlatRateAffiliatedBrand`), not a TagLabel, badge, or OEM logo.
+- On mobile, the brand line is indented to align with the nickname column (not the avatar edge); desktop keeps native PostUser column alignment.
 - Blank or missing values render nothing (no spacer line).
 - Masquerade is optional at runtime: if the extension or field is absent, SSO and other forum behavior continue unchanged.
 
