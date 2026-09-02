@@ -244,11 +244,20 @@
         extend(PostUser.prototype, 'linkChildren', function (items, user) {
             var brand = affiliatedBrandForUser(user);
 
-            if (!brand) {
+            if (!brand || !items.has('username')) {
                 return;
             }
 
-            items.add('flatrateAffiliatedBrand', m('span.FlatRateAffiliatedBrand', brand), 70);
+            var usernameItem = items.get('username');
+
+            items.add(
+                'username',
+                m('span.FlatRatePostUserIdentityStack', [
+                    usernameItem.item,
+                    m('span.FlatRateAffiliatedBrand', brand)
+                ]),
+                usernameItem.priority
+            );
         });
     });
 
