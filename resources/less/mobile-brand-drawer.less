@@ -1,0 +1,91 @@
+// FORUM-NAV-001A: the original IndexPage sidebar injection renders in normal
+// page flow on phones. Keep that legacy item suppressed everywhere while the
+// corrected implementation renders inside Flarum's actual mobile App drawer.
+.IndexPage-nav > ul > .item-flatrateMobileBrandLinks {
+  display: none !important;
+}
+
+.FlatRateMobileBrandDrawer,
+.Header-primary .item-flatrateMobileBrandDrawer {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .Header-primary .item-flatrateMobileBrandDrawer {
+    display: block;
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  .FlatRateMobileBrandDrawer {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid @control-bg;
+  }
+
+  .FlatRateMobileBrandDrawer-title {
+    margin: 0 0 6px;
+    color: @muted-color;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .FlatRateMobileBrandDrawer-links {
+    max-height: 60vh;
+    margin: 0;
+    padding: 0 2px 8px 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    list-style: none;
+  }
+
+  .FlatRateMobileBrandDrawer-item {
+    margin: 0;
+    padding: 0;
+  }
+
+  .FlatRateMobileBrandDrawer-link.TagLinkButton {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 36px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    color: @text-color;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+    text-decoration: none;
+  }
+
+  .FlatRateMobileBrandDrawer-link.TagLinkButton:hover,
+  .FlatRateMobileBrandDrawer-link.TagLinkButton:focus-visible {
+    background: @control-bg;
+    color: @primary-color;
+    text-decoration: none;
+  }
+
+  .FlatRateMobileBrandDrawer-item.active > .FlatRateMobileBrandDrawer-link.TagLinkButton {
+    background: @control-bg;
+    color: var(--color, @primary-color);
+    font-weight: 700;
+  }
+
+  .FlatRateMobileBrandDrawer-link .Button-icon {
+    flex: 0 0 auto;
+    margin-right: 10px;
+  }
+
+  .FlatRateMobileBrandDrawer-link .Button-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
