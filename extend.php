@@ -20,6 +20,10 @@ return [
 
     new Extend\Locales(__DIR__.'/resources/locale'),
 
+    (new Extend\View())
+        ->extendNamespace('flarum-subscriptions', __DIR__.'/views/flarum-subscriptions')
+        ->extendNamespace('flarum-mentions', __DIR__.'/views/flarum-mentions'),
+
     (new Extend\ServiceProvider())
         ->register(ServiceProvider::class),
 
