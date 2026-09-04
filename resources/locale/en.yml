@@ -18,3 +18,51 @@ fof-oauth:
   lib:
     providers:
       flatrate: FlatRate.wiki
+
+flatrate-email-policy:
+  email:
+    subscriptions:
+      new_post:
+        body: |
+          Hey {recipient_display_name}!
+
+          {poster_display_name} posted in a discussion you're following:
+
+          {title}
+
+          Visit FlatRate.wiki to read the full reply:
+          {url}
+
+    mentions:
+      post_mentioned:
+        body: |
+          Hey {recipient_display_name}!
+
+          {replier_display_name} replied to your post in:
+
+          {title}
+
+          Visit FlatRate.wiki to read the full reply:
+          {url}
+
+      user_mentioned:
+        body: |
+          Hey {recipient_display_name}!
+
+          {mentioner_display_name} mentioned you in:
+
+          {title}
+
+          Visit FlatRate.wiki to view the post:
+          {url}
+
+      group_mentioned:
+        body: |
+          Hey {recipient_display_name}!
+
+          {mentioner_display_name} mentioned a group you're a member of in:
+
+          {title}
+
+          Visit FlatRate.wiki to view the post:
+          {url}
