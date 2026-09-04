@@ -140,6 +140,8 @@ test("mobile brand sidebar renders only primary root tags in live position order
     activeSlug: "toyota",
     tags: [
       tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }),
+      tag({ name: "Start Here", slug: "start-here", position: 0 }),
+      tag({ name: "General Shop Discussion", slug: "general-shop-discussion", position: 1 }),
       tag({ name: "Toyota", slug: "toyota", position: 20 }),
       tag({ name: "Audi", slug: "audi", position: 1 }),
       tag({ name: "Child Tag", slug: "child-tag", position: 2, child: true }),

@@ -6,17 +6,27 @@
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
         var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
-        var HeaderPrimary = compat['components/HeaderPrimary'] || compat['flarum/forum/components/HeaderPrimary'];
+        // Mount on HeaderSecondary so Search / Notifications / Direct Messages / profile
+        // (all HeaderSecondary items) render above Vehicle Brands in the phone drawer.
+        // Flarum's drawer mounts primary header controls before secondary ones in the DOM.
+        var HeaderSecondary =
+            compat['components/HeaderSecondary'] || compat['flarum/forum/components/HeaderSecondary'];
         var TagLinkButton =
             compat['tags/components/TagLinkButton'] ||
             compat['flarum/tags/forum/components/TagLinkButton'];
 
-        HeaderPrimary = HeaderPrimary && (HeaderPrimary.default || HeaderPrimary);
+        HeaderSecondary = HeaderSecondary && (HeaderSecondary.default || HeaderSecondary);
         TagLinkButton = TagLinkButton && (TagLinkButton.default || TagLinkButton);
 
-        if (typeof extend !== 'function' || typeof m !== 'function' || !HeaderPrimary || !TagLinkButton) {
+        if (typeof extend !== 'function' || typeof m !== 'function' || !HeaderSecondary || !TagLinkButton) {
             return;
         }
+
+        // Community boards that are primary roots but not vehicle makes.
+        var EXCLUDED_BRAND_SLUGS = {
+            'start-here': true,
+            'general-shop-discussion': true
+        };
 
         function tagPosition(tag) {
             if (!tag || typeof tag.position !== 'function') {
@@ -33,6 +43,11 @@
             }
 
             if (tagPosition(tag) === null) {
+                return false;
+            }
+
+            var slug = String(tag.slug()).toLowerCase();
+            if (EXCLUDED_BRAND_SLUGS[slug]) {
                 return false;
             }
 
@@ -90,7 +105,7 @@
             );
         }
 
-        extend(HeaderPrimary.prototype, 'items', function (items) {
+        extend(HeaderSecondary.prototype, 'items', function (items) {
             var tags = visibleBrandTags();
             if (!tags.length) {
                 return;
@@ -98,6 +113,7 @@
 
             var activeSlug = currentTagSlug();
 
+            // Below session/profile (priority 0) and Messages (5) / Notifications (10) / Search (30).
             items.add(
                 'flatrateMobileBrandDrawer',
                 m('nav.FlatRateMobileBrandDrawer', { 'aria-label': 'Vehicle brands' }, [
