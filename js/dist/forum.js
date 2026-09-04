@@ -291,12 +291,22 @@
             return value === null || typeof value === 'undefined' ? null : Number(value);
         }
 
+        var EXCLUDED_BRAND_SLUGS = {
+            'start-here': true,
+            'general-shop-discussion': true
+        };
+
         function isPrimaryRootTag(tag) {
             if (!tag || typeof tag.slug !== 'function' || typeof tag.name !== 'function') {
                 return false;
             }
 
             if (tagPosition(tag) === null) {
+                return false;
+            }
+
+            var slug = String(tag.slug()).toLowerCase();
+            if (EXCLUDED_BRAND_SLUGS[slug]) {
                 return false;
             }
 

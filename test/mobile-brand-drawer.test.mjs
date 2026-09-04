@@ -89,10 +89,13 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
   const bundle = await text("js/dist/mobile-brand-drawer.js");
   const initializers = new Map();
 
-  class HeaderPrimary {
+  class HeaderSecondary {
     items() {
       const items = new ItemList();
-      items.add("existingHeaderLink", { selector: "a" }, 100);
+      items.add("search", { selector: "Search" }, 30);
+      items.add("notifications", { selector: "Notifications" }, 10);
+      items.add("Messages", { selector: "Messages" }, 5);
+      items.add("session", { selector: "Session" }, 0);
       return items;
     }
   }
@@ -101,7 +104,7 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
 
   const compat = {
     extend: { extend: flarumExtend },
-    "components/HeaderPrimary": HeaderPrimary,
+    "components/HeaderSecondary": HeaderSecondary,
     "tags/components/TagLinkButton": TagLinkButton,
   };
 
@@ -129,36 +132,42 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
   assert.equal(typeof initializer, "function");
   initializer();
 
-  return { HeaderPrimary, TagLinkButton };
+  return { HeaderSecondary, TagLinkButton };
 }
 
-test("mobile brand navigation hooks the real Flarum header drawer surface", async () => {
+test("mobile brand navigation hooks HeaderSecondary below core drawer controls", async () => {
   const bundle = await text("js/dist/mobile-brand-drawer.js");
 
-  assert.match(bundle, /compat\['components\/HeaderPrimary'\]/);
-  assert.match(bundle, /compat\['flarum\/forum\/components\/HeaderPrimary'\]/);
+  assert.match(bundle, /compat\['components\/HeaderSecondary'\]/);
+  assert.match(bundle, /compat\['flarum\/forum\/components\/HeaderSecondary'\]/);
   assert.match(bundle, /compat\['tags\/components\/TagLinkButton'\]/);
-  assert.match(bundle, /extend\(HeaderPrimary\.prototype, 'items'/);
+  assert.match(bundle, /extend\(HeaderSecondary\.prototype, 'items'/);
+  assert.doesNotMatch(bundle, /components\/HeaderPrimary|forum\/components\/HeaderPrimary/);
   assert.doesNotMatch(bundle, /IndexPage\.prototype/);
   assert.doesNotMatch(bundle, /sidebarItems/);
 });
 
-test("mobile brand drawer renders only primary root tags in live position order", async () => {
-  const { HeaderPrimary, TagLinkButton } = await drawerRuntime({
+test("mobile brand drawer renders only vehicle makes below Search/Notifications/DM/profile", async () => {
+  const { HeaderSecondary, TagLinkButton } = await drawerRuntime({
     activeSlug: "toyota",
     tags: [
       tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }),
+      tag({ name: "Start Here", slug: "start-here", position: 0 }),
+      tag({ name: "General Shop Discussion", slug: "general-shop-discussion", position: 1 }),
       tag({ name: "Toyota", slug: "toyota", position: 20 }),
-      tag({ name: "Audi", slug: "audi", position: 1 }),
+      tag({ name: "Audi", slug: "audi", position: 5 }),
       tag({ name: "Child Tag", slug: "child-tag", position: 2, child: true }),
       tag({ name: "Ford", slug: "ford", position: 10 }),
     ],
   });
 
-  const items = new HeaderPrimary().items();
+  const items = new HeaderSecondary().items();
   assert.equal(items.has("flatrateMobileBrandDrawer"), true);
   assert.equal(items.getPriority("flatrateMobileBrandDrawer"), -50);
-  assert.equal(items.has("existingHeaderLink"), true);
+  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("session"));
+  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("Messages"));
+  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("notifications"));
+  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("search"));
 
   const nav = items.get("flatrateMobileBrandDrawer");
   assert.equal(nav.selector, "nav.FlatRateMobileBrandDrawer");
@@ -183,11 +192,11 @@ test("mobile brand drawer renders only primary root tags in live position order"
 });
 
 test("mobile brand drawer fails closed when tag data is unavailable", async () => {
-  const { HeaderPrimary } = await drawerRuntime({ tags: [] });
-  const items = new HeaderPrimary().items();
+  const { HeaderSecondary } = await drawerRuntime({ tags: [] });
+  const items = new HeaderSecondary().items();
 
   assert.equal(items.has("flatrateMobileBrandDrawer"), false);
-  assert.equal(items.has("existingHeaderLink"), true);
+  assert.equal(items.has("search"), true);
 });
 
 test("mobile drawer CSS suppresses the legacy page-flow copy and is phone-only", async () => {
@@ -199,11 +208,11 @@ test("mobile drawer CSS suppresses the legacy page-flow copy and is phone-only",
   );
   assert.match(
     less,
-    /\.FlatRateMobileBrandDrawer,\s*\.Header-primary \.item-flatrateMobileBrandDrawer\s*\{\s*display: none;/s,
+    /\.FlatRateMobileBrandDrawer,\s*\.Header-secondary \.item-flatrateMobileBrandDrawer\s*\{\s*display: none;/s,
   );
   assert.match(
     less,
-    /@media \(max-width: 767px\)[\s\S]*\.Header-primary \.item-flatrateMobileBrandDrawer\s*\{[\s\S]*display: block;/,
+    /@media \(max-width: 767px\)[\s\S]*\.Header-secondary \.item-flatrateMobileBrandDrawer\s*\{[\s\S]*display: block;/,
   );
   assert.match(
     less,
