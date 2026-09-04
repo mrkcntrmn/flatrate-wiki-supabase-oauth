@@ -12,7 +12,11 @@ use FoF\OAuth\Extend as OAuthExtend;
 return [
     (new Extend\Frontend('forum'))
         ->css(__DIR__.'/resources/less/forum.less')
+        ->css(__DIR__.'/resources/less/mobile-brand-drawer.less')
         ->js(__DIR__.'/js/dist/forum.js'),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/mobile-brand-drawer.js'),
 
     new Extend\Locales(__DIR__.'/resources/locale'),
 
