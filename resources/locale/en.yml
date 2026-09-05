@@ -30,7 +30,7 @@ flatrate-email-policy:
 
           {title}
 
-          Visit FlatRate.wiki to read the full reply:
+          View the new activity on FlatRate.wiki:
           {url}
 
     mentions:
@@ -42,7 +42,7 @@ flatrate-email-policy:
 
           {title}
 
-          Visit FlatRate.wiki to read the full reply:
+          View the reply on FlatRate.wiki:
           {url}
 
       user_mentioned:
@@ -53,7 +53,7 @@ flatrate-email-policy:
 
           {title}
 
-          Visit FlatRate.wiki to view the post:
+          View the post on FlatRate.wiki:
           {url}
 
       group_mentioned:
@@ -64,5 +64,5 @@ flatrate-email-policy:
 
           {title}
 
-          Visit FlatRate.wiki to view the post:
+          View the post on FlatRate.wiki:
           {url}
