@@ -77,32 +77,65 @@ function tag({ name, slug, position, child = false }) {
 
 async function sharedNavigationContract() {
   const context = { module: { exports: {} } };
-  runInNewContext(await text("js/dist/brands-navigation.js"), context);
+  runInNewContext(await text("js/dist/forum-navigation.js"), context);
   return context.module.exports;
 }
 
-function brandTagsFromTree(tree) {
-  const flattened = [];
-  for (const node of tree) {
-    flattened.push(tag({ name: node.name, slug: node.slug, position: 1000 - flattened.length, child: node.slug === "gm" }));
-    for (const child of node.children ?? []) {
-      flattened.push(tag({ name: child.name, slug: child.slug, position: null, child: true }));
+function tagsForContract(contract) {
+  const tags = [];
+  // Match live B2 topology: GM/CDJR constituents are primary roots, not Flarum children.
+  for (const group of contract.groups) {
+    for (const node of group.children) {
+      tags.push(tag({ name: node.displayName, slug: node.slug, position: 1000 - tags.length, child: false }));
+      for (const child of node.children ?? []) {
+        tags.push(tag({
+          name: child.displayName,
+          slug: child.slug,
+          position: 1000 - tags.length,
+          child: false,
+        }));
+      }
     }
   }
-  return flattened.reverse();
+  tags.push(tag({ name: "Job Breakdown", slug: "job-breakdown", position: null, child: false }));
+  return tags.reverse();
 }
 
-function sidebarLinkNodes(nav) {
-  const nodes = nav.children[1].children;
-  return nodes.flatMap((node) => {
-    const parent = node.children[0];
-    const children = node.children[1]?.children ?? [];
-    return [parent, ...children];
+function assertProductionLikeTopology(tags) {
+  const primaryRoots = tags.filter((candidate) => candidate.position() !== null);
+  const primaryChildren = tags.filter((candidate) => candidate.isChild());
+  const secondary = tags.filter((candidate) => candidate.position() === null);
+  const presentationChildrenWithFlarumParent = tags.filter(
+    (candidate) =>
+      ["buick", "cadillac", "chevrolet", "gmc", "chrysler", "dodge", "jeep", "ram"].includes(candidate.slug()) &&
+      (candidate.isChild() || candidate.parent() !== null),
+  );
+
+  assert.equal(primaryRoots.length, 43);
+  assert.equal(primaryChildren.length, 0);
+  assert.equal(secondary.length, 1);
+  assert.equal(secondary[0].slug(), "job-breakdown");
+  assert.equal(presentationChildrenWithFlarumParent.length, 0);
+}
+
+function groupSections(nav) {
+  return nav.children;
+}
+
+function brandGroup(nav) {
+  return groupSections(nav).find((section) => section.attrs["data-group"] === "brands");
+}
+
+function sidebarLinkNodes(group) {
+  return group.children[1].children.flatMap((item) => {
+    const parent = item.children[0];
+    const children = item.children[1]?.children ?? [];
+    return [parent, ...children.map((childItem) => childItem.children[0])];
   });
 }
 
 async function sidebarRuntime({ activeSlug = "toyota", tags = [] } = {}) {
-  const shared = await text("js/dist/brands-navigation.js");
+  const shared = await text("js/dist/forum-navigation.js");
   const bundle = await text("js/dist/forum.js");
   const initializers = new Map();
 
@@ -147,102 +180,157 @@ async function sidebarRuntime({ activeSlug = "toyota", tags = [] } = {}) {
     module: { exports: {} },
   });
 
-  const initializer = initializers.get("flatrate-wiki-mobile-brand-sidebar");
+  const initializer = initializers.get("flatrate-wiki-forum-navigation-sidebar");
   assert.equal(typeof initializer, "function");
   initializer();
 
   return { IndexPage, LinkButton };
 }
 
-test("mobile brand sidebar hooks IndexPage through Flarum compat", async () => {
+test("desktop forum navigation hooks IndexPage through Flarum compat", async () => {
   const bundle = await text("js/dist/forum.js");
 
-  assert.match(bundle, /app\.initializers\.add\('flatrate-wiki-mobile-brand-sidebar'/);
+  assert.match(bundle, /app\.initializers\.add\('flatrate-wiki-forum-navigation-sidebar'/);
   assert.match(bundle, /compat\['components\/IndexPage'\]/);
   assert.match(bundle, /compat\['flarum\/forum\/components\/IndexPage'\]/);
   assert.match(bundle, /extend\(IndexPage\.prototype, 'sidebarItems'/);
-  assert.match(bundle, /FlatRateBrandsNavigation/);
-  assert.doesNotMatch(bundle, /BRAND_NAVIGATION_TREE/);
+  assert.match(bundle, /FlatRateForumNavigation/);
+  assert.doesNotMatch(bundle, /var GROUPS = /);
+  assert.doesNotMatch(bundle, /FlatRateBrandsNavigation/);
 });
 
-test("mobile brand sidebar renders explicit Brands tree independent of live root heuristics", async () => {
+test("desktop sidebar renders Community and Brands from the shared contract", async () => {
   const contract = await sharedNavigationContract();
+  const tags = tagsForContract(contract);
+  assertProductionLikeTopology(tags);
   const { IndexPage, LinkButton } = await sidebarRuntime({
     activeSlug: "chevrolet",
-    tags: [
-      tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }),
-      tag({ name: "Start Here", slug: "start-here", position: 0 }),
-      tag({ name: "General Shop Discussion", slug: "general-shop-discussion", position: 1 }),
-      ...brandTagsFromTree(contract.tree),
-    ],
+    tags,
   });
 
   const items = new IndexPage().sidebarItems();
-  assert.equal(items.has("flatrateMobileBrandLinks"), true);
-  assert.equal(items.getPriority("flatrateMobileBrandLinks"), -20);
+  assert.equal(items.has("flatrateForumNavigation"), true);
+  assert.equal(items.getPriority("flatrateForumNavigation"), -20);
 
-  const nav = items.get("flatrateMobileBrandLinks");
-  assert.equal(nav.selector, "nav.FlatRateMobileBrandSidebar");
-  assert.equal(nav.attrs["aria-label"], "Brands");
-  assert.equal(nav.children[0].selector, "div.FlatRateMobileBrandSidebar-title");
-  assert.equal(nav.children[0].children[0], "Brands");
-
-  const links = nav.children[1];
-  assert.equal(links.selector, "div.FlatRateMobileBrandSidebar-links");
+  const nav = items.get("flatrateForumNavigation");
+  assert.equal(nav.selector, "nav.FlatRateForumNav.FlatRateForumNav--sidebar");
+  assert.equal(nav.attrs["aria-label"], "Forum navigation");
   assert.deepEqual(
-    plain(links.children.map((node) => node.children[0].children[0])),
-    plain(contract.tree.map((node) => node.name)),
+    plain(groupSections(nav).map((section) => section.children[0].children[0])),
+    ["Community", "Brands"],
+  );
+
+  const community = groupSections(nav).find((section) => section.attrs["data-group"] === "community");
+  const brands = brandGroup(nav);
+  assert.deepEqual(
+    plain(community.children[1].children.map((item) => item.children[0].children[0])),
+    ["Start Here", "General Shop Discussion"],
   );
   assert.deepEqual(
-    plain(links.children.find((node) => node.children[0].children[0] === "CDJR").children[1].children.map((link) => link.children[0])),
+    plain(brands.children[1].children.map((item) => item.children[0].children[0])),
+    plain(contract.getGroup("brands").children.map((node) => node.displayName)),
+  );
+  assert.deepEqual(
+    plain(
+      brands.children[1].children
+        .find((item) => item.children[0].children[0] === "CDJR")
+        .children[1].children.map((item) => item.children[0].children[0]),
+    ),
     ["Chrysler", "Dodge", "Jeep", "Ram"],
   );
   assert.deepEqual(
-    plain(links.children.find((node) => node.children[0].children[0] === "GM").children[1].children.map((link) => link.children[0])),
+    plain(
+      brands.children[1].children
+        .find((item) => item.children[0].children[0] === "GM")
+        .children[1].children.map((item) => item.children[0].children[0]),
+    ),
     ["Buick", "Cadillac", "Chevrolet", "GMC"],
   );
-  assert.ok(sidebarLinkNodes(nav).every((link) => link.selector === LinkButton));
+  assert.ok(sidebarLinkNodes(brands).every((link) => link.selector === LinkButton));
   assert.deepEqual(
-    plain(sidebarLinkNodes(nav).map((link) => link.attrs.href).filter((href) => href === "/t/chevrolet")),
+    plain(sidebarLinkNodes(brands).map((link) => link.attrs.href).filter((href) => href === "/t/chevrolet")),
     ["/t/chevrolet"],
   );
   assert.deepEqual(
-    plain(sidebarLinkNodes(nav).filter((link) => link.attrs.active).map((link) => link.children[0])),
+    plain(sidebarLinkNodes(brands).filter((link) => link.attrs.active).map((link) => link.children[0])),
     ["Chevrolet"],
   );
-  assert.equal(links.children.some((node) => node.children[0].children[0] === "Buick"), false);
-  assert.equal(sidebarLinkNodes(nav).length, 41);
+  assert.equal(
+    brands.children[1].children.some((item) => item.children[0].children[0] === "Buick"),
+    false,
+  );
+  assert.equal(sidebarLinkNodes(brands).length, 41);
+  assert.deepEqual(
+    plain(
+      sidebarLinkNodes(brands)
+        .filter((link) => link.attrs.href === "/t/alpha-romeo")
+        .map((link) => link.children[0]),
+    ),
+    ["Alfa Romeo"],
+  );
+  assert.ok(
+    sidebarLinkNodes(brands)
+      .filter((link) =>
+        ["Buick", "Cadillac", "Chevrolet", "GMC", "Chrysler", "Dodge", "Jeep", "Ram"].includes(link.children[0]),
+      )
+      .every((link) => {
+        const slug = link.attrs.href.replace("/t/", "");
+        const model = tags.find((candidate) => candidate.slug() === slug);
+        return model && model.isChild() === false && model.parent() === null;
+      }),
+  );
 });
 
-test("mobile brand sidebar fails closed when tag data is unavailable", async () => {
+test("desktop sidebar selects General Shop Discussion by active slug", async () => {
+  const contract = await sharedNavigationContract();
+  const { IndexPage } = await sidebarRuntime({
+    activeSlug: "general-shop-discussion",
+    tags: tagsForContract(contract),
+  });
+
+  const community = groupSections(new IndexPage().sidebarItems().get("flatrateForumNavigation")).find(
+    (section) => section.attrs["data-group"] === "community",
+  );
+
+  assert.deepEqual(
+    plain(sidebarLinkNodes(community).filter((link) => link.attrs.active).map((link) => link.children[0])),
+    ["General Shop Discussion"],
+  );
+});
+
+test("desktop sidebar fails closed when tag data is unavailable", async () => {
   const { IndexPage } = await sidebarRuntime({ tags: [] });
   const items = new IndexPage().sidebarItems();
 
-  assert.equal(items.has("flatrateMobileBrandLinks"), false);
+  assert.equal(items.has("flatrateForumNavigation"), false);
   assert.equal(items.has("newDiscussion"), true);
   assert.equal(items.has("nav"), true);
 });
 
-test("mobile brand sidebar fails closed when explicit tree cannot resolve every tag", async () => {
+test("desktop sidebar keeps Brands when one nested child tag is missing", async () => {
   const contract = await sharedNavigationContract();
   const { IndexPage } = await sidebarRuntime({
-    tags: brandTagsFromTree(contract.tree).filter((candidate) => candidate.slug() !== "ram"),
+    tags: tagsForContract(contract).filter((candidate) => candidate.slug() !== "ram"),
   });
   const items = new IndexPage().sidebarItems();
 
-  assert.equal(items.has("flatrateMobileBrandLinks"), false);
+  assert.equal(items.has("flatrateForumNavigation"), true);
+  assert.equal(sidebarLinkNodes(brandGroup(items.get("flatrateForumNavigation"))).length, 40);
 });
 
-test("mobile brand sidebar styling is phone-only and uses a single-column navigation list", async () => {
+test("desktop sidebar styling is desktop-only and uses a single-column navigation list", async () => {
   const less = await text("resources/less/forum.less");
 
   assert.match(
     less,
-    /\.FlatRateMobileBrandSidebar,\s*\.IndexPage-nav > ul > \.item-flatrateMobileBrandLinks\s*\{\s*display: none;/s,
+    /\.FlatRateForumNav--sidebar,\s*\.IndexPage-nav > ul > \.item-flatrateForumNavigation/s,
   );
-  assert.match(less, /@media \(max-width: 767px\)[\s\S]*\.item-flatrateMobileBrandLinks[\s\S]*display: block;/);
-  assert.match(less, /\.FlatRateMobileBrandSidebar-links\s*\{[\s\S]*display: block;[\s\S]*width: 100%;/);
-  assert.doesNotMatch(less, /\.FlatRateMobileBrandSidebar-links\s*\{[^}]*grid-template-columns:/s);
-  assert.match(less, /\.FlatRateMobileBrandSidebar-link\.Button\s*\{[\s\S]*width: 100%;[\s\S]*background: transparent;/);
-  assert.match(less, /\.FlatRateMobileBrandSidebar-link\.Button\.active\s*\{[\s\S]*@primary-color/);
+  assert.match(less, /@media \(min-width: 768px\)[\s\S]*\.item-flatrateForumNavigation[\s\S]*display: block;/);
+  assert.match(
+    less,
+    /\.FlatRateForumNav--sidebar \.FlatRateForumNav-links,\s*\.FlatRateForumNav--sidebar \.FlatRateForumNav-children\s*\{[\s\S]*display: block;[\s\S]*width: 100%;/,
+  );
+  assert.doesNotMatch(less, /\.FlatRateForumNav--sidebar \.FlatRateForumNav-links[^{]*\{[^}]*grid-template-columns:/s);
+  assert.match(less, /\.FlatRateForumNav--sidebar \.FlatRateForumNav-link\.Button\s*\{[\s\S]*width: 100%;[\s\S]*background: transparent;/);
+  assert.match(less, /\.FlatRateForumNav--sidebar \.FlatRateForumNav-link\.Button\.active\s*\{[\s\S]*@primary-color/);
 });

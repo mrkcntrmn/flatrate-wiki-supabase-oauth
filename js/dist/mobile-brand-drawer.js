@@ -1,13 +1,13 @@
-/*! FlatRate Wiki mobile vehicle-brand drawer navigation. */
+/*! FlatRate Wiki mobile forum navigation drawer. */
 (function () {
     'use strict';
 
-    app.initializers.add('flatrate-wiki-mobile-brand-drawer', function () {
+    app.initializers.add('flatrate-wiki-mobile-forum-navigation', function () {
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
         var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
         // Mount on HeaderSecondary so Search / Notifications / Direct Messages / profile
-        // (all HeaderSecondary items) render above Brands in the phone drawer.
+        // (all HeaderSecondary items) render above forum navigation in the phone drawer.
         // Flarum's drawer mounts primary header controls before secondary ones in the DOM.
         var HeaderSecondary =
             compat['components/HeaderSecondary'] || compat['flarum/forum/components/HeaderSecondary'];
@@ -22,8 +22,8 @@
             return;
         }
 
-        function visibleBrandTree() {
-            var contract = typeof FlatRateBrandsNavigation !== 'undefined' ? FlatRateBrandsNavigation : null;
+        function visibleGroups() {
+            var contract = typeof FlatRateForumNavigation !== 'undefined' ? FlatRateForumNavigation : null;
             return contract && typeof contract.resolve === 'function' ? contract.resolve(app) : [];
         }
 
@@ -35,12 +35,28 @@
             return String(m.route.param('tags') || '').toLowerCase();
         }
 
-        function renderBrandItem(node, activeSlug, child) {
-            var slug = String(node.slug);
-            var active = slug.toLowerCase() === activeSlug;
-            var selector = 'li.FlatRateMobileBrandDrawer-item' + (active ? '.active' : '');
+        function nodeIsActive(node, activeSlug) {
+            return String(node.slug).toLowerCase() === activeSlug;
+        }
+
+        function nodeHasActiveDescendant(node, activeSlug) {
+            return (node.children || []).some(function (child) {
+                return nodeIsActive(child, activeSlug) || nodeHasActiveDescendant(child, activeSlug);
+            });
+        }
+
+        function renderBoardItem(node, activeSlug, child) {
+            var active = nodeIsActive(node, activeSlug);
+            var branchActive = !active && nodeHasActiveDescendant(node, activeSlug);
+            var selector = 'li.FlatRateForumNav-item';
+            if (active) {
+                selector += '.active';
+            }
+            if (branchActive) {
+                selector += '.FlatRateForumNav-item--branch-active';
+            }
             if (child) {
-                selector += '.FlatRateMobileBrandDrawer-item--child';
+                selector += '.FlatRateForumNav-item--child';
             }
 
             return m(
@@ -50,24 +66,24 @@
                     {
                         model: node.tag,
                         params: {},
-                        className: 'FlatRateMobileBrandDrawer-link'
+                        className: 'FlatRateForumNav-link'
                     },
-                    node.name
+                    node.displayName
                 )
             );
         }
 
-        function renderBrandNode(node, activeSlug) {
+        function renderBoardNode(node, activeSlug) {
             var children = node.children || [];
             return [
-                renderBrandItem(node, activeSlug, false),
+                renderBoardItem(node, activeSlug, false),
                 children.length
                     ? m(
-                        'li.FlatRateMobileBrandDrawer-children',
+                        'li.FlatRateForumNav-children',
                         m(
                             'ul',
                             children.map(function (child) {
-                                return renderBrandItem(child, activeSlug, true);
+                                return renderBoardItem(child, activeSlug, true);
                             })
                         )
                     )
@@ -75,28 +91,36 @@
             ];
         }
 
+        function renderGroup(group, activeSlug) {
+            var boardItems = [];
+            group.children.forEach(function (node) {
+                boardItems = boardItems.concat(renderBoardNode(node, activeSlug).filter(Boolean));
+            });
+
+            return m('section.FlatRateForumNav-group', { 'data-group': group.id }, [
+                m('h3.FlatRateForumNav-groupTitle', group.label),
+                m('ul.FlatRateForumNav-links', boardItems)
+            ]);
+        }
+
         extend(HeaderSecondary.prototype, 'items', function (items) {
-            var tree = visibleBrandTree();
-            if (!tree.length) {
+            var groups = visibleGroups();
+            if (!groups.length) {
                 return;
             }
 
             var activeSlug = currentTagSlug();
-            var brandItems = [];
-            tree.forEach(function (node) {
-                brandItems = brandItems.concat(renderBrandNode(node, activeSlug).filter(Boolean));
-            });
 
             // Below session/profile (priority 0) and Messages (5) / Notifications (10) / Search (30).
             items.add(
-                'flatrateMobileBrandDrawer',
-                m('nav.FlatRateMobileBrandDrawer', { 'aria-label': 'Brands' }, [
-                    m('div.FlatRateMobileBrandDrawer-title', 'Brands'),
-                    m(
-                        'ul.FlatRateMobileBrandDrawer-links',
-                        brandItems
-                    )
-                ]),
+                'flatrateForumNavigationDrawer',
+                m(
+                    'nav.FlatRateForumNav.FlatRateForumNav--drawer',
+                    { 'aria-label': 'Forum navigation' },
+                    groups.map(function (group) {
+                        return renderGroup(group, activeSlug);
+                    })
+                ),
                 -50
             );
         });

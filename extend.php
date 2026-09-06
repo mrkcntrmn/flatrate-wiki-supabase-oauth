@@ -13,7 +13,7 @@ return [
     (new Extend\Frontend('forum'))
         ->css(__DIR__.'/resources/less/forum.less')
         ->css(__DIR__.'/resources/less/mobile-brand-drawer.less')
-        ->js(__DIR__.'/js/dist/brands-navigation.js')
+        ->js(__DIR__.'/js/dist/forum-navigation.js')
         ->js(__DIR__.'/js/dist/forum.js')
         ->js(__DIR__.'/js/dist/mobile-brand-drawer.js'),
 
