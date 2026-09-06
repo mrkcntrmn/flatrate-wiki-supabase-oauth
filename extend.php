@@ -21,7 +21,8 @@ return [
 
     (new Extend\View())
         ->extendNamespace('flarum-subscriptions', __DIR__.'/views/flarum-subscriptions')
-        ->extendNamespace('flarum-mentions', __DIR__.'/views/flarum-mentions'),
+        ->extendNamespace('flarum-mentions', __DIR__.'/views/flarum-mentions')
+        ->extendNamespace('fof-follow-tags', __DIR__.'/views/fof-follow-tags'),
 
     (new Extend\ServiceProvider())
         ->register(ServiceProvider::class),

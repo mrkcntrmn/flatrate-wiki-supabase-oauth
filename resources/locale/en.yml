@@ -66,3 +66,26 @@ flatrate-email-policy:
 
           View the post on FlatRate.wiki:
           {url}
+
+    follow_tags:
+      new_discussion:
+        body: |
+          Hey {recipient_display_name}!
+
+          {actor_display_name} started a new discussion:
+
+          {title}
+
+          View the discussion on FlatRate.wiki:
+          {url}
+
+      new_post:
+        body: |
+          Hey {recipient_display_name}!
+
+          {actor_display_name} posted new activity in:
+
+          {title}
+
+          View the new activity on FlatRate.wiki:
+          {url}
