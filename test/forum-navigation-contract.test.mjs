@@ -36,15 +36,40 @@ function tagsForNavigation(contract, { technicianTopics = [] } = {}) {
   const brands = contract.getGroup("brands").children;
   const tags = [];
 
+  // Match live B2 topology: every primary board is a root, including GM/CDJR
+  // presentation children. Nesting comes only from FlatRateForumNavigation.
   for (const node of [...community, ...technicianTopics, ...brands]) {
-    tags.push(tag({ name: node.displayName, slug: node.slug, position: 1000 - tags.length }));
+    tags.push(tag({ name: node.displayName, slug: node.slug, position: 1000 - tags.length, child: false }));
     for (const child of node.children ?? []) {
-      tags.push(tag({ name: child.displayName, slug: child.slug, position: null, child: true }));
+      tags.push(tag({
+        name: child.displayName,
+        slug: child.slug,
+        position: 1000 - tags.length,
+        child: false,
+      }));
     }
   }
 
-  tags.push(tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }));
+  tags.push(tag({ name: "Job Breakdown", slug: "job-breakdown", position: null, child: false }));
   return tags.reverse();
+}
+
+function assertProductionLikeTopology(tags) {
+  const primaryRoots = tags.filter((candidate) => candidate.position() !== null);
+  const primaryChildren = tags.filter((candidate) => candidate.isChild());
+  const secondary = tags.filter((candidate) => candidate.position() === null);
+  const presentationChildrenWithFlarumParent = tags.filter(
+    (candidate) =>
+      ["buick", "cadillac", "chevrolet", "gmc", "chrysler", "dodge", "jeep", "ram"].includes(candidate.slug()) &&
+      (candidate.isChild() || candidate.parent() !== null),
+  );
+
+  assert.equal(primaryRoots.length, 43);
+  assert.equal(primaryChildren.length, 0);
+  assert.equal(secondary.length, 1);
+  assert.equal(secondary[0].slug(), "job-breakdown");
+  assert.equal(presentationChildrenWithFlarumParent.length, 0);
+  assert.ok(tags.every((candidate) => candidate.parent() === null));
 }
 
 test("forum navigation has one shared production tree source", async () => {
@@ -230,6 +255,45 @@ test("corrected display names keep legacy Alfa Romeo / Genesis / McLaren slugs",
   }
 });
 
+test("fixtures model flat 43-root production topology, not GM/CDJR parent tags", async () => {
+  const contract = await loadSharedContract();
+  const tags = tagsForNavigation(contract);
+  assertProductionLikeTopology(tags);
+
+  const resolved = contract.resolve({
+    store: {
+      all(type) {
+        assert.equal(type, "tags");
+        return tags;
+      },
+    },
+  });
+  const brands = resolved.find((group) => group.id === "brands").children;
+  const gm = brands.find((node) => node.boardKey === "gm");
+  const cdjr = brands.find((node) => node.boardKey === "cdjr");
+
+  assert.equal(gm.tag.isChild(), false);
+  assert.equal(gm.tag.parent(), null);
+  assert.deepEqual(
+    plain(gm.children.map((child) => [child.boardKey, child.tag.isChild(), child.tag.parent()])),
+    [
+      ["buick", false, null],
+      ["cadillac", false, null],
+      ["chevrolet", false, null],
+      ["gmc", false, null],
+    ],
+  );
+  assert.deepEqual(
+    plain(cdjr.children.map((child) => [child.boardKey, child.tag.isChild(), child.tag.parent()])),
+    [
+      ["chrysler", false, null],
+      ["dodge", false, null],
+      ["jeep", false, null],
+      ["ram", false, null],
+    ],
+  );
+});
+
 test("resolver omits unresolved nodes and hides empty Technician Topics", async () => {
   const contract = await loadSharedContract();
   const app = {
@@ -260,10 +324,12 @@ test("resolver omits unresolved nodes and hides empty Technician Topics", async 
 
 test("resolver returns routes and active-ready tag models without mutating source", async () => {
   const contract = await loadSharedContract();
+  const tags = tagsForNavigation(contract);
+  assertProductionLikeTopology(tags);
   const app = {
     store: {
       all() {
-        return tagsForNavigation(contract);
+        return tags;
       },
     },
   };
@@ -280,6 +346,8 @@ test("resolver returns routes and active-ready tag models without mutating sourc
   assert.equal(chevrolet.route, "/t/chevrolet");
   assert.equal(typeof alfa.tag.slug, "function");
   assert.equal(alfa.tag.slug(), "alpha-romeo");
+  assert.equal(chevrolet.tag.isChild(), false);
+  assert.equal(chevrolet.tag.parent(), null);
   assert.deepEqual(plain(contract.groups), before);
   assert.equal(
     brands.reduce((count, node) => count + 1 + (node.children?.length ?? 0), 0),

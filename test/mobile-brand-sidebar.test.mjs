@@ -83,16 +83,39 @@ async function sharedNavigationContract() {
 
 function tagsForContract(contract) {
   const tags = [];
+  // Match live B2 topology: GM/CDJR constituents are primary roots, not Flarum children.
   for (const group of contract.groups) {
     for (const node of group.children) {
-      tags.push(tag({ name: node.displayName, slug: node.slug, position: 1000 - tags.length }));
+      tags.push(tag({ name: node.displayName, slug: node.slug, position: 1000 - tags.length, child: false }));
       for (const child of node.children ?? []) {
-        tags.push(tag({ name: child.displayName, slug: child.slug, position: null, child: true }));
+        tags.push(tag({
+          name: child.displayName,
+          slug: child.slug,
+          position: 1000 - tags.length,
+          child: false,
+        }));
       }
     }
   }
-  tags.push(tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }));
+  tags.push(tag({ name: "Job Breakdown", slug: "job-breakdown", position: null, child: false }));
   return tags.reverse();
+}
+
+function assertProductionLikeTopology(tags) {
+  const primaryRoots = tags.filter((candidate) => candidate.position() !== null);
+  const primaryChildren = tags.filter((candidate) => candidate.isChild());
+  const secondary = tags.filter((candidate) => candidate.position() === null);
+  const presentationChildrenWithFlarumParent = tags.filter(
+    (candidate) =>
+      ["buick", "cadillac", "chevrolet", "gmc", "chrysler", "dodge", "jeep", "ram"].includes(candidate.slug()) &&
+      (candidate.isChild() || candidate.parent() !== null),
+  );
+
+  assert.equal(primaryRoots.length, 43);
+  assert.equal(primaryChildren.length, 0);
+  assert.equal(secondary.length, 1);
+  assert.equal(secondary[0].slug(), "job-breakdown");
+  assert.equal(presentationChildrenWithFlarumParent.length, 0);
 }
 
 function groupSections(nav) {
@@ -178,9 +201,11 @@ test("desktop forum navigation hooks IndexPage through Flarum compat", async () 
 
 test("desktop sidebar renders Community and Brands from the shared contract", async () => {
   const contract = await sharedNavigationContract();
+  const tags = tagsForContract(contract);
+  assertProductionLikeTopology(tags);
   const { IndexPage, LinkButton } = await sidebarRuntime({
     activeSlug: "chevrolet",
-    tags: tagsForContract(contract),
+    tags,
   });
 
   const items = new IndexPage().sidebarItems();
@@ -242,6 +267,17 @@ test("desktop sidebar renders Community and Brands from the shared contract", as
         .map((link) => link.children[0]),
     ),
     ["Alfa Romeo"],
+  );
+  assert.ok(
+    sidebarLinkNodes(brands)
+      .filter((link) =>
+        ["Buick", "Cadillac", "Chevrolet", "GMC", "Chrysler", "Dodge", "Jeep", "Ram"].includes(link.children[0]),
+      )
+      .every((link) => {
+        const slug = link.attrs.href.replace("/t/", "");
+        const model = tags.find((candidate) => candidate.slug() === slug);
+        return model && model.isChild() === false && model.parent() === null;
+      }),
   );
 });
 
