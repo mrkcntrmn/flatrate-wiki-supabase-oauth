@@ -181,29 +181,35 @@
 }
 
 // Flarum moves the normal index title/new-discussion controls into the phone
-// header. Keep this extra vehicle-make navigation in normal document flow so
-// technicians can jump directly to a make without opening the select dropdown.
+// header. Desktop sidebar owns the shared forum navigation groups; phones use
+// the HeaderSecondary drawer implementation instead.
+.FlatRateForumNav--sidebar,
+.IndexPage-nav > ul > .item-flatrateForumNavigation,
 .FlatRateMobileBrandSidebar,
 .IndexPage-nav > ul > .item-flatrateMobileBrandLinks {
   display: none;
 }
 
-@media (max-width: 767px) {
-  .IndexPage-nav > ul > .item-flatrateMobileBrandLinks {
+@media (min-width: 768px) {
+  .IndexPage-nav > ul > .item-flatrateForumNavigation {
     display: block;
     width: 100%;
     margin: 6px 0 0;
     white-space: normal;
   }
 
-  .FlatRateMobileBrandSidebar {
+  .FlatRateForumNav--sidebar {
     display: block;
     width: 100%;
     padding: 8px 0 2px;
   }
 
-  .FlatRateMobileBrandSidebar-title {
-    margin-bottom: 6px;
+  .FlatRateForumNav--sidebar .FlatRateForumNav-group {
+    margin: 0 0 14px;
+  }
+
+  .FlatRateForumNav--sidebar .FlatRateForumNav-groupTitle {
+    margin: 0 0 6px;
     color: @muted-color;
     font-size: 11px;
     font-weight: 700;
@@ -212,14 +218,21 @@
     text-transform: uppercase;
   }
 
-  // Match Flarum's sidebar rhythm: one navigation target per row, no card/grid
-  // treatment. This keeps make navigation visually consistent with the forum nav.
-  .FlatRateMobileBrandSidebar-links {
+  .FlatRateForumNav--sidebar .FlatRateForumNav-links,
+  .FlatRateForumNav--sidebar .FlatRateForumNav-children {
     display: block;
     width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .FlatRateMobileBrandSidebar-link.Button {
+  .FlatRateForumNav--sidebar .FlatRateForumNav-item {
+    margin: 0;
+    padding: 0;
+  }
+
+  .FlatRateForumNav--sidebar .FlatRateForumNav-link.Button {
     display: block;
     width: 100%;
     min-height: 36px;
@@ -235,25 +248,20 @@
     white-space: normal;
   }
 
-  .FlatRateMobileBrandSidebar-children {
-    margin: 0 0 2px;
-    padding: 0;
-  }
-
-  .FlatRateMobileBrandSidebar-link--child.Button {
+  .FlatRateForumNav--sidebar .FlatRateForumNav-link--child.Button {
     padding-left: 24px;
     color: @muted-color;
     font-size: 12px;
   }
 
-  .FlatRateMobileBrandSidebar-link.Button:hover,
-  .FlatRateMobileBrandSidebar-link.Button:focus-visible {
+  .FlatRateForumNav--sidebar .FlatRateForumNav-link.Button:hover,
+  .FlatRateForumNav--sidebar .FlatRateForumNav-link.Button:focus-visible {
     background: @control-bg;
     color: @primary-color;
     text-decoration: none;
   }
 
-  .FlatRateMobileBrandSidebar-link.Button.active {
+  .FlatRateForumNav--sidebar .FlatRateForumNav-link.Button.active {
     background: @control-bg;
     color: @primary-color;
     font-weight: 700;

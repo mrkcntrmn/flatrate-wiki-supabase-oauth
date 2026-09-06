@@ -264,11 +264,11 @@
     module.exports = {};
 })();
 
-/*! FlatRate Wiki mobile vehicle-brand sidebar. */
+/*! FlatRate Wiki desktop/index sidebar forum navigation. */
 (function () {
     'use strict';
 
-    app.initializers.add('flatrate-wiki-mobile-brand-sidebar', function () {
+    app.initializers.add('flatrate-wiki-forum-navigation-sidebar', function () {
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
         var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
@@ -282,8 +282,8 @@
             return;
         }
 
-        function visibleBrandTree() {
-            var contract = typeof FlatRateBrandsNavigation !== 'undefined' ? FlatRateBrandsNavigation : null;
+        function visibleGroups() {
+            var contract = typeof FlatRateForumNavigation !== 'undefined' ? FlatRateForumNavigation : null;
             return contract && typeof contract.resolve === 'function' ? contract.resolve(app) : [];
         }
 
@@ -295,55 +295,84 @@
             return String(m.route.param('tags') || '').toLowerCase();
         }
 
-        function renderBrandLink(node, activeSlug, child) {
-            var slug = String(node.slug);
-            var active = slug.toLowerCase() === activeSlug;
+        function nodeIsActive(node, activeSlug) {
+            return String(node.slug).toLowerCase() === activeSlug;
+        }
+
+        function nodeHasActiveDescendant(node, activeSlug) {
+            return (node.children || []).some(function (child) {
+                return nodeIsActive(child, activeSlug) || nodeHasActiveDescendant(child, activeSlug);
+            });
+        }
+
+        function renderBoardLink(node, activeSlug, child) {
+            var active = nodeIsActive(node, activeSlug);
+            var branchActive = !active && nodeHasActiveDescendant(node, activeSlug);
+            var className = 'FlatRateForumNav-link';
+            if (child) {
+                className += ' FlatRateForumNav-link--child';
+            }
+            if (branchActive) {
+                className += ' FlatRateForumNav-link--branch-active';
+            }
 
             return m(
                 LinkButton,
                 {
-                    href: app.route('tag', { tags: slug }),
-                    className: 'FlatRateMobileBrandSidebar-link' + (child ? ' FlatRateMobileBrandSidebar-link--child' : ''),
+                    href: app.route('tag', { tags: String(node.slug) }),
+                    className: className,
                     active: active
                 },
-                node.name
+                node.displayName
             );
         }
 
-        function renderBrandNode(node, activeSlug) {
+        function renderBoardNode(node, activeSlug) {
             var children = node.children || [];
-            return m('div.FlatRateMobileBrandSidebar-node', [
-                renderBrandLink(node, activeSlug, false),
+            return m('li.FlatRateForumNav-item', [
+                renderBoardLink(node, activeSlug, false),
                 children.length
                     ? m(
-                        'div.FlatRateMobileBrandSidebar-children',
+                        'ul.FlatRateForumNav-children',
                         children.map(function (child) {
-                            return renderBrandLink(child, activeSlug, true);
+                            return m('li.FlatRateForumNav-item.FlatRateForumNav-item--child', [
+                                renderBoardLink(child, activeSlug, true)
+                            ]);
                         })
                     )
                     : null
             ]);
         }
 
+        function renderGroup(group, activeSlug) {
+            return m('section.FlatRateForumNav-group', { 'data-group': group.id }, [
+                m('h3.FlatRateForumNav-groupTitle', group.label),
+                m(
+                    'ul.FlatRateForumNav-links',
+                    group.children.map(function (node) {
+                        return renderBoardNode(node, activeSlug);
+                    })
+                )
+            ]);
+        }
+
         extend(IndexPage.prototype, 'sidebarItems', function (items) {
-            var tree = visibleBrandTree();
-            if (!tree.length) {
+            var groups = visibleGroups();
+            if (!groups.length) {
                 return;
             }
 
             var activeSlug = currentTagSlug();
 
             items.add(
-                'flatrateMobileBrandLinks',
-                m('nav.FlatRateMobileBrandSidebar', { 'aria-label': 'Brands' }, [
-                    m('div.FlatRateMobileBrandSidebar-title', 'Brands'),
-                    m(
-                        'div.FlatRateMobileBrandSidebar-links',
-                        tree.map(function (node) {
-                            return renderBrandNode(node, activeSlug);
-                        })
-                    )
-                ]),
+                'flatrateForumNavigation',
+                m(
+                    'nav.FlatRateForumNav.FlatRateForumNav--sidebar',
+                    { 'aria-label': 'Forum navigation' },
+                    groups.map(function (group) {
+                        return renderGroup(group, activeSlug);
+                    })
+                ),
                 -20
             );
         });

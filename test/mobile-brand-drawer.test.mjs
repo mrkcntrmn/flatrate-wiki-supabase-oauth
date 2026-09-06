@@ -88,34 +88,47 @@ function tag({ name, slug, position, child = false }) {
 
 async function sharedNavigationContract() {
   const context = { module: { exports: {} } };
-  runInNewContext(await text("js/dist/brands-navigation.js"), context);
+  runInNewContext(await text("js/dist/forum-navigation.js"), context);
   return context.module.exports;
 }
 
-function brandTagsFromTree(tree) {
-  const flattened = [];
-  for (const node of tree) {
-    flattened.push(tag({ name: node.name, slug: node.slug, position: 1000 - flattened.length, child: node.slug === "cdjr" }));
-    for (const child of node.children ?? []) {
-      flattened.push(tag({ name: child.name, slug: child.slug, position: null, child: true }));
+function tagsForContract(contract) {
+  const tags = [];
+  for (const group of contract.groups) {
+    for (const node of group.children) {
+      tags.push(tag({ name: node.displayName, slug: node.slug, position: 1000 - tags.length }));
+      for (const child of node.children ?? []) {
+        tags.push(tag({ name: child.displayName, slug: child.slug, position: null, child: true }));
+      }
     }
   }
-  return flattened.reverse();
+  tags.push(tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }));
+  return tags.reverse();
 }
 
-function drawerTopLevelItems(nav) {
-  return nav.children[1].children.filter((item) => item.selector === "li.FlatRateMobileBrandDrawer-item");
+function groupSections(nav) {
+  return nav.children;
 }
 
-function drawerLinkItems(nav) {
-  return nav.children[1].children.flatMap((item) => {
-    if (item.selector === "li.FlatRateMobileBrandDrawer-item") return [item];
+function brandGroup(nav) {
+  return groupSections(nav).find((section) => section.attrs["data-group"] === "brands");
+}
+
+function drawerTopLevelItems(group) {
+  return group.children[1].children.filter((item) =>
+    String(item.selector).startsWith("li.FlatRateForumNav-item"),
+  );
+}
+
+function drawerLinkItems(group) {
+  return group.children[1].children.flatMap((item) => {
+    if (String(item.selector).startsWith("li.FlatRateForumNav-item")) return [item];
     return item.children[0].children;
   });
 }
 
 async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
-  const shared = await text("js/dist/brands-navigation.js");
+  const shared = await text("js/dist/forum-navigation.js");
   const bundle = await text("js/dist/mobile-brand-drawer.js");
   const initializers = new Map();
 
@@ -158,14 +171,14 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
     module: { exports: {} },
   });
 
-  const initializer = initializers.get("flatrate-wiki-mobile-brand-drawer");
+  const initializer = initializers.get("flatrate-wiki-mobile-forum-navigation");
   assert.equal(typeof initializer, "function");
   initializer();
 
   return { HeaderSecondary, TagLinkButton };
 }
 
-test("mobile brand navigation hooks HeaderSecondary below core drawer controls", async () => {
+test("mobile forum navigation hooks HeaderSecondary below core drawer controls", async () => {
   const bundle = await text("js/dist/mobile-brand-drawer.js");
 
   assert.match(bundle, /compat\['components\/HeaderSecondary'\]/);
@@ -175,82 +188,112 @@ test("mobile brand navigation hooks HeaderSecondary below core drawer controls",
   assert.doesNotMatch(bundle, /components\/HeaderPrimary|forum\/components\/HeaderPrimary/);
   assert.doesNotMatch(bundle, /IndexPage\.prototype/);
   assert.doesNotMatch(bundle, /sidebarItems/);
-  assert.match(bundle, /FlatRateBrandsNavigation/);
-  assert.doesNotMatch(bundle, /BRAND_NAVIGATION_TREE/);
+  assert.match(bundle, /FlatRateForumNavigation/);
+  assert.doesNotMatch(bundle, /var GROUPS = /);
+  assert.doesNotMatch(bundle, /FlatRateBrandsNavigation/);
 });
 
-test("mobile brand drawer renders explicit Brands tree below Search/Notifications/DM/profile", async () => {
+test("mobile drawer renders Community and Brands from the shared contract", async () => {
   const contract = await sharedNavigationContract();
   const { HeaderSecondary, TagLinkButton } = await drawerRuntime({
     activeSlug: "chevrolet",
-    tags: [
-      tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }),
-      tag({ name: "Start Here", slug: "start-here", position: 0 }),
-      tag({ name: "General Shop Discussion", slug: "general-shop-discussion", position: 1 }),
-      ...brandTagsFromTree(contract.tree),
-    ],
+    tags: tagsForContract(contract),
   });
 
   const items = new HeaderSecondary().items();
-  assert.equal(items.has("flatrateMobileBrandDrawer"), true);
-  assert.equal(items.getPriority("flatrateMobileBrandDrawer"), -50);
-  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("session"));
-  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("Messages"));
-  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("notifications"));
-  assert.ok(items.getPriority("flatrateMobileBrandDrawer") < items.getPriority("search"));
+  assert.equal(items.has("flatrateForumNavigationDrawer"), true);
+  assert.equal(items.getPriority("flatrateForumNavigationDrawer"), -50);
+  assert.ok(items.getPriority("flatrateForumNavigationDrawer") < items.getPriority("session"));
+  assert.ok(items.getPriority("flatrateForumNavigationDrawer") < items.getPriority("Messages"));
+  assert.ok(items.getPriority("flatrateForumNavigationDrawer") < items.getPriority("notifications"));
+  assert.ok(items.getPriority("flatrateForumNavigationDrawer") < items.getPriority("search"));
 
-  const nav = items.get("flatrateMobileBrandDrawer");
-  assert.equal(nav.selector, "nav.FlatRateMobileBrandDrawer");
-  assert.equal(nav.attrs["aria-label"], "Brands");
-  assert.equal(nav.children[0].children[0], "Brands");
-
-  const list = nav.children[1];
-  assert.equal(list.selector, "ul.FlatRateMobileBrandDrawer-links");
+  const nav = items.get("flatrateForumNavigationDrawer");
+  assert.equal(nav.selector, "nav.FlatRateForumNav.FlatRateForumNav--drawer");
+  assert.equal(nav.attrs["aria-label"], "Forum navigation");
   assert.deepEqual(
-    plain(drawerTopLevelItems(nav).map((item) => item.children[0].children[0])),
-    plain(contract.tree.map((node) => node.name)),
+    plain(groupSections(nav).map((section) => section.children[0].children[0])),
+    ["Community", "Brands"],
+  );
+
+  const brands = brandGroup(nav);
+  const community = groupSections(nav).find((section) => section.attrs["data-group"] === "community");
+  assert.deepEqual(
+    plain(drawerTopLevelItems(community).map((item) => item.children[0].children[0])),
+    ["Start Here", "General Shop Discussion"],
   );
   assert.deepEqual(
-    plain(list.children
-      .at(list.children.findIndex((item) => item.children[0].children[0] === "CDJR") + 1)
-      .children[0].children.map((item) => item.children[0].children[0])),
+    plain(drawerTopLevelItems(brands).map((item) => item.children[0].children[0])),
+    plain(contract.getGroup("brands").children.map((node) => node.displayName)),
+  );
+  assert.deepEqual(
+    plain(
+      brands.children[1].children
+        .at(brands.children[1].children.findIndex((item) => item.children[0].children[0] === "CDJR") + 1)
+        .children[0].children.map((item) => item.children[0].children[0]),
+    ),
     ["Chrysler", "Dodge", "Jeep", "Ram"],
   );
   assert.deepEqual(
-    plain(list.children
-      .at(list.children.findIndex((item) => item.children[0].children[0] === "GM") + 1)
-      .children[0].children.map((item) => item.children[0].children[0])),
+    plain(
+      brands.children[1].children
+        .at(brands.children[1].children.findIndex((item) => item.children[0].children[0] === "GM") + 1)
+        .children[0].children.map((item) => item.children[0].children[0]),
+    ),
     ["Buick", "Cadillac", "Chevrolet", "GMC"],
   );
-  assert.ok(drawerLinkItems(nav).every((item) => item.children[0].selector === TagLinkButton));
+  assert.ok(drawerLinkItems(brands).every((item) => item.children[0].selector === TagLinkButton));
   assert.deepEqual(
-    plain(drawerLinkItems(nav).map((item) => item.children[0].attrs.model.slug()).filter((slug) => slug === "chevrolet")),
-    ["chevrolet"],
-  );
-  assert.deepEqual(
-    plain(drawerLinkItems(nav).filter((item) => item.selector.includes(".active")).map((item) => item.children[0].children[0])),
+    plain(
+      drawerLinkItems(brands)
+        .filter((item) => item.selector.includes(".active"))
+        .map((item) => item.children[0].children[0]),
+    ),
     ["Chevrolet"],
   );
-  assert.equal(drawerTopLevelItems(nav).some((item) => item.children[0].children[0] === "Buick"), false);
-  assert.equal(drawerLinkItems(nav).length, 41);
+  assert.equal(drawerTopLevelItems(brands).some((item) => item.children[0].children[0] === "Buick"), false);
+  assert.equal(drawerLinkItems(brands).length, 41);
 });
 
-test("mobile brand drawer fails closed when tag data is unavailable", async () => {
+test("mobile drawer selects Community boards by active slug", async () => {
+  const contract = await sharedNavigationContract();
+  const { HeaderSecondary } = await drawerRuntime({
+    activeSlug: "start-here",
+    tags: tagsForContract(contract),
+  });
+
+  const community = groupSections(new HeaderSecondary().items().get("flatrateForumNavigationDrawer")).find(
+    (section) => section.attrs["data-group"] === "community",
+  );
+
+  assert.deepEqual(
+    plain(
+      drawerLinkItems(community)
+        .filter((item) => item.selector.includes(".active"))
+        .map((item) => item.children[0].children[0]),
+    ),
+    ["Start Here"],
+  );
+});
+
+test("mobile drawer fails closed when tag data is unavailable", async () => {
   const { HeaderSecondary } = await drawerRuntime({ tags: [] });
   const items = new HeaderSecondary().items();
 
-  assert.equal(items.has("flatrateMobileBrandDrawer"), false);
+  assert.equal(items.has("flatrateForumNavigationDrawer"), false);
   assert.equal(items.has("search"), true);
 });
 
-test("mobile brand drawer fails closed when explicit tree cannot resolve every tag", async () => {
+test("mobile drawer keeps Brands when one nested child tag is missing", async () => {
   const contract = await sharedNavigationContract();
   const { HeaderSecondary } = await drawerRuntime({
-    tags: brandTagsFromTree(contract.tree).filter((candidate) => candidate.slug() !== "cadillac"),
+    tags: tagsForContract(contract).filter((candidate) => candidate.slug() !== "cadillac"),
   });
   const items = new HeaderSecondary().items();
 
-  assert.equal(items.has("flatrateMobileBrandDrawer"), false);
+  assert.equal(items.has("flatrateForumNavigationDrawer"), true);
+  const brands = brandGroup(items.get("flatrateForumNavigationDrawer"));
+  assert.equal(drawerLinkItems(brands).length, 40);
 });
 
 test("mobile drawer CSS suppresses the legacy page-flow copy and is phone-only", async () => {
@@ -258,28 +301,28 @@ test("mobile drawer CSS suppresses the legacy page-flow copy and is phone-only",
 
   assert.match(
     less,
-    /\.IndexPage-nav > ul > \.item-flatrateMobileBrandLinks\s*\{\s*display: none !important;/s,
+    /\.IndexPage-nav > ul > \.item-flatrateForumNavigation\s*,\s*\.IndexPage-nav > ul > \.item-flatrateMobileBrandLinks\s*\{\s*display: none !important;/s,
   );
   assert.match(
     less,
-    /\.FlatRateMobileBrandDrawer,\s*\.Header-secondary \.item-flatrateMobileBrandDrawer\s*\{\s*display: none;/s,
+    /\.FlatRateForumNav--drawer,\s*\.Header-secondary \.item-flatrateForumNavigationDrawer/,
   );
   assert.match(
     less,
-    /@media \(max-width: 767px\)[\s\S]*\.Header-secondary \.item-flatrateMobileBrandDrawer\s*\{[\s\S]*display: block;/,
+    /@media \(max-width: 767px\)[\s\S]*\.Header-secondary \.item-flatrateForumNavigationDrawer\s*\{[\s\S]*display: block;/,
   );
   assert.match(
     less,
-    /\.FlatRateMobileBrandDrawer-links\s*\{[\s\S]*max-height: 60vh;[\s\S]*overflow-y: auto;/,
+    /\.FlatRateForumNav--drawer \.FlatRateForumNav-links\s*\{[\s\S]*max-height: 60vh;[\s\S]*overflow-y: auto;/,
   );
-  assert.match(less, /\.FlatRateMobileBrandDrawer-link\.TagLinkButton/);
+  assert.match(less, /\.FlatRateForumNav-link\.TagLinkButton/);
 });
 
 test("frontend extender loads the drawer bundle and override stylesheet", async () => {
   const extendPhp = await text("extend.php");
 
   assert.match(extendPhp, /resources\/less\/mobile-brand-drawer\.less/);
-  assert.match(extendPhp, /js\/dist\/brands-navigation\.js/);
+  assert.match(extendPhp, /js\/dist\/forum-navigation\.js/);
   assert.match(extendPhp, /js\/dist\/mobile-brand-drawer\.js/);
   assert.match(extendPhp, /js\/dist\/forum\.js/);
 });
