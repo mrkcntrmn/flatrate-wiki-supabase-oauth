@@ -65,6 +65,38 @@ test("FlatRateUserProvisioner reconciles linked users with one-way promotion onl
   assert.doesNotMatch(provisioner, /replaceRealEmail/);
 });
 
+test("promotion save race preserves placeholder only after ownership collision is proven", async () => {
+  const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
+  const policy = await text("src/Identity/ForumEmailPolicy.php");
+
+  assert.match(provisioner, /function reconcileLinkedEmail[\s\S]*catch \(QueryException \$error\)/s);
+  assert.match(provisioner, /recoverLinkedUserAfterPromotionRace\(/);
+  assert.match(provisioner, /\$persisted = User::find\(\$linked->id\)/);
+  assert.match(provisioner, /if \(! \$persisted\) \{\s*throw \$error;/s);
+  assert.match(
+    provisioner,
+    /\$incomingOwnedByAnotherUser = User::query\(\)[\s\S]*->where\('email', \$incomingEmail\)[\s\S]*->where\('id', '!=', \$persisted->id\)[\s\S]*->exists\(\)/s,
+  );
+  assert.match(provisioner, /ForumEmailPolicy::isPreservablePromotionRace\(/);
+  assert.match(
+    provisioner,
+    /if \(ForumEmailPolicy::isPreservablePromotionRace\([\s\S]*\)\) \{\s*return \$persisted;\s*\}\s*throw \$error;/s,
+  );
+
+  // Must not swallow every QueryException unconditionally.
+  assert.doesNotMatch(
+    provisioner,
+    /catch \(QueryException \$error\) \{\s*return \$linked;\s*\}/s,
+  );
+  assert.doesNotMatch(
+    provisioner,
+    /catch \(QueryException \$error\) \{\s*return \$this->linkedUser/s,
+  );
+
+  assert.match(policy, /function isPreservablePromotionRace/);
+  assert.match(policy, /return self::isInternal\(\$persistedEmail\) && \$incomingOwnedByAnotherUser/);
+});
+
 test("placeholder outbound suppression does not use a global recipient filter", async () => {
   const extension = await text("extend.php");
   const withoutComments = extension.replace(/\/\/.*$/gm, "");

@@ -75,6 +75,23 @@ expect(
     'malformed incoming blocked'
 );
 
+expect(
+    ForumEmailPolicy::isPreservablePromotionRace('forum-abc@users.flatrate.wiki', true) === true,
+    'internal + ownership collision is preservable race'
+);
+expect(
+    ForumEmailPolicy::isPreservablePromotionRace('forum-abc@users.flatrate.wiki', false) === false,
+    'internal without ownership collision is not preservable'
+);
+expect(
+    ForumEmailPolicy::isPreservablePromotionRace('real@example.com', true) === false,
+    'real persisted email is not a preservable promotion race'
+);
+expect(
+    ForumEmailPolicy::isPreservablePromotionRace('', true) === false,
+    'blank persisted email is not a preservable promotion race'
+);
+
 if ($failures > 0) {
     fwrite(STDERR, "forum-email-policy failures: {$failures}\n");
     exit(1);

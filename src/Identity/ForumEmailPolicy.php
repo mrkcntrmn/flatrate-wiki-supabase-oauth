@@ -63,6 +63,20 @@ final class ForumEmailPolicy
         return true;
     }
 
+    /**
+     * After a failed placeholder→real promotion save, preserve the linked
+     * placeholder identity only when the DB uniquely proves another user now
+     * owns the requested address and the linked row is still internal.
+     *
+     * Unrelated database failures must not be classified as preservable races.
+     */
+    public static function isPreservablePromotionRace(
+        string $persistedEmail,
+        bool $incomingOwnedByAnotherUser
+    ): bool {
+        return self::isInternal($persistedEmail) && $incomingOwnedByAnotherUser;
+    }
+
     private static function domain(string $email): ?string
     {
         $email = trim($email);
