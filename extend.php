@@ -10,11 +10,18 @@ use Flarum\User\Event\RegisteringFromProvider;
 use FoF\OAuth\Extend as OAuthExtend;
 
 return [
+    // Flarum 1.8 Frontend::js() stores one scalar path (overwrite).
+    // Register each forum JS file through its own Frontend extender so all
+    // three sources reach the compiled forum asset in load order.
     (new Extend\Frontend('forum'))
         ->css(__DIR__.'/resources/less/forum.less')
         ->css(__DIR__.'/resources/less/mobile-brand-drawer.less')
-        ->js(__DIR__.'/js/dist/forum-navigation.js')
-        ->js(__DIR__.'/js/dist/forum.js')
+        ->js(__DIR__.'/js/dist/forum-navigation.js'),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/forum.js'),
+
+    (new Extend\Frontend('forum'))
         ->js(__DIR__.'/js/dist/mobile-brand-drawer.js'),
 
     new Extend\Locales(__DIR__.'/resources/locale'),
