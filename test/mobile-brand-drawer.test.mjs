@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 
 const packageDir = new URL("../", import.meta.url);
 const text = (path) => readFile(new URL(path, packageDir), "utf8");
+const plain = (value) => JSON.parse(JSON.stringify(value));
 
 class ItemList {
   constructor() {
@@ -85,7 +86,36 @@ function tag({ name, slug, position, child = false }) {
   };
 }
 
+async function sharedNavigationContract() {
+  const context = { module: { exports: {} } };
+  runInNewContext(await text("js/dist/brands-navigation.js"), context);
+  return context.module.exports;
+}
+
+function brandTagsFromTree(tree) {
+  const flattened = [];
+  for (const node of tree) {
+    flattened.push(tag({ name: node.name, slug: node.slug, position: 1000 - flattened.length, child: node.slug === "cdjr" }));
+    for (const child of node.children ?? []) {
+      flattened.push(tag({ name: child.name, slug: child.slug, position: null, child: true }));
+    }
+  }
+  return flattened.reverse();
+}
+
+function drawerTopLevelItems(nav) {
+  return nav.children[1].children.filter((item) => item.selector === "li.FlatRateMobileBrandDrawer-item");
+}
+
+function drawerLinkItems(nav) {
+  return nav.children[1].children.flatMap((item) => {
+    if (item.selector === "li.FlatRateMobileBrandDrawer-item") return [item];
+    return item.children[0].children;
+  });
+}
+
 async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
+  const shared = await text("js/dist/brands-navigation.js");
   const bundle = await text("js/dist/mobile-brand-drawer.js");
   const initializers = new Map();
 
@@ -121,7 +151,7 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
     },
   };
 
-  runInNewContext(bundle, {
+  runInNewContext(`${shared}\n${bundle}`, {
     app,
     flarum: { core: { compat } },
     m: createMithril(activeSlug),
@@ -145,19 +175,19 @@ test("mobile brand navigation hooks HeaderSecondary below core drawer controls",
   assert.doesNotMatch(bundle, /components\/HeaderPrimary|forum\/components\/HeaderPrimary/);
   assert.doesNotMatch(bundle, /IndexPage\.prototype/);
   assert.doesNotMatch(bundle, /sidebarItems/);
+  assert.match(bundle, /FlatRateBrandsNavigation/);
+  assert.doesNotMatch(bundle, /BRAND_NAVIGATION_TREE/);
 });
 
-test("mobile brand drawer renders only vehicle makes below Search/Notifications/DM/profile", async () => {
+test("mobile brand drawer renders explicit Brands tree below Search/Notifications/DM/profile", async () => {
+  const contract = await sharedNavigationContract();
   const { HeaderSecondary, TagLinkButton } = await drawerRuntime({
-    activeSlug: "toyota",
+    activeSlug: "chevrolet",
     tags: [
       tag({ name: "Job Breakdown", slug: "job-breakdown", position: null }),
       tag({ name: "Start Here", slug: "start-here", position: 0 }),
       tag({ name: "General Shop Discussion", slug: "general-shop-discussion", position: 1 }),
-      tag({ name: "Toyota", slug: "toyota", position: 20 }),
-      tag({ name: "Audi", slug: "audi", position: 5 }),
-      tag({ name: "Child Tag", slug: "child-tag", position: 2, child: true }),
-      tag({ name: "Ford", slug: "ford", position: 10 }),
+      ...brandTagsFromTree(contract.tree),
     ],
   });
 
@@ -171,24 +201,38 @@ test("mobile brand drawer renders only vehicle makes below Search/Notifications/
 
   const nav = items.get("flatrateMobileBrandDrawer");
   assert.equal(nav.selector, "nav.FlatRateMobileBrandDrawer");
-  assert.equal(nav.attrs["aria-label"], "Vehicle brands");
-  assert.equal(nav.children[0].children[0], "Vehicle Brands");
+  assert.equal(nav.attrs["aria-label"], "Brands");
+  assert.equal(nav.children[0].children[0], "Brands");
 
   const list = nav.children[1];
   assert.equal(list.selector, "ul.FlatRateMobileBrandDrawer-links");
   assert.deepEqual(
-    list.children.map((item) => item.children[0].children[0]),
-    ["Audi", "Ford", "Toyota"],
-  );
-  assert.ok(list.children.every((item) => item.children[0].selector === TagLinkButton));
-  assert.deepEqual(
-    list.children.map((item) => item.children[0].attrs.model.slug()),
-    ["audi", "ford", "toyota"],
+    plain(drawerTopLevelItems(nav).map((item) => item.children[0].children[0])),
+    plain(contract.tree.map((node) => node.name)),
   );
   assert.deepEqual(
-    list.children.map((item) => item.selector.includes(".active")),
-    [false, false, true],
+    plain(list.children
+      .at(list.children.findIndex((item) => item.children[0].children[0] === "CDJR") + 1)
+      .children[0].children.map((item) => item.children[0].children[0])),
+    ["Chrysler", "Dodge", "Jeep", "Ram"],
   );
+  assert.deepEqual(
+    plain(list.children
+      .at(list.children.findIndex((item) => item.children[0].children[0] === "GM") + 1)
+      .children[0].children.map((item) => item.children[0].children[0])),
+    ["Buick", "Cadillac", "Chevrolet", "GMC"],
+  );
+  assert.ok(drawerLinkItems(nav).every((item) => item.children[0].selector === TagLinkButton));
+  assert.deepEqual(
+    plain(drawerLinkItems(nav).map((item) => item.children[0].attrs.model.slug()).filter((slug) => slug === "chevrolet")),
+    ["chevrolet"],
+  );
+  assert.deepEqual(
+    plain(drawerLinkItems(nav).filter((item) => item.selector.includes(".active")).map((item) => item.children[0].children[0])),
+    ["Chevrolet"],
+  );
+  assert.equal(drawerTopLevelItems(nav).some((item) => item.children[0].children[0] === "Buick"), false);
+  assert.equal(drawerLinkItems(nav).length, 41);
 });
 
 test("mobile brand drawer fails closed when tag data is unavailable", async () => {
@@ -197,6 +241,16 @@ test("mobile brand drawer fails closed when tag data is unavailable", async () =
 
   assert.equal(items.has("flatrateMobileBrandDrawer"), false);
   assert.equal(items.has("search"), true);
+});
+
+test("mobile brand drawer fails closed when explicit tree cannot resolve every tag", async () => {
+  const contract = await sharedNavigationContract();
+  const { HeaderSecondary } = await drawerRuntime({
+    tags: brandTagsFromTree(contract.tree).filter((candidate) => candidate.slug() !== "cadillac"),
+  });
+  const items = new HeaderSecondary().items();
+
+  assert.equal(items.has("flatrateMobileBrandDrawer"), false);
 });
 
 test("mobile drawer CSS suppresses the legacy page-flow copy and is phone-only", async () => {
@@ -225,6 +279,7 @@ test("frontend extender loads the drawer bundle and override stylesheet", async 
   const extendPhp = await text("extend.php");
 
   assert.match(extendPhp, /resources\/less\/mobile-brand-drawer\.less/);
+  assert.match(extendPhp, /js\/dist\/brands-navigation\.js/);
   assert.match(extendPhp, /js\/dist\/mobile-brand-drawer\.js/);
   assert.match(extendPhp, /js\/dist\/forum\.js/);
 });

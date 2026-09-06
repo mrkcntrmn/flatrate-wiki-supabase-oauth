@@ -7,7 +7,7 @@
         var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
         // Mount on HeaderSecondary so Search / Notifications / Direct Messages / profile
-        // (all HeaderSecondary items) render above Vehicle Brands in the phone drawer.
+        // (all HeaderSecondary items) render above Brands in the phone drawer.
         // Flarum's drawer mounts primary header controls before secondary ones in the DOM.
         var HeaderSecondary =
             compat['components/HeaderSecondary'] || compat['flarum/forum/components/HeaderSecondary'];
@@ -22,60 +22,9 @@
             return;
         }
 
-        // Community boards that are primary roots but not vehicle makes.
-        var EXCLUDED_BRAND_SLUGS = {
-            'start-here': true,
-            'general-shop-discussion': true
-        };
-
-        function tagPosition(tag) {
-            if (!tag || typeof tag.position !== 'function') {
-                return null;
-            }
-
-            var value = tag.position();
-            return value === null || typeof value === 'undefined' ? null : Number(value);
-        }
-
-        function isPrimaryRootTag(tag) {
-            if (!tag || typeof tag.slug !== 'function' || typeof tag.name !== 'function') {
-                return false;
-            }
-
-            if (tagPosition(tag) === null) {
-                return false;
-            }
-
-            var slug = String(tag.slug()).toLowerCase();
-            if (EXCLUDED_BRAND_SLUGS[slug]) {
-                return false;
-            }
-
-            if (typeof tag.isChild === 'function') {
-                return !tag.isChild();
-            }
-
-            return !(typeof tag.parent === 'function' && tag.parent());
-        }
-
-        function visibleBrandTags() {
-            if (!app || !app.store || typeof app.store.all !== 'function') {
-                return [];
-            }
-
-            var tags = app.store.all('tags');
-            if (!Array.isArray(tags)) {
-                return [];
-            }
-
-            return tags.filter(isPrimaryRootTag).sort(function (left, right) {
-                var positionDelta = tagPosition(left) - tagPosition(right);
-                if (positionDelta !== 0) {
-                    return positionDelta;
-                }
-
-                return String(left.name()).localeCompare(String(right.name()));
-            });
+        function visibleBrandTree() {
+            var contract = typeof FlatRateBrandsNavigation !== 'undefined' ? FlatRateBrandsNavigation : null;
+            return contract && typeof contract.resolve === 'function' ? contract.resolve(app) : [];
         }
 
         function currentTagSlug() {
@@ -86,43 +35,66 @@
             return String(m.route.param('tags') || '').toLowerCase();
         }
 
-        function renderBrandItem(tag, activeSlug) {
-            var slug = String(tag.slug());
+        function renderBrandItem(node, activeSlug, child) {
+            var slug = String(node.slug);
             var active = slug.toLowerCase() === activeSlug;
             var selector = 'li.FlatRateMobileBrandDrawer-item' + (active ? '.active' : '');
+            if (child) {
+                selector += '.FlatRateMobileBrandDrawer-item--child';
+            }
 
             return m(
                 selector,
                 m(
                     TagLinkButton,
                     {
-                        model: tag,
+                        model: node.tag,
                         params: {},
                         className: 'FlatRateMobileBrandDrawer-link'
                     },
-                    tag.name()
+                    node.name
                 )
             );
         }
 
+        function renderBrandNode(node, activeSlug) {
+            var children = node.children || [];
+            return [
+                renderBrandItem(node, activeSlug, false),
+                children.length
+                    ? m(
+                        'li.FlatRateMobileBrandDrawer-children',
+                        m(
+                            'ul',
+                            children.map(function (child) {
+                                return renderBrandItem(child, activeSlug, true);
+                            })
+                        )
+                    )
+                    : null
+            ];
+        }
+
         extend(HeaderSecondary.prototype, 'items', function (items) {
-            var tags = visibleBrandTags();
-            if (!tags.length) {
+            var tree = visibleBrandTree();
+            if (!tree.length) {
                 return;
             }
 
             var activeSlug = currentTagSlug();
+            var brandItems = [];
+            tree.forEach(function (node) {
+                brandItems = brandItems.concat(renderBrandNode(node, activeSlug).filter(Boolean));
+            });
 
             // Below session/profile (priority 0) and Messages (5) / Notifications (10) / Search (30).
             items.add(
                 'flatrateMobileBrandDrawer',
-                m('nav.FlatRateMobileBrandDrawer', { 'aria-label': 'Vehicle brands' }, [
-                    m('div.FlatRateMobileBrandDrawer-title', 'Vehicle Brands'),
+                m('nav.FlatRateMobileBrandDrawer', { 'aria-label': 'Brands' }, [
+                    m('div.FlatRateMobileBrandDrawer-title', 'Brands'),
                     m(
                         'ul.FlatRateMobileBrandDrawer-links',
-                        tags.map(function (tag) {
-                            return renderBrandItem(tag, activeSlug);
-                        })
+                        brandItems
                     )
                 ]),
                 -50
