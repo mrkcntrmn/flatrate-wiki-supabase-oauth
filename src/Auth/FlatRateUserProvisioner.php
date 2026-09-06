@@ -2,6 +2,7 @@
 
 namespace FlatRate\SupabaseOAuth\Auth;
 
+use FlatRate\SupabaseOAuth\Identity\ForumEmailPolicy;
 use FlatRate\SupabaseOAuth\Identity\NeutralIdentity;
 use Flarum\User\Command\RegisterUser;
 use Flarum\User\Command\RegisterUserHandler;
@@ -33,7 +34,7 @@ final class FlatRateUserProvisioner
         }
 
         if ($linked = $this->linkedUser($sub)) {
-            return $linked;
+            return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
         }
 
         // Email is an attribute, never the cross-system identity key. If an
@@ -54,11 +55,11 @@ final class FlatRateUserProvisioner
 
         try {
             /** @var User $user */
-            $user = $connection->transaction(function () use ($sub, $email, $payload, $username) {
+            $user = $connection->transaction(function () use ($sub, $email, $emailVerified, $payload, $username) {
                 // Re-check inside the transaction so retries and concurrent
                 // requests converge on an already-linked account when possible.
                 if ($linked = $this->linkedUser($sub)) {
-                    return $linked;
+                    return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
                 }
 
                 if (User::where('email', $email)->exists()) {
@@ -111,13 +112,97 @@ final class FlatRateUserProvisioner
             // its committed provider row instead of creating a duplicate user.
             for ($attempt = 0; $attempt < 3; $attempt++) {
                 if ($linked = $this->linkedUser($sub)) {
-                    return $linked;
+                    return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
                 }
                 usleep(20000);
             }
 
             throw $error;
         }
+    }
+
+    /**
+     * One-way lazy promotion for an already-linked Flarum user.
+     *
+     * Allowed mutation: reserved internal placeholder -> confirmed real email.
+     * Never: real -> placeholder, real A -> real B, or identity/provider changes.
+     *
+     * The explicit collision exists() check is advisory only. The unique DB
+     * constraint on users.email is the final concurrency barrier; a racing
+     * claim of the target address must preserve the placeholder-backed user
+     * and Community access rather than escaping as an SSO failure.
+     */
+    private function reconcileLinkedEmail(User $linked, string $incomingEmail, bool $incomingEmailVerified): User
+    {
+        $connection = $linked->getConnection();
+
+        try {
+            return $connection->transaction(function () use ($linked, $incomingEmail, $incomingEmailVerified) {
+                /** @var User|null $user */
+                $user = User::query()
+                    ->whereKey($linked->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new RuntimeException('flatrate_provider_user_missing');
+                }
+
+                $currentEmail = trim((string) $user->email);
+
+                if (! ForumEmailPolicy::canPromote($currentEmail, $incomingEmail, $incomingEmailVerified)) {
+                    return $user;
+                }
+
+                $collision = User::query()
+                    ->where('email', $incomingEmail)
+                    ->where('id', '!=', $user->id)
+                    ->exists();
+
+                if ($collision) {
+                    // Preserve the linked placeholder identity and Community access.
+                    // Explicit reconciliation is required; do not create/merge users.
+                    return $user;
+                }
+
+                $user->changeEmail($incomingEmail);
+                $user->activate();
+                $user->save();
+
+                return $user;
+            });
+        } catch (QueryException $error) {
+            return $this->recoverLinkedUserAfterPromotionRace($linked, $incomingEmail, $error);
+        }
+    }
+
+    /**
+     * After promotion-save rollback, preserve the linked placeholder only when
+     * state proves an email-ownership race. Unrelated QueryExceptions rethrow.
+     */
+    private function recoverLinkedUserAfterPromotionRace(
+        User $linked,
+        string $incomingEmail,
+        QueryException $error
+    ): User {
+        $persisted = User::find($linked->id);
+        if (! $persisted) {
+            throw $error;
+        }
+
+        $incomingOwnedByAnotherUser = User::query()
+            ->where('email', $incomingEmail)
+            ->where('id', '!=', $persisted->id)
+            ->exists();
+
+        if (ForumEmailPolicy::isPreservablePromotionRace(
+            (string) $persisted->email,
+            $incomingOwnedByAnotherUser
+        )) {
+            return $persisted;
+        }
+
+        throw $error;
     }
 
     private function linkedUser(string $sub): ?User
