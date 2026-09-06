@@ -1,0 +1,4 @@
+Exact copy of flarum/framework tag v1.8.19
+framework/core/src/Extend/Frontend.php
+SHA256=dcd56e4a51d0ee4a6eccbfed7e2d4a0b6c7232ca289c2771abd0ef937b906141
+Used when vendor/flarum/core is not installed in this extension CI.
