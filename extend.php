@@ -2,6 +2,8 @@
 
 namespace FlatRate\SupabaseOAuth;
 
+use FlatRate\SupabaseOAuth\Subscription\FilterInheritedIgnoredTagMentions;
+use FlatRate\SupabaseOAuth\Subscription\FollowTagsFamilyServiceProvider;
 use Flarum\Api\Serializer\PostSerializer;
 use Flarum\Extend;
 use Flarum\Post\Event\Deleted;
@@ -34,11 +36,26 @@ return [
     (new Extend\ServiceProvider())
         ->register(ServiceProvider::class),
 
+    // FORUM-SUB-001: GM/CDJR family notification inheritance.
+    // Bound only when FoF Follow Tags is enabled. Does not hard-depend on FoF
+    // classes at boot when the extension is absent/disabled.
+    (new Extend\Conditional())
+        ->whenExtensionEnabled('fof-follow-tags', [
+            (new Extend\ServiceProvider())
+                ->register(FollowTagsFamilyServiceProvider::class),
+
+            // beforeSending may only remove recipients (inherited ignore).
+            // Family recipients are added in FamilyAwareNotificationSyncer
+            // before parent::sync() reconciliation — never here.
+            (new Extend\Notification())
+                ->beforeSending(FilterInheritedIgnoredTagMentions::class),
+        ]),
+
     new OAuthExtend\RegisterProvider(Providers\FlatRate::class),
 
     // Replace only the outbound email notification driver. Do not use
-    // Notification::beforeSending(); that would filter recipients for every
-    // driver (including browser/on-site alerts).
+    // Notification::beforeSending() for reserved-email filtering; that would
+    // filter recipients for every driver (including browser/on-site alerts).
     (new Extend\Notification())
         ->driver('email', Notification\DeliverableEmailNotificationDriver::class),
 

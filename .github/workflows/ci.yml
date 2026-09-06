@@ -38,5 +38,8 @@ jobs:
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 
+      - name: Run FORUM-SUB-001 family follow gates
+        run: php test/forum-sub001-family-follow.php
+
       - name: Lint PHP
         run: find . -name '*.php' -print0 | xargs -0 -n1 php -l
