@@ -266,6 +266,10 @@ This value is self-declared profile metadata only. It does not indicate employme
 
 FoF Masquerade stores dropdown option lists in `fof_masquerade_fields.validation` as a comma-separated `in:` rule. The upstream default column is `VARCHAR(255)`, which truncates long brand lists. This extension widens that column to `TEXT` when Masquerade is present so the full Affiliated Brand vocabulary can be saved.
 
+## Brands navigation presentation
+
+Mobile Brands navigation renders from the shared `js/dist/brands-navigation.js` presentation contract. GM and CDJR are top-level Brand links with Buick/Cadillac/Chevrolet/GMC and Chrysler/Dodge/Jeep/Ram nested beneath them for presentation only. The extension does not infer Brand membership from Flarum root tags, `parent()`, `isChild()`, or tag position.
+
 ## Production proof gate
 
 Before removing the OAuth product path, verify:

@@ -49,6 +49,17 @@
     padding: 0;
   }
 
+  .FlatRateMobileBrandDrawer-children {
+    margin: 0 0 2px;
+    padding: 0;
+  }
+
+  .FlatRateMobileBrandDrawer-children > ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
   .FlatRateMobileBrandDrawer-link.TagLinkButton {
     display: flex;
     align-items: center;
@@ -62,6 +73,12 @@
     line-height: 20px;
     text-align: left;
     text-decoration: none;
+  }
+
+  .FlatRateMobileBrandDrawer-item--child .FlatRateMobileBrandDrawer-link.TagLinkButton {
+    padding-left: 24px;
+    color: @muted-color;
+    font-size: 12px;
   }
 
   .FlatRateMobileBrandDrawer-link.TagLinkButton:hover,

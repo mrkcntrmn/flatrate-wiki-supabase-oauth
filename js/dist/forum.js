@@ -282,59 +282,9 @@
             return;
         }
 
-        function tagPosition(tag) {
-            if (!tag || typeof tag.position !== 'function') {
-                return null;
-            }
-
-            var value = tag.position();
-            return value === null || typeof value === 'undefined' ? null : Number(value);
-        }
-
-        var EXCLUDED_BRAND_SLUGS = {
-            'start-here': true,
-            'general-shop-discussion': true
-        };
-
-        function isPrimaryRootTag(tag) {
-            if (!tag || typeof tag.slug !== 'function' || typeof tag.name !== 'function') {
-                return false;
-            }
-
-            if (tagPosition(tag) === null) {
-                return false;
-            }
-
-            var slug = String(tag.slug()).toLowerCase();
-            if (EXCLUDED_BRAND_SLUGS[slug]) {
-                return false;
-            }
-
-            if (typeof tag.isChild === 'function') {
-                return !tag.isChild();
-            }
-
-            return !(typeof tag.parent === 'function' && tag.parent());
-        }
-
-        function visibleBrandTags() {
-            if (!app || !app.store || typeof app.store.all !== 'function') {
-                return [];
-            }
-
-            var tags = app.store.all('tags');
-            if (!Array.isArray(tags)) {
-                return [];
-            }
-
-            return tags.filter(isPrimaryRootTag).sort(function (left, right) {
-                var positionDelta = tagPosition(left) - tagPosition(right);
-                if (positionDelta !== 0) {
-                    return positionDelta;
-                }
-
-                return String(left.name()).localeCompare(String(right.name()));
-            });
+        function visibleBrandTree() {
+            var contract = typeof FlatRateBrandsNavigation !== 'undefined' ? FlatRateBrandsNavigation : null;
+            return contract && typeof contract.resolve === 'function' ? contract.resolve(app) : [];
         }
 
         function currentTagSlug() {
@@ -345,24 +295,39 @@
             return String(m.route.param('tags') || '').toLowerCase();
         }
 
-        function renderBrandLink(tag, activeSlug) {
-            var slug = String(tag.slug());
+        function renderBrandLink(node, activeSlug, child) {
+            var slug = String(node.slug);
             var active = slug.toLowerCase() === activeSlug;
 
             return m(
                 LinkButton,
                 {
                     href: app.route('tag', { tags: slug }),
-                    className: 'FlatRateMobileBrandSidebar-link',
+                    className: 'FlatRateMobileBrandSidebar-link' + (child ? ' FlatRateMobileBrandSidebar-link--child' : ''),
                     active: active
                 },
-                tag.name()
+                node.name
             );
         }
 
+        function renderBrandNode(node, activeSlug) {
+            var children = node.children || [];
+            return m('div.FlatRateMobileBrandSidebar-node', [
+                renderBrandLink(node, activeSlug, false),
+                children.length
+                    ? m(
+                        'div.FlatRateMobileBrandSidebar-children',
+                        children.map(function (child) {
+                            return renderBrandLink(child, activeSlug, true);
+                        })
+                    )
+                    : null
+            ]);
+        }
+
         extend(IndexPage.prototype, 'sidebarItems', function (items) {
-            var tags = visibleBrandTags();
-            if (!tags.length) {
+            var tree = visibleBrandTree();
+            if (!tree.length) {
                 return;
             }
 
@@ -370,12 +335,12 @@
 
             items.add(
                 'flatrateMobileBrandLinks',
-                m('nav.FlatRateMobileBrandSidebar', { 'aria-label': 'Vehicle brands' }, [
-                    m('div.FlatRateMobileBrandSidebar-title', 'Vehicle Brands'),
+                m('nav.FlatRateMobileBrandSidebar', { 'aria-label': 'Brands' }, [
+                    m('div.FlatRateMobileBrandSidebar-title', 'Brands'),
                     m(
                         'div.FlatRateMobileBrandSidebar-links',
-                        tags.map(function (tag) {
-                            return renderBrandLink(tag, activeSlug);
+                        tree.map(function (node) {
+                            return renderBrandNode(node, activeSlug);
                         })
                     )
                 ]),
