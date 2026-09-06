@@ -23,12 +23,29 @@ The production target has two complementary paths:
 - Internal bridge requests require a deployment-only HMAC secret, timestamp, and nonce.
 - Forum-entry tickets are cryptographically random, hashed at rest, expire after 45 seconds, and are atomically single-use.
 
+### Reserved internal email namespace (FORUM-EMAIL-002)
+
+`@users.flatrate.wiki` is a reserved Flarum-internal namespace. FlatRate uses deterministic placeholder addresses there only to satisfy Flarum's unique email-shaped field while a verified phone user's real email remains unconfirmed.
+
+Hard rules:
+
+- the entire `users.flatrate.wiki` domain is `INTERNAL=true` and `OUTBOUND_DELIVERABLE=false`;
+- SSO `email_verified=true` does **not** imply outbound email deliverability;
+- FlatRate replaces only Flarum's `email` notification driver so placeholder-backed users still receive browser/on-site alerts;
+- do not use a global `Notification::beforeSending()` recipient filter;
+- when a later SSO call carries a confirmed real email for the same `sub`, the already-linked Flarum user is promoted one-way from the placeholder to that real address;
+- promotion never changes Flarum user id, `login_providers` identifier, Supabase `sub`, nickname, preferences, or discussion/post ownership;
+- never automatically downgrade a real email back to a placeholder, and never auto-replace real email A with real email B;
+- `sub` remains authoritative; email remains a mutable attribute;
+- DNS for `users.flatrate.wiki` must not be created as a workaround (`DNS_CHANGE_REQUIRED=false`).
+
 ### Identity fields
 
 | Concern | Source of truth | Example | Public? |
 | --- | --- | --- | --- |
 | Authentication identity | Supabase `sub` | UUID-like subject | No |
 | Login/account address | Supabase/Flarum email | `tech@example.com` | No |
+| Internal Flarum schema email | FlatRate placeholder | `forum-<hash>@users.flatrate.wiki` | No |
 | Flarum routing username | Derived from `sub` | `tech_a1b2c3d4` | Yes |
 | Display name / nickname | Flarum Nicknames | `EV Tech` | Yes |
 

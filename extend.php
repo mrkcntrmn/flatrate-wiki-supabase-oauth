@@ -29,6 +29,12 @@ return [
 
     new OAuthExtend\RegisterProvider(Providers\FlatRate::class),
 
+    // Replace only the outbound email notification driver. Do not use
+    // Notification::beforeSending(); that would filter recipients for every
+    // driver (including browser/on-site alerts).
+    (new Extend\Notification())
+        ->driver('email', Notification\DeliverableEmailNotificationDriver::class),
+
     (new Extend\Event())
         ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class)
         ->listen(Saving::class, Markers\SaveJobBreakdownMarker::class)

@@ -32,5 +32,8 @@ jobs:
       - name: Validate Composer metadata
         run: composer validate --strict --no-check-publish
 
+      - name: Run reserved email policy gates
+        run: php test/forum-email-policy.php
+
       - name: Lint PHP
         run: find . -name '*.php' -print0 | xargs -0 -n1 php -l

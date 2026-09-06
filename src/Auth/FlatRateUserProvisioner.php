@@ -2,6 +2,7 @@
 
 namespace FlatRate\SupabaseOAuth\Auth;
 
+use FlatRate\SupabaseOAuth\Identity\ForumEmailPolicy;
 use FlatRate\SupabaseOAuth\Identity\NeutralIdentity;
 use Flarum\User\Command\RegisterUser;
 use Flarum\User\Command\RegisterUserHandler;
@@ -33,7 +34,7 @@ final class FlatRateUserProvisioner
         }
 
         if ($linked = $this->linkedUser($sub)) {
-            return $linked;
+            return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
         }
 
         // Email is an attribute, never the cross-system identity key. If an
@@ -54,11 +55,11 @@ final class FlatRateUserProvisioner
 
         try {
             /** @var User $user */
-            $user = $connection->transaction(function () use ($sub, $email, $payload, $username) {
+            $user = $connection->transaction(function () use ($sub, $email, $emailVerified, $payload, $username) {
                 // Re-check inside the transaction so retries and concurrent
                 // requests converge on an already-linked account when possible.
                 if ($linked = $this->linkedUser($sub)) {
-                    return $linked;
+                    return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
                 }
 
                 if (User::where('email', $email)->exists()) {
@@ -111,13 +112,59 @@ final class FlatRateUserProvisioner
             // its committed provider row instead of creating a duplicate user.
             for ($attempt = 0; $attempt < 3; $attempt++) {
                 if ($linked = $this->linkedUser($sub)) {
-                    return $linked;
+                    return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
                 }
                 usleep(20000);
             }
 
             throw $error;
         }
+    }
+
+    /**
+     * One-way lazy promotion for an already-linked Flarum user.
+     *
+     * Allowed mutation: reserved internal placeholder -> confirmed real email.
+     * Never: real -> placeholder, real A -> real B, or identity/provider changes.
+     */
+    private function reconcileLinkedEmail(User $linked, string $incomingEmail, bool $incomingEmailVerified): User
+    {
+        $connection = $linked->getConnection();
+
+        return $connection->transaction(function () use ($linked, $incomingEmail, $incomingEmailVerified) {
+            /** @var User|null $user */
+            $user = User::query()
+                ->whereKey($linked->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $user) {
+                throw new RuntimeException('flatrate_provider_user_missing');
+            }
+
+            $currentEmail = trim((string) $user->email);
+
+            if (! ForumEmailPolicy::canPromote($currentEmail, $incomingEmail, $incomingEmailVerified)) {
+                return $user;
+            }
+
+            $collision = User::query()
+                ->where('email', $incomingEmail)
+                ->where('id', '!=', $user->id)
+                ->exists();
+
+            if ($collision) {
+                // Preserve the linked placeholder identity and Community access.
+                // Explicit reconciliation is required; do not create/merge users.
+                return $user;
+            }
+
+            $user->changeEmail($incomingEmail);
+            $user->activate();
+            $user->save();
+
+            return $user;
+        });
     }
 
     private function linkedUser(string $sub): ?User

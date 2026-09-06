@@ -59,6 +59,8 @@ test("reusable provisioner is idempotent and never links by email", async () => 
   assert.match(provisioner, /catch \(QueryException/);
   assert.match(provisioner, /NeutralIdentity::handle\(\$sub\)/);
   assert.match(provisioner, /NeutralIdentity::nickname\(\$userNumber\)/);
+  assert.match(provisioner, /reconcileLinkedEmail\(/);
+  assert.match(provisioner, /ForumEmailPolicy::canPromote/);
 });
 
 test("OAuth fallback delegates new-user creation to the reusable provisioner", async () => {
