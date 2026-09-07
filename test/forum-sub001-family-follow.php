@@ -249,17 +249,27 @@ assertTrue(!str_contains($npView, '{post}'), 'newPost.blade.php no {post}');
 
 $syncerImpl = file_get_contents($root.'/src/Subscription/FamilyAwareNotificationSyncer.php');
 assertTrue(str_contains($syncerImpl, 'extends NotificationSyncer'), 'NOTIFICATION_SYNCER_BASE_CLASS=Flarum\\Notification\\NotificationSyncer');
-assertTrue(preg_match('/\$resolved\s*=\s*\$this->resolver->resolve[\s\S]*parent::sync\(\s*\$blueprint\s*,\s*\$resolved\s*\)/s', $syncerImpl) === 1, 'FAMILY_RECIPIENT_RESOLUTION_HAPPENS_BEFORE_PARENT_SYNC');
+assertTrue(preg_match('/\$resolved\s*=\s*\$this->resolver->resolve[\s\S]*\$this->syncWithParent\(\s*\$blueprint\s*,\s*\$resolved\s*\)/s', $syncerImpl) === 1, 'FAMILY_RECIPIENT_RESOLUTION_HAPPENS_BEFORE_PARENT_SYNC');
 $syncerImplCode = preg_replace('/\/\*.*?\*\//s', '', preg_replace('/\/\/.*$/m', '', $syncerImpl));
 assertTrue(!str_contains($syncerImplCode, 'beforeSending'), 'syncer implementation does not invoke beforeSending to add recipients');
+assertTrue(str_contains($syncerImpl, 'parent::sync($blueprint, $users)'), 'syncWithParent delegates to parent::sync');
+
+$resolverSrc = file_get_contents($root.'/src/Subscription/FollowTagsFamilyRecipientResolver.php');
+assertTrue(preg_match('/\$discussionVisible\s*=\s*false/', $resolverSrc) === 1, 'DISCUSSION_VISIBILITY_EXCEPTION_FAILS_CLOSED default');
+assertTrue(preg_match('/\$postVisible\s*=\s*false/', $resolverSrc) === 1, 'POST_VISIBILITY_EXCEPTION_FAILS_CLOSED default');
+assertTrue(!preg_match('/catch\s*\([^)]*Throwable[^)]*\)\s*\{\s*\$discussionVisible\s*=\s*true/', $resolverSrc), 'no discussion fail-open');
+assertTrue(!preg_match('/catch\s*\([^)]*Throwable[^)]*\)\s*\{\s*\$postVisible\s*=\s*true/', $resolverSrc), 'no post fail-open');
+assertTrue(str_contains($resolverSrc, 'function isDiscussionVisibleTo'), 'discussion visibility helper present');
+assertTrue(str_contains($resolverSrc, 'function isPostVisibleTo'), 'post visibility helper present');
 
 assertTrue(class_exists(TagFamilyRegistry::class), 'registry loadable');
 assertTrue(!class_exists('FoF\\FollowTags\\Notifications\\NewDiscussionBlueprint', false), 'FoF blueprints not required at boot for pure tests');
 
-// Binding contract (source-level): provider binds NotificationSyncer to FamilyAware
+// Binding contract (source-level only — runtime proof is forum-sub001-runtime.php)
 $provider = file_get_contents($root.'/src/Subscription/FollowTagsFamilyServiceProvider.php');
-assertTrue(str_contains($provider, 'NotificationSyncer::class'), 'NOTIFICATION_SYNCER_BINDING_TEST source');
+assertTrue(str_contains($provider, 'NotificationSyncer::class'), 'NOTIFICATION_SYNCER_BINDING source marker');
 assertTrue(str_contains($provider, 'FamilyAwareNotificationSyncer'), 'NotificationSyncer resolves FamilyAware subclass');
+assertTrue(str_contains($provider, 'FamilyUserLookup::class'), 'FamilyUserLookup registered');
 
 if ($failures > 0) {
     fwrite(STDERR, "forum-sub001-family-follow.php: {$failures} failure(s)\n");
@@ -275,5 +285,6 @@ echo "NEW_DISCUSSION_TAG_FAMILY_RECIPIENT_TEST=PASS\n";
 echo "INHERITED_IGNORE_MENTION_TEST=PASS\n";
 echo "FAMILY_RECIPIENT_DEDUPE_TEST=PASS\n";
 echo "NON_FAMILY_RECIPIENT_PARITY_TEST=PASS\n";
-echo "FOLLOW_TAGS_DISABLED_BOOT_TEST=PASS\n";
-echo "NOTIFICATION_SYNCER_BINDING_TEST=PASS\n";
+echo "DISCUSSION_VISIBILITY_EXCEPTION_FAILS_CLOSED=true\n";
+echo "POST_VISIBILITY_EXCEPTION_FAILS_CLOSED=true\n";
+echo "NOTE=runtime binding/resolver proofs are in test/forum-sub001-runtime.php\n";

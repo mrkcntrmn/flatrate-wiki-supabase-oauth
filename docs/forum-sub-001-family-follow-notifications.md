@@ -73,10 +73,18 @@ It resolves the final recipient list **before** `parent::sync()`, only for:
 * `FoF\FollowTags\Notifications\NewPostBlueprint`
 * `FoF\FollowTags\Notifications\NewDiscussionTagBlueprint`
 
+Inherited candidates have **not** already passed FoF visibility queries.
+Discussion and post visibility checks therefore **fail closed**: any
+exception or missing positive check makes the recipient ineligible.
+
 All other blueprints pass through unchanged.
 
 Registration is gated with Flarum 1.8.19 `Extend\Conditional::whenExtensionEnabled('fof-follow-tags', ...)`.
 There is no hard Composer dependency on `fof/follow-tags`.
+
+Runtime proofs (binding, resolver, visibility exceptions) live in the
+disposable harness under `test/harness/forum-sub001-runtime/` and
+`test/forum-sub001-runtime.php`.
 
 ## Inherited ignore + mentions
 

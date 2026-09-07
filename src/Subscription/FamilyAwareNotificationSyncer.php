@@ -24,6 +24,17 @@ class FamilyAwareNotificationSyncer extends NotificationSyncer
     {
         $resolved = $this->resolver->resolve($blueprint, $users);
 
-        parent::sync($blueprint, $resolved);
+        $this->syncWithParent($blueprint, $resolved);
+    }
+
+    /**
+     * Seam for runtime tests to observe the final recipient array without
+     * requiring Flarum notification table writes.
+     *
+     * @param \Flarum\User\User[] $users
+     */
+    protected function syncWithParent(BlueprintInterface $blueprint, array $users): void
+    {
+        parent::sync($blueprint, $users);
     }
 }

@@ -26,7 +26,8 @@ final class FollowTagsFamilyRecipientResolver
         private TagFamilyRegistry $registry,
         private EffectiveTagSubscriptionResolver $subscriptionResolver,
         private FollowTagsFamilyRecipientEvaluator $evaluator,
-        private ConnectionInterface $db
+        private ConnectionInterface $db,
+        private FamilyUserLookup $users
     ) {
     }
 
@@ -95,28 +96,23 @@ final class FollowTagsFamilyRecipientResolver
         foreach ($candidates as $userId => $user) {
             $userSubs = $subscriptions[$userId] ?? [];
 
-            $discussionVisible = true;
-            $postVisible = true;
+            // Fail closed: inherited candidates have not already passed FoF
+            // visibility queries. Exceptions and missing checks are ineligible.
+            $discussionVisible = false;
+            $postVisible = false;
             $isReader = true;
             $lastRead = null;
 
-            // Prefer live visibility checks when models are available.
             if (isset($context['discussion']) && is_object($context['discussion'])) {
-                try {
-                    $discussionVisible = (bool) $context['discussion']
-                        ->newQuery()
-                        ->whereVisibleTo($user)
-                        ->find($context['discussion']->id);
-                } catch (\Throwable) {
-                    $discussionVisible = true;
-                }
+                $discussionVisible = $this->isDiscussionVisibleTo($context['discussion'], $user);
             }
+
             if (isset($context['post']) && is_object($context['post'])) {
-                try {
-                    $postVisible = (bool) $context['post']->isVisibleTo($user);
-                } catch (\Throwable) {
-                    $postVisible = true;
-                }
+                $postVisible = $this->isPostVisibleTo($context['post'], $user);
+            } else {
+                // New discussion / re-tag / reply all require a visible post in
+                // FoF 1.3.0. Missing post model → fail closed.
+                $postVisible = false;
             }
 
             if ($mode === FollowTagsFamilyRecipientEvaluator::MODE_NEW_POST) {
@@ -155,6 +151,33 @@ final class FollowTagsFamilyRecipientResolver
         }
 
         return array_values($resolved);
+    }
+
+    /**
+     * Discussion visibility for inherited candidates. Any exception fails closed.
+     */
+    private function isDiscussionVisibleTo(object $discussion, User $user): bool
+    {
+        try {
+            return (bool) $discussion
+                ->newQuery()
+                ->whereVisibleTo($user)
+                ->find($discussion->id);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Post visibility for inherited candidates. Any exception fails closed.
+     */
+    private function isPostVisibleTo(object $post, User $user): bool
+    {
+        try {
+            return (bool) $post->isVisibleTo($user);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function modeFor(BlueprintInterface $blueprint): ?string
@@ -269,7 +292,7 @@ final class FollowTagsFamilyRecipientResolver
             return [];
         }
 
-        return User::query()->whereIn('id', $userIds)->get();
+        return $this->users->findByIds(array_map('intval', $userIds));
     }
 
     /**

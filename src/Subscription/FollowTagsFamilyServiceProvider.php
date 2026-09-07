@@ -34,12 +34,17 @@ class FollowTagsFamilyServiceProvider extends AbstractServiceProvider
             );
         });
 
+        $this->container->singleton(FamilyUserLookup::class, function () {
+            return new FamilyUserLookup();
+        });
+
         $this->container->singleton(FollowTagsFamilyRecipientResolver::class, function (Container $container) {
             return new FollowTagsFamilyRecipientResolver(
                 $container->make(TagFamilyRegistry::class),
                 $container->make(EffectiveTagSubscriptionResolver::class),
                 $container->make(FollowTagsFamilyRecipientEvaluator::class),
-                $container->make(ConnectionInterface::class)
+                $container->make(ConnectionInterface::class),
+                $container->make(FamilyUserLookup::class)
             );
         });
 

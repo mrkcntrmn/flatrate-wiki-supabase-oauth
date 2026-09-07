@@ -65,9 +65,26 @@ test("FORUM-SUB-001: NotificationSyncer subclass resolves before parent::sync", 
   const syncer = await text("src/Subscription/FamilyAwareNotificationSyncer.php");
   assert.match(syncer, /extends NotificationSyncer/);
   assert.match(syncer, /\$this->resolver->resolve/);
-  assert.match(syncer, /parent::sync\(\s*\$blueprint\s*,\s*\$resolved\s*\)/);
+  assert.match(syncer, /\$this->syncWithParent\(\s*\$blueprint\s*,\s*\$resolved\s*\)/);
+  assert.match(syncer, /parent::sync\(\s*\$blueprint\s*,\s*\$users\s*\)/);
   const withoutComments = syncer.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   assert.doesNotMatch(withoutComments, /beforeSending/);
+});
+
+test("FORUM-SUB-001: visibility checks fail closed on exception", async () => {
+  const resolver = await text("src/Subscription/FollowTagsFamilyRecipientResolver.php");
+  assert.match(resolver, /\$discussionVisible\s*=\s*false/);
+  assert.match(resolver, /\$postVisible\s*=\s*false/);
+  assert.match(resolver, /function isDiscussionVisibleTo/);
+  assert.match(resolver, /function isPostVisibleTo/);
+  assert.doesNotMatch(
+    resolver,
+    /catch\s*\([^)]*Throwable[^)]*\)\s*\{\s*\$discussionVisible\s*=\s*true/,
+  );
+  assert.doesNotMatch(
+    resolver,
+    /catch\s*\([^)]*Throwable[^)]*\)\s*\{\s*\$postVisible\s*=\s*true/,
+  );
 });
 
 test("FORUM-SUB-001: composer.json has no hard Follow Tags dependency", async () => {
