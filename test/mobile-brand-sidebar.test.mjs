@@ -148,11 +148,21 @@ async function sidebarRuntime({ activeSlug = "toyota", tags = [] } = {}) {
     }
   }
 
+  class DiscussionPage {
+    sidebarItems() {
+      const items = new ItemList();
+      items.add("controls", { selector: "SplitDropdown" }, 100);
+      items.add("scrubber", { selector: "PostStreamScrubber" }, -100);
+      return items;
+    }
+  }
+
   class LinkButton {}
 
   const compat = {
     extend: { extend: flarumExtend },
     "components/IndexPage": IndexPage,
+    "components/DiscussionPage": DiscussionPage,
     "components/LinkButton": LinkButton,
   };
 
@@ -184,7 +194,7 @@ async function sidebarRuntime({ activeSlug = "toyota", tags = [] } = {}) {
   assert.equal(typeof initializer, "function");
   initializer();
 
-  return { IndexPage, LinkButton };
+  return { IndexPage, DiscussionPage, LinkButton };
 }
 
 test("desktop forum navigation hooks IndexPage through Flarum compat", async () => {
@@ -193,13 +203,16 @@ test("desktop forum navigation hooks IndexPage through Flarum compat", async () 
   assert.match(bundle, /app\.initializers\.add\('flatrate-wiki-forum-navigation-sidebar'/);
   assert.match(bundle, /compat\['components\/IndexPage'\]/);
   assert.match(bundle, /compat\['flarum\/forum\/components\/IndexPage'\]/);
+  assert.match(bundle, /compat\['components\/DiscussionPage'\]/);
+  assert.match(bundle, /compat\['flarum\/forum\/components\/DiscussionPage'\]/);
   assert.match(bundle, /extend\(IndexPage\.prototype, 'sidebarItems'/);
+  assert.match(bundle, /extend\(DiscussionPage\.prototype, 'sidebarItems'/);
   assert.match(bundle, /FlatRateForumNavigation/);
   assert.doesNotMatch(bundle, /var GROUPS = /);
   assert.doesNotMatch(bundle, /FlatRateBrandsNavigation/);
 });
 
-test("desktop sidebar renders Community and Brands from the shared contract", async () => {
+test("desktop sidebar renders Community, Technician Topics, and Brands from the shared contract", async () => {
   const contract = await sharedNavigationContract();
   const tags = tagsForContract(contract);
   assertProductionLikeTopology(tags);
@@ -213,18 +226,32 @@ test("desktop sidebar renders Community and Brands from the shared contract", as
   assert.equal(items.getPriority("flatrateForumNavigation"), -20);
 
   const nav = items.get("flatrateForumNavigation");
-  assert.equal(nav.selector, "nav.FlatRateForumNav.FlatRateForumNav--sidebar");
+  assert.equal(
+    nav.selector,
+    "nav.FlatRateForumNav.FlatRateForumNav--sidebar.FlatRateForumNav--index",
+  );
   assert.equal(nav.attrs["aria-label"], "Forum navigation");
   assert.deepEqual(
     plain(groupSections(nav).map((section) => section.children[0].children[0])),
-    ["Community", "Brands"],
+    ["Community", "Technician Topics", "Brands"],
+  );
+  assert.deepEqual(
+    plain(groupSections(nav).map((section) => section.attrs["data-group"])),
+    ["community", "technician-topics", "brands"],
   );
 
   const community = groupSections(nav).find((section) => section.attrs["data-group"] === "community");
+  const technicianTopics = groupSections(nav).find(
+    (section) => section.attrs["data-group"] === "technician-topics",
+  );
   const brands = brandGroup(nav);
   assert.deepEqual(
     plain(community.children[1].children.map((item) => item.children[0].children[0])),
-    ["Start Here", "General Shop Discussion"],
+    ["Start Here"],
+  );
+  assert.deepEqual(
+    plain(technicianTopics.children[1].children.map((item) => item.children[0].children[0])),
+    ["General Shop Discussion"],
   );
   assert.deepEqual(
     plain(brands.children[1].children.map((item) => item.children[0].children[0])),
@@ -288,12 +315,12 @@ test("desktop sidebar selects General Shop Discussion by active slug", async () 
     tags: tagsForContract(contract),
   });
 
-  const community = groupSections(new IndexPage().sidebarItems().get("flatrateForumNavigation")).find(
-    (section) => section.attrs["data-group"] === "community",
+  const technicianTopics = groupSections(new IndexPage().sidebarItems().get("flatrateForumNavigation")).find(
+    (section) => section.attrs["data-group"] === "technician-topics",
   );
 
   assert.deepEqual(
-    plain(sidebarLinkNodes(community).filter((link) => link.attrs.active).map((link) => link.children[0])),
+    plain(sidebarLinkNodes(technicianTopics).filter((link) => link.attrs.active).map((link) => link.children[0])),
     ["General Shop Discussion"],
   );
 });
@@ -323,9 +350,16 @@ test("desktop sidebar styling is desktop-only and uses a single-column navigatio
 
   assert.match(
     less,
-    /\.FlatRateForumNav--sidebar,\s*\.IndexPage-nav > ul > \.item-flatrateForumNavigation/s,
+    /\.FlatRateForumNav--sidebar,\s*\.IndexPage-nav > ul > \.item-flatrateForumNavigation,\s*\.DiscussionPage-nav > ul > \.item-flatrateForumNavigation/s,
   );
-  assert.match(less, /@media \(min-width: 768px\)[\s\S]*\.item-flatrateForumNavigation[\s\S]*display: block;/);
+  assert.match(
+    less,
+    /@media \(min-width: 768px\)[\s\S]*\.IndexPage-nav > ul > \.item-flatrateForumNavigation,\s*\.DiscussionPage-nav > ul > \.item-flatrateForumNavigation[\s\S]*display: block;/,
+  );
+  assert.match(
+    less,
+    /\.FlatRateForumNav--discussion\s*\{[\s\S]*max-height:[\s\S]*overflow-y:\s*auto;/,
+  );
   assert.match(
     less,
     /\.FlatRateForumNav--sidebar \.FlatRateForumNav-links,\s*\.FlatRateForumNav--sidebar \.FlatRateForumNav-children\s*\{[\s\S]*display: block;[\s\S]*width: 100%;/,
@@ -333,4 +367,5 @@ test("desktop sidebar styling is desktop-only and uses a single-column navigatio
   assert.doesNotMatch(less, /\.FlatRateForumNav--sidebar \.FlatRateForumNav-links[^{]*\{[^}]*grid-template-columns:/s);
   assert.match(less, /\.FlatRateForumNav--sidebar \.FlatRateForumNav-link\.Button\s*\{[\s\S]*width: 100%;[\s\S]*background: transparent;/);
   assert.match(less, /\.FlatRateForumNav--sidebar \.FlatRateForumNav-link\.Button\.active\s*\{[\s\S]*@primary-color/);
+  assert.doesNotMatch(less, /\.DiscussionPage-nav\s*\{[^}]*overflow/);
 });

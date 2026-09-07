@@ -181,17 +181,19 @@
 }
 
 // Flarum moves the normal index title/new-discussion controls into the phone
-// header. Desktop sidebar owns the shared forum navigation groups; phones use
-// the HeaderSecondary drawer implementation instead.
+// header. Desktop IndexPage/DiscussionPage sidebars own the shared forum
+// navigation groups; phones use the HeaderSecondary drawer implementation.
 .FlatRateForumNav--sidebar,
 .IndexPage-nav > ul > .item-flatrateForumNavigation,
+.DiscussionPage-nav > ul > .item-flatrateForumNavigation,
 .FlatRateMobileBrandSidebar,
 .IndexPage-nav > ul > .item-flatrateMobileBrandLinks {
   display: none;
 }
 
 @media (min-width: 768px) {
-  .IndexPage-nav > ul > .item-flatrateForumNavigation {
+  .IndexPage-nav > ul > .item-flatrateForumNavigation,
+  .DiscussionPage-nav > ul > .item-flatrateForumNavigation {
     display: block;
     width: 100%;
     margin: 6px 0 0;
@@ -202,6 +204,15 @@
     display: block;
     width: 100%;
     padding: 8px 0 2px;
+  }
+
+  // Keep DiscussionPage-nav sticky for native controls/scrubber; only the
+  // long FlatRate brand tree scrolls independently when taller than the viewport.
+  .FlatRateForumNav--discussion {
+    max-height: calc(100vh - 14rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .FlatRateForumNav--sidebar .FlatRateForumNav-group {

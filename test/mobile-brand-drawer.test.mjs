@@ -216,7 +216,7 @@ test("mobile forum navigation hooks HeaderSecondary below core drawer controls",
   assert.doesNotMatch(bundle, /FlatRateBrandsNavigation/);
 });
 
-test("mobile drawer renders Community and Brands from the shared contract", async () => {
+test("mobile drawer renders Community, Technician Topics, and Brands from the shared contract", async () => {
   const contract = await sharedNavigationContract();
   const tags = tagsForContract(contract);
   assertProductionLikeTopology(tags);
@@ -238,14 +238,25 @@ test("mobile drawer renders Community and Brands from the shared contract", asyn
   assert.equal(nav.attrs["aria-label"], "Forum navigation");
   assert.deepEqual(
     plain(groupSections(nav).map((section) => section.children[0].children[0])),
-    ["Community", "Brands"],
+    ["Community", "Technician Topics", "Brands"],
+  );
+  assert.deepEqual(
+    plain(groupSections(nav).map((section) => section.attrs["data-group"])),
+    ["community", "technician-topics", "brands"],
   );
 
   const brands = brandGroup(nav);
   const community = groupSections(nav).find((section) => section.attrs["data-group"] === "community");
+  const technicianTopics = groupSections(nav).find(
+    (section) => section.attrs["data-group"] === "technician-topics",
+  );
   assert.deepEqual(
     plain(drawerTopLevelItems(community).map((item) => item.children[0].children[0])),
-    ["Start Here", "General Shop Discussion"],
+    ["Start Here"],
+  );
+  assert.deepEqual(
+    plain(drawerTopLevelItems(technicianTopics).map((item) => item.children[0].children[0])),
+    ["General Shop Discussion"],
   );
   assert.deepEqual(
     plain(drawerTopLevelItems(brands).map((item) => item.children[0].children[0])),
