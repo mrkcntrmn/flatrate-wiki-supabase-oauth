@@ -76,8 +76,7 @@
             order: 0,
             emptyPolicy: 'show',
             children: [
-                board('start-here', 'Start Here'),
-                board('general-shop-discussion', 'General Shop Discussion')
+                board('start-here', 'Start Here')
             ]
         },
         {
@@ -85,7 +84,9 @@
             label: 'Technician Topics',
             order: 1,
             emptyPolicy: 'hide-until-nonempty',
-            children: []
+            children: [
+                board('general-shop-discussion', 'General Shop Discussion')
+            ]
         },
         {
             id: 'brands',

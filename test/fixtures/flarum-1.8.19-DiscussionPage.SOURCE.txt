@@ -1,0 +1,7 @@
+repo: https://github.com/flarum/framework
+tag: v1.8.19
+path: framework/core/js/src/forum/components/DiscussionPage.tsx
+url: https://raw.githubusercontent.com/flarum/framework/v1.8.19/framework/core/js/src/forum/components/DiscussionPage.tsx
+tag_ref_sha: d63c45e28572e42c8385620f352f9aee36e8cc6c
+commit_sha: d63c45e28572e42c8385620f352f9aee36e8cc6c
+SHA256: 6fd54b5a0e07dffaf5da8ead70a9ee1a51903f045864bb33318a8f535830ec23

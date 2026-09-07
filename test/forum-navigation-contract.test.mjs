@@ -31,8 +31,9 @@ function flattenBoardKeys(nodes, acc = []) {
   return acc;
 }
 
-function tagsForNavigation(contract, { technicianTopics = [] } = {}) {
+function tagsForNavigation(contract) {
   const community = contract.getGroup("community").children;
+  const technicianTopics = contract.getGroup("technician-topics").children;
   const brands = contract.getGroup("brands").children;
   const tags = [];
 
@@ -112,53 +113,81 @@ test("Community boards are ordered and named exactly", async () => {
   const contract = await loadSharedContract();
   const community = contract.getGroup("community");
 
-  assert.equal(community.children.length, 2);
+  assert.equal(community.children.length, 1);
   assert.deepEqual(
     plain(community.children.map((node) => node.slug)),
-    ["start-here", "general-shop-discussion"],
+    ["start-here"],
   );
   assert.deepEqual(
     plain(community.children.map((node) => node.displayName)),
-    ["Start Here", "General Shop Discussion"],
+    ["Start Here"],
   );
 });
 
-test("Technician Topics stays empty and hide-until-nonempty", async () => {
+test("Technician Topics contains General Shop Discussion and stays hide-until-nonempty", async () => {
   const contract = await loadSharedContract();
   const technicianTopics = contract.getGroup("technician-topics");
 
-  assert.equal(technicianTopics.children.length, 0);
+  assert.equal(technicianTopics.children.length, 1);
   assert.equal(technicianTopics.emptyPolicy, "hide-until-nonempty");
+  assert.deepEqual(
+    plain(technicianTopics.children.map((node) => node.slug)),
+    ["general-shop-discussion"],
+  );
+  assert.deepEqual(
+    plain(technicianTopics.children.map((node) => node.displayName)),
+    ["General Shop Discussion"],
+  );
 });
 
-test("Technician Topics appears between Community and Brands when nonempty", async () => {
+test("Technician Topics is visible between Community and Brands with current contract", async () => {
   const contract = await loadSharedContract();
-  const groups = contract.groups.map((group) => contract.cloneGroup(group));
-  groups[1].children = [
-    {
-      boardKey: "diagnostics",
-      displayName: "Diagnostics",
-      slug: "diagnostics",
-      children: [],
-    },
-  ];
-
   const app = {
     store: {
       all(type) {
         assert.equal(type, "tags");
-        return tagsForNavigation(contract, {
-          technicianTopics: groups[1].children,
-        });
+        return tagsForNavigation(contract);
       },
     },
   };
 
-  const resolved = contract.resolve(app, groups);
+  const resolved = contract.resolve(app);
+  assert.deepEqual(
+    plain(resolved.map((group) => group.id)),
+    ["community", "technician-topics", "brands"],
+  );
   assert.deepEqual(
     plain(resolved.map((group) => group.label)),
     ["Community", "Technician Topics", "Brands"],
   );
+  assert.deepEqual(
+    plain(resolved.find((group) => group.id === "community").children.map((node) => node.slug)),
+    ["start-here"],
+  );
+  assert.deepEqual(
+    plain(resolved.find((group) => group.id === "technician-topics").children.map((node) => node.slug)),
+    ["general-shop-discussion"],
+  );
+});
+
+test("General Shop Discussion appears exactly once across presentation groups", async () => {
+  const contract = await loadSharedContract();
+  const occurrences = [];
+
+  for (const group of contract.groups) {
+    const walk = (nodes) => {
+      for (const node of nodes) {
+        if (node.slug === "general-shop-discussion" || node.boardKey === "general-shop-discussion") {
+          occurrences.push(group.id);
+        }
+        walk(node.children || []);
+      }
+    };
+    walk(group.children);
+  }
+
+  assert.deepEqual(occurrences, ["technician-topics"]);
+  assert.equal(occurrences.length, 1);
 });
 
 test("Brands tree pins counts, order, GM/CDJR children, and Other Makes", async () => {
@@ -294,7 +323,7 @@ test("fixtures model flat 43-root production topology, not GM/CDJR parent tags",
   );
 });
 
-test("resolver omits unresolved nodes and hides empty Technician Topics", async () => {
+test("resolver omits unresolved nodes and keeps nonempty Technician Topics", async () => {
   const contract = await loadSharedContract();
   const app = {
     store: {
@@ -308,7 +337,7 @@ test("resolver omits unresolved nodes and hides empty Technician Topics", async 
   const resolved = contract.resolve(app);
   assert.deepEqual(
     plain(resolved.map((group) => group.id)),
-    ["community", "brands"],
+    ["community", "technician-topics", "brands"],
   );
   assert.equal(resolved.find((group) => group.id === "brands").children.length, 33);
   assert.deepEqual(

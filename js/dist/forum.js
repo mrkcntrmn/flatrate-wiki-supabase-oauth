@@ -264,7 +264,7 @@
     module.exports = {};
 })();
 
-/*! FlatRate Wiki desktop/index sidebar forum navigation. */
+/*! FlatRate Wiki desktop IndexPage/DiscussionPage sidebar forum navigation. */
 (function () {
     'use strict';
 
@@ -273,12 +273,14 @@
         var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
         var IndexPage = compat['components/IndexPage'] || compat['flarum/forum/components/IndexPage'];
+        var DiscussionPage = compat['components/DiscussionPage'] || compat['flarum/forum/components/DiscussionPage'];
         var LinkButton = compat['components/LinkButton'] || compat['flarum/common/components/LinkButton'];
 
         IndexPage = IndexPage && (IndexPage.default || IndexPage);
+        DiscussionPage = DiscussionPage && (DiscussionPage.default || DiscussionPage);
         LinkButton = LinkButton && (LinkButton.default || LinkButton);
 
-        if (typeof extend !== 'function' || typeof m !== 'function' || !IndexPage || !LinkButton) {
+        if (typeof extend !== 'function' || typeof m !== 'function' || !LinkButton) {
             return;
         }
 
@@ -296,7 +298,7 @@
         }
 
         function nodeIsActive(node, activeSlug) {
-            return String(node.slug).toLowerCase() === activeSlug;
+            return Boolean(activeSlug) && String(node.slug).toLowerCase() === activeSlug;
         }
 
         function nodeHasActiveDescendant(node, activeSlug) {
@@ -356,25 +358,54 @@
             ]);
         }
 
-        extend(IndexPage.prototype, 'sidebarItems', function (items) {
+        function groupedNavigationVnode(modifier, activeSlug) {
             var groups = visibleGroups();
             if (!groups.length) {
+                return null;
+            }
+
+            var selector = 'nav.FlatRateForumNav.FlatRateForumNav--sidebar';
+            if (modifier) {
+                selector += '.' + modifier;
+            }
+
+            return m(
+                selector,
+                { 'aria-label': 'Forum navigation' },
+                groups.map(function (group) {
+                    return renderGroup(group, activeSlug);
+                })
+            );
+        }
+
+        function addGroupedNavigation(items, modifier, priority, activeSlug) {
+            if (!items || typeof items.add !== 'function') {
+                return;
+            }
+            if (typeof items.has === 'function' && items.has('flatrateForumNavigation')) {
                 return;
             }
 
-            var activeSlug = currentTagSlug();
+            var vnode = groupedNavigationVnode(modifier, activeSlug);
+            if (!vnode) {
+                return;
+            }
 
-            items.add(
-                'flatrateForumNavigation',
-                m(
-                    'nav.FlatRateForumNav.FlatRateForumNav--sidebar',
-                    { 'aria-label': 'Forum navigation' },
-                    groups.map(function (group) {
-                        return renderGroup(group, activeSlug);
-                    })
-                ),
-                -20
-            );
-        });
+            items.add('flatrateForumNavigation', vnode, priority);
+        }
+
+        if (IndexPage) {
+            extend(IndexPage.prototype, 'sidebarItems', function (items) {
+                addGroupedNavigation(items, 'FlatRateForumNav--index', -20, currentTagSlug());
+            });
+        }
+
+        if (DiscussionPage) {
+            // Flarum 1.8.19 DiscussionPage.sidebarItems: controls=100, scrubber=-100.
+            // Keep FlatRate grouped nav after both native items.
+            extend(DiscussionPage.prototype, 'sidebarItems', function (items) {
+                addGroupedNavigation(items, 'FlatRateForumNav--discussion', -200, '');
+            });
+        }
     });
 })();
