@@ -38,5 +38,18 @@ jobs:
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 
+      - name: Run FORUM-SUB-001 family follow gates
+        run: php test/forum-sub001-family-follow.php
+
+      - name: Run FORUM-SUB-001 FoF-absent load gates
+        run: php test/forum-sub001-absent-load.php
+
+      - name: Install FORUM-SUB-001 disposable runtime harness
+        working-directory: test/harness/forum-sub001-runtime
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run FORUM-SUB-001 runtime resolver/binding gates
+        run: php test/forum-sub001-runtime.php
+
       - name: Lint PHP
-        run: find . -name '*.php' -print0 | xargs -0 -n1 php -l
+        run: find . -name '*.php' -not -path './test/harness/forum-sub001-runtime/vendor/*' -print0 | xargs -0 -n1 php -l

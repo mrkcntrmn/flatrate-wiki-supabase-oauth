@@ -1,0 +1,35 @@
+{
+  "name": "flatrate/forum-sub001-runtime-harness",
+  "description": "Disposable FORUM-SUB-001 runtime proof harness. Not a production dependency.",
+  "require": {
+    "php": "^8.1",
+    "flarum/core": "1.8.19",
+    "flarum/tags": "1.8.8",
+    "fof/follow-tags": "1.3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "FlatRate\\SupabaseOAuth\\": "../../../src/"
+    }
+  },
+  "config": {
+    "sort-packages": true,
+    "audit": {
+      "abandoned": "report"
+    },
+    "allow-plugins": {
+      "php-http/discovery": true
+    },
+    "platform": {
+      "ext-dom": "2001000",
+      "ext-curl": "2001000",
+      "ext-libxml": "2001000",
+      "ext-mbstring": "2001000",
+      "ext-tokenizer": "2001000",
+      "ext-json": "2001000",
+      "ext-fileinfo": "2001000"
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

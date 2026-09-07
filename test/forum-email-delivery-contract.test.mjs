@@ -21,7 +21,10 @@ test("extend.php registers FlatRate email driver and no global beforeSending fil
     extension,
     /->driver\(\s*['"]email['"]\s*,\s*Notification\\DeliverableEmailNotificationDriver::class\s*\)/,
   );
-  assert.doesNotMatch(withoutComments, /->beforeSending\s*\(/);
+  // Reserved-email path must not use a global beforeSending filter.
+  // FORUM-SUB-001 may register a Conditional mention-ignore beforeSending
+  // only when fof-follow-tags is enabled.
+  assert.equal(beforeSendingCountOutsideFollowTagsConditional(withoutComments), 0);
 });
 
 test("DeliverableEmailNotificationDriver filters via ForumEmailPolicy and delegates to core", async () => {
@@ -102,6 +105,22 @@ test("placeholder outbound suppression does not use a global recipient filter", 
   const withoutComments = extension.replace(/\/\/.*$/gm, "");
   const driver = await text("src/Notification/DeliverableEmailNotificationDriver.php");
   assert.match(extension, /DeliverableEmailNotificationDriver::class/);
-  assert.doesNotMatch(withoutComments, /->beforeSending\s*\(/);
   assert.match(driver, /Filters only the outbound email driver recipients/);
+  const emailDriverBlock = withoutComments.match(
+    /\(new Extend\\Notification\(\)\)\s*->driver\(\s*'email',\s*Notification\\DeliverableEmailNotificationDriver::class\s*\)/,
+  );
+  assert.ok(emailDriverBlock);
+  assert.equal(beforeSendingCountOutsideFollowTagsConditional(withoutComments), 0);
+  assert.match(
+    withoutComments,
+    /whenExtensionEnabled\(\s*'fof-follow-tags'[\s\S]*?->beforeSending\(\s*FilterInheritedIgnoredTagMentions::class\s*\)/,
+  );
 });
+
+function beforeSendingCountOutsideFollowTagsConditional(src) {
+  const withoutConditional = src.replace(
+    /\(new Extend\\Conditional\(\)\)\s*->whenExtensionEnabled\(\s*'fof-follow-tags'\s*,\s*\[[\s\S]*?\]\s*\)\s*,/,
+    "",
+  );
+  return [...withoutConditional.matchAll(/->beforeSending\s*\(/g)].length;
+}
