@@ -1,0 +1,12 @@
+{
+  "name": "flatrate/activity-r1-test-harness",
+  "description": "Minimal Illuminate+PSR harness for REP-001F.A1 R1 outbox/brand behavior tests.",
+  "require": {
+    "php": ">=8.1",
+    "illuminate/database": "^10.48",
+    "psr/log": "^3.0"
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

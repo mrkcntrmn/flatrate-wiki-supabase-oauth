@@ -44,6 +44,13 @@ jobs:
       - name: Run FORUM-SUB-001 FoF-absent load gates
         run: php test/forum-sub001-absent-load.php
 
+      - name: Install activity R1 disposable behavior harness
+        working-directory: test/harness/activity-r1
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run REP-001F.A1 R1 activity behavior gates
+        run: php test/activity-r1-behavior.php
+
       - name: Install FORUM-SUB-001 disposable runtime harness
         working-directory: test/harness/forum-sub001-runtime
         run: composer install --no-interaction --prefer-dist
@@ -52,4 +59,4 @@ jobs:
         run: php test/forum-sub001-runtime.php
 
       - name: Lint PHP
-        run: find . -name '*.php' -not -path './test/harness/forum-sub001-runtime/vendor/*' -print0 | xargs -0 -n1 php -l
+        run: find . -name '*.php' -not -path './test/harness/*/vendor/*' -print0 | xargs -0 -n1 php -l

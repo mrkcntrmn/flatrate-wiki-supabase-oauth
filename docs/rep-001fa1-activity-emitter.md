@@ -1,23 +1,35 @@
 # REP-001F.A1 — activity emitter (Flarum extension)
 
-Status: **SOURCE_IMPLEMENTATION / PR_OPEN**  
+Status: **R1_SOURCE_COMPLETE / PR_OPEN / AWAITING_RE_REVIEW**  
 Updated: **2026-09-10**
 
 ```text
-TRANCHE=REP-001F.A1_EXTENSION
+TRANCHE=REP-001F.A1_EXTENSION_R1
 FORUM_ACTIVITY_BRIDGE_SCHEMA_VERSION=1
 HMAC_PROTOCOL_VERSION=1
 ACTIVITY_EMIT_DEFAULT_ENABLED=false
 FLATRATE_ACTIVITY_EMIT_ENABLED=false
 DELIVERY_SEMANTICS=AT_LEAST_ONCE
 OUTBOX_IMPLEMENTED=true
+OUTBOX_AUTOMATIC_DRAIN_PATH=flarum_schedule:flatrate:activity:drain-outbox
+RETRY_NEW_NONCE_EACH_ATTEMPT=true
+TERMINAL_PAYLOAD_RETENTION_BOUNDED=true
+BRAND_ATTRIBUTION_CONTRACT=PASS
+PRIMARY_TAG_ONLY=true
+BRAND_ALLOWLIST_ENFORCED=true
+SECONDARY_TAG_CAN_BECOME_BRAND=false
+PROFILE_AFFILIATION_USED=false
+GM_CDJR_DOUBLE_COUNT=false
 VOTE_PROVIDER=fof/gamification:1.6.12
 VOTE_PROVIDER_SOURCE_SHA=6be68f005b7db3036ca67a7b807bc4531972ed19
 VOTE_POST_SUCCESS_SEAM=FoF\\Gamification\\Events\\PostWasVoted
 VOTE_STATE_VERSION_SOURCE=flatrate_vote_activity_state
 IDENTITY_SOURCE=login_providers(provider=flatrate,identifier=sub)
 CANONICAL_ACTION_FAILS_ON_ACTIVITY_ERROR=false
+HISTORICAL_POST_VOTE_MIGRATION_REQUIRED=false
+VOTE_PERMISSION_OPENS_AFTER_EMITTER=true
 PRODUCTION_MUTATION=false
+READY_FOR_A1_EXTENSION_MERGE=false_pending_re_review
 ```
 
 ## Flow
@@ -27,7 +39,21 @@ canonical Flarum/FoF success
   -> FlatRate observation (+ vote state version)
   -> durable outbox
   -> HMAC POST /api/internal/forum-activity
-  -> retry with fresh nonce on 5xx/timeout
+  -> on failure: markFailure / markTerminal
+  -> Flarum schedule everyMinute: drain due rows
+     (fresh timestamp/nonce/signature each attempt)
+```
+
+Host requirement: cron `* * * * * php flarum schedule:run`.
+CLI `php flarum flatrate:activity:drain-outbox` is operator recovery, not the only path.
+
+## Brand attribution
+
+```text
+CONTRIBUTION_BRAND_ATTRIBUTION=discussion primary accepted brand context
+primary tag: position !== null
+secondary tag: position === null (never brand_slug)
+allowlist: FlatRate boards-target brands (legacy alpha-romeo / genisis preserved)
 ```
 
 ## Feature gate
@@ -40,8 +66,10 @@ Missing/short secret or missing URL → fail closed (no emit).
 ```text
 src/Activity/*
 migrations/2026_09_10_000000_create_activity_emitter_tables.php
+migrations/2026_09_10_120000_activity_outbox_terminal_at.php
 test/fixtures/forum-activity-hmac-v1.json
 test/forum-activity-hmac-vector.php
 test/forum-activity-emitter-contract.test.mjs
+test/activity-r1-behavior.php
 docs/rep-001fa1-vote-emission-seam.md
 ```

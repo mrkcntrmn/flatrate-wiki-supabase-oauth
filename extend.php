@@ -78,6 +78,14 @@ return [
         ->default('flatrate-activity.emit_enabled', false)
         ->default('flatrate-activity.ingest_url', ''),
 
+    // Automatic outbox drain via Flarum scheduler (requires host cron:
+    // * * * * * php flarum schedule:run). CLI alone is not the only retry path.
+    (new Extend\Console())
+        ->command(Activity\DrainActivityOutboxCommand::class)
+        ->schedule(Activity\DrainActivityOutboxCommand::class, function ($event) {
+            $event->everyMinute()->withoutOverlapping();
+        }),
+
     (new Extend\Routes('api'))
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
         ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class),

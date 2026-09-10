@@ -24,8 +24,9 @@ return [
             available_at DATETIME NOT NULL,
             created_at DATETIME NOT NULL,
             delivered_at DATETIME NULL,
+            terminal_at DATETIME NULL,
             last_error_code VARCHAR(64) NULL,
-            INDEX flatrate_activity_outbox_pending (delivered_at, available_at)
+            INDEX flatrate_activity_outbox_pending (delivered_at, terminal_at, available_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     },
     'down' => function (Builder $schema) {
