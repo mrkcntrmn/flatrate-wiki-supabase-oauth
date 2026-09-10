@@ -12,11 +12,8 @@ final class ActivityOutboxDrainer
 {
     public const DEFAULT_BATCH_SIZE = 25;
 
-    /**
-     * @param ActivityClient $client
-     */
     public function __construct(
-        private object $client,
+        private ActivityClient $client,
         private OutboxStore $outbox,
         private LoggerInterface $logger
     ) {
@@ -45,7 +42,7 @@ final class ActivityOutboxDrainer
                 $this->outbox->markFailure(null, (int) $row->id, 'drain_exception', true);
                 $this->logger->warning('flatrate_activity_outbox_drain_exception', [
                     'outbox_id' => (int) $row->id,
-                    'error' => $e->getMessage(),
+                    'error_class' => $e::class,
                 ]);
                 continue;
             }

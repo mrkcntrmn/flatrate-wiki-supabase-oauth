@@ -6,6 +6,12 @@ use Flarum\Console\AbstractCommand;
 
 final class DrainActivityOutboxCommand extends AbstractCommand
 {
+    public function __construct(
+        private ActivityOutboxDrainer $drainer
+    ) {
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this
@@ -15,9 +21,7 @@ final class DrainActivityOutboxCommand extends AbstractCommand
 
     protected function fire(): void
     {
-        /** @var ActivityOutboxDrainer $drainer */
-        $drainer = $this->container->make(ActivityOutboxDrainer::class);
-        $count = $drainer->drain();
+        $count = $this->drainer->drain();
         $this->info('flatrate_activity_outbox_drained='.$count);
     }
 }

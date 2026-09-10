@@ -341,7 +341,7 @@ $nonceHolder = new class {
     public array $nonces = [];
 };
 
-$fakeClient = new class($nonceHolder) {
+$fakeClient = new class($nonceHolder) extends \FlatRate\SupabaseOAuth\Activity\ActivityClient {
     /** @var list<int> */
     public array $statuses;
     public int $call = 0;

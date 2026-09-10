@@ -11,7 +11,7 @@ use Flarum\Post\Post;
  *
  * Flarum Tags: primary tags have non-null position; secondary tags have null position.
  */
-final class BrandContext
+class BrandContext
 {
     /**
      * Accepted FlatRate brand/family primary slugs (legacy production spellings preserved).

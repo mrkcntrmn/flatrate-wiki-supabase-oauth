@@ -42,7 +42,16 @@ Emission is server-side only. Mithril/saveVote.js is not a producer.
 
 ## Analytics isolation
 
-Emitter catches all delivery failures. Canonical vote/post actions are not rolled back.
+`EmitVoteActivity` checks `ActivityEmitter::enabled()` before any vote-state mutation.
+The entire FlatRate vote observer path is try/catch fail-closed so analytics never
+rolls back the canonical FoF vote. Activity catches log `error_class` only — never
+raw throwable messages or transport identity.
+
+```text
+EMIT_OFF_VOTE_STATE_MUTATION=false
+ACTIVITY_ERROR_CAN_FAIL_CANONICAL_VOTE=false
+RAW_THROWABLE_MESSAGE_IN_ACTIVITY_LOG=false
+```
 
 ## Pusher privacy (A2 preflight)
 

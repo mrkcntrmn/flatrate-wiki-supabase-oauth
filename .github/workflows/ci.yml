@@ -51,6 +51,9 @@ jobs:
       - name: Run REP-001F.A1 R1 activity behavior gates
         run: php test/activity-r1-behavior.php
 
+      - name: Run REP-001F.A1 R2 activity behavior gates
+        run: php test/activity-r2-behavior.php
+
       - name: Install FORUM-SUB-001 disposable runtime harness
         working-directory: test/harness/forum-sub001-runtime
         run: composer install --no-interaction --prefer-dist

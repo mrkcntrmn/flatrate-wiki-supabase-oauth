@@ -8,7 +8,7 @@ use Flarum\Settings\SettingsRepositoryInterface;
  * Outbound HMAC client for POST /api/internal/forum-activity.
  * Every attempt uses a fresh timestamp/nonce/signature.
  */
-final class ActivityClient
+class ActivityClient
 {
     public const DEFAULT_TIMEOUT_SECONDS = 2.5;
 

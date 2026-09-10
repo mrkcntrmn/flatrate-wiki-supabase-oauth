@@ -8,7 +8,7 @@ use Flarum\User\User;
  * FlatRate-owned vote observation tracker — not a second canonical vote store.
  * FoF Gamification post_votes remains canonical.
  */
-final class VoteStateStore
+class VoteStateStore
 {
     public function observe(User $actor, int $postId, int $newValue, bool $wasRecentlyCreated): ?array
     {

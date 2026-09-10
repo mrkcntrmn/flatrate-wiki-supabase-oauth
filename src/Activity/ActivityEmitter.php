@@ -9,7 +9,7 @@ use Psr\Log\LoggerInterface;
  * Feature-gated at-least-once emitter.
  * Canonical forum actions must succeed even when delivery fails.
  */
-final class ActivityEmitter
+class ActivityEmitter
 {
     public const SCHEMA_VERSION = 1;
 
@@ -19,6 +19,11 @@ final class ActivityEmitter
         private OutboxStore $outbox,
         private LoggerInterface $logger
     ) {
+    }
+
+    public function enabled(): bool
+    {
+        return $this->client->enabled();
     }
 
     public function emit(User $actor, string $kind, array $observation): void
@@ -81,7 +86,7 @@ final class ActivityEmitter
             // Analytics must never roll back canonical forum actions.
             $this->logger->warning('flatrate_activity_emit_exception', [
                 'kind' => $kind,
-                'error' => $e->getMessage(),
+                'error_class' => $e::class,
             ]);
         }
     }
