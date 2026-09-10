@@ -16,6 +16,9 @@ Dispatched from `SaveVotesToDatabase::vote()` **after** `$vote->save()`.
 
 Event payload: `Vote $vote` (post, user, effective value in {-1,0,1}).
 
+Registered with the canonical class string (no leading backslash) so Illuminate's
+listener map matches `get_class($event)` at dispatch.
+
 ## Previous effective value
 
 `PostWasVoted` does not carry previous value. FlatRate therefore owns:

@@ -27,11 +27,11 @@ final class ActivityServiceProvider extends AbstractServiceProvider
     public function boot(Dispatcher $events): void
     {
         // Soft-bind FoF vote seam when package classes are present.
-        if (class_exists('\\FoF\\Gamification\\Events\\PostWasVoted')) {
-            $events->listen(
-                '\\FoF\\Gamification\\Events\\PostWasVoted',
-                EmitVoteActivity::class
-            );
+        // Illuminate stores listeners under the exact event-key string; dispatch
+        // looks up get_class($event), which has no leading backslash.
+        $eventClass = 'FoF\\Gamification\\Events\\PostWasVoted';
+        if (class_exists($eventClass)) {
+            $events->listen($eventClass, EmitVoteActivity::class);
         }
     }
 }

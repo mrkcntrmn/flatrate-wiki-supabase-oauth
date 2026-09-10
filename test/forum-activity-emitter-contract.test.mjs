@@ -70,6 +70,24 @@ test("R1/R2 behavior PHP harnesses are wired", () => {
   assert.match(ci, /activity-r2-behavior\.php/);
 });
 
+test("FoF vote listener registers canonical class key without leading slash", () => {
+  const provider = readFileSync(join(ROOT, "src/Activity/ActivityServiceProvider.php"), "utf8");
+  assert.match(
+    provider,
+    /\$eventClass\s*=\s*'FoF\\\\Gamification\\\\Events\\\\PostWasVoted'/,
+  );
+  assert.match(provider, /class_exists\(\$eventClass\)/);
+  assert.match(provider, /\$events->listen\(\$eventClass,\s*EmitVoteActivity::class\)/);
+  assert.doesNotMatch(
+    provider,
+    /listen\(\s*['"]\\\\FoF\\\\Gamification\\\\Events\\\\PostWasVoted['"]/,
+  );
+  assert.doesNotMatch(
+    provider,
+    /class_exists\(\s*['"]\\\\FoF\\\\Gamification\\\\Events\\\\PostWasVoted['"]/,
+  );
+});
+
 test("PHP HMAC fixture independently matches pinned vector", () => {
   const result = spawnSync("php", [join(ROOT, "test/forum-activity-hmac-vector.php")], {
     encoding: "utf8",
