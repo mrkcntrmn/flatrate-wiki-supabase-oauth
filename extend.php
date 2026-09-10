@@ -5,8 +5,10 @@ namespace FlatRate\SupabaseOAuth;
 use FlatRate\SupabaseOAuth\Subscription\FilterInheritedIgnoredTagMentions;
 use FlatRate\SupabaseOAuth\Subscription\FollowTagsFamilyServiceProvider;
 use Flarum\Api\Serializer\PostSerializer;
+use Flarum\Discussion\Event\Started;
 use Flarum\Extend;
 use Flarum\Post\Event\Deleted;
+use Flarum\Post\Event\Posted;
 use Flarum\Post\Event\Saving;
 use Flarum\User\Event\RegisteringFromProvider;
 use FoF\OAuth\Extend as OAuthExtend;
@@ -36,6 +38,9 @@ return [
     (new Extend\ServiceProvider())
         ->register(ServiceProvider::class),
 
+    (new Extend\ServiceProvider())
+        ->register(Activity\ActivityServiceProvider::class),
+
     // FORUM-SUB-001: GM/CDJR family notification inheritance.
     // Bound only when FoF Follow Tags is enabled. Does not hard-depend on FoF
     // classes at boot when the extension is absent/disabled.
@@ -62,10 +67,24 @@ return [
     (new Extend\Event())
         ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class)
         ->listen(Saving::class, Markers\SaveJobBreakdownMarker::class)
-        ->listen(Deleted::class, Markers\DeletePostMarkers::class),
+        ->listen(Deleted::class, Markers\DeletePostMarkers::class)
+        ->listen(Started::class, Activity\EmitDiscussionCreated::class)
+        ->listen(Posted::class, Activity\EmitReplyCreated::class),
 
     (new Extend\ApiSerializer(PostSerializer::class))
         ->attribute('flatRateJobBreakdown', Api\SerializePostJobBreakdownMarker::class),
+
+    (new Extend\Settings())
+        ->default('flatrate-activity.emit_enabled', false)
+        ->default('flatrate-activity.ingest_url', ''),
+
+    // Automatic outbox drain via Flarum scheduler (requires host cron:
+    // * * * * * php flarum schedule:run). CLI alone is not the only retry path.
+    (new Extend\Console())
+        ->command(Activity\DrainActivityOutboxCommand::class)
+        ->schedule(Activity\DrainActivityOutboxCommand::class, function ($event) {
+            $event->everyMinute()->withoutOverlapping();
+        }),
 
     (new Extend\Routes('api'))
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
