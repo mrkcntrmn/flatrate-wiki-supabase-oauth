@@ -30,12 +30,24 @@ final class SaveJobBreakdownMarker
             $actor->assertCan('edit', $post);
         }
 
-        $post->afterSave(function ($savedPost) use ($actor, $enabled) {
+        $post->afterSave(function ($savedPost) use ($actor, $enabled, $event) {
             if ($this->isDiscussionStarter($savedPost, [])) {
                 return;
             }
 
+            $hadMarker = $this->markers->hasJobBreakdown((int) $savedPost->id);
             $this->markers->setJobBreakdown($savedPost, $actor, $enabled);
+
+            // Emit only on false -> true after canonical marker persistence.
+            if ($enabled && ! $hadMarker) {
+                try {
+                    /** @var \FlatRate\SupabaseOAuth\Activity\EmitJobBreakdownCreated $emitter */
+                    $emitter = resolve(\FlatRate\SupabaseOAuth\Activity\EmitJobBreakdownCreated::class);
+                    $emitter->emitAfterMarker($event, true);
+                } catch (\Throwable) {
+                    // Analytics must not fail marker saves.
+                }
+            }
         });
     }
 

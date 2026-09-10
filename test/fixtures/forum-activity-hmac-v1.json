@@ -1,0 +1,13 @@
+{
+  "protocol": "flatrate-hmac-v1",
+  "hmac_protocol_version": 1,
+  "forum_activity_bridge_schema_version": 1,
+  "test_only_secret": "TEST_ONLY_32+_CHAR_SECRET_NOT_PRODUCTION!!",
+  "timestamp": "1789020000",
+  "nonce": "test_nonce_0123456789abcdef",
+  "method": "POST",
+  "path": "/api/internal/forum-activity",
+  "body": "{\"schema_version\":1,\"identity\":{\"sub\":\"00000000-0000-4000-8000-000000000001\",\"flarum_user_id\":42},\"observation\":{\"kind\":\"vote_transition\",\"occurred_at\":\"2026-09-10T06:00:00.000Z\",\"post_ref\":\"1234\",\"brand_slug\":\"toyota\",\"from_value\":0,\"to_value\":1,\"vote_state_version\":1}}",
+  "body_sha256": "991b091b3a4e0d08a15cbafbf77b09ae8160ec4011fd63438ae7a62b911919d1",
+  "signature_hex": "65b5f37717df0b50eaf54bac228507ffffc5173b854173f284faab6f94595e0c"
+}
