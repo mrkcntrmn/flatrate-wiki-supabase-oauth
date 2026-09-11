@@ -39,6 +39,22 @@ test("R3D: TechNumber enforces MIN 20031 and strict JSON integers", async () => 
   assert.match(payload, /tech_number_required/);
   assert.match(payload, /invalid_tech_number/);
   assert.doesNotMatch(payload, /preg_match/);
+  // Explicit null is present-but-invalid (parseBoundedInteger), not missing.
+  assert.match(
+    payload,
+    /if \(! array_key_exists\('tech_number', \$payload\)\) \{\s*return null;/s,
+  );
+  assert.doesNotMatch(payload, /\$payload\['tech_number'\] === null/);
+});
+
+test("R3D: existing linked path precedes any tech_number parse (null ignored)", async () => {
+  const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
+  const linkedIdx = provisioner.indexOf("if ($linked = $this->linkedUser($sub))");
+  const techIdx = provisioner.indexOf("TechNumber::parseOptional");
+  assert.ok(linkedIdx >= 0 && techIdx > linkedIdx);
+  // First return after linked check must happen before tech parse.
+  const firstReturn = provisioner.indexOf("return $this->reconcileLinkedEmail", linkedIdx);
+  assert.ok(firstReturn > linkedIdx && firstReturn < techIdx);
 });
 
 test("R3D: controllers pass HMAC body through to provisioner", async () => {

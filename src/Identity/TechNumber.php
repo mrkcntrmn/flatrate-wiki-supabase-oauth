@@ -21,7 +21,7 @@ final class TechNumber
 
     public static function parseRequired(array $payload): int
     {
-        if (! array_key_exists('tech_number', $payload) || $payload['tech_number'] === null) {
+        if (! array_key_exists('tech_number', $payload)) {
             throw new SsoException('tech_number_required', 409);
         }
 
@@ -30,10 +30,11 @@ final class TechNumber
 
     public static function parseOptional(array $payload): ?int
     {
-        if (! array_key_exists('tech_number', $payload) || $payload['tech_number'] === null) {
+        if (! array_key_exists('tech_number', $payload)) {
             return null;
         }
 
+        // Explicit null is present-but-invalid, not missing.
         return self::parseBoundedInteger($payload['tech_number']);
     }
 

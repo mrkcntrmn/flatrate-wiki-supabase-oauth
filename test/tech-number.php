@@ -40,7 +40,6 @@ function expect_code(callable $fn, string $code, int $status): void
 
 assert_true(TechNumber::MIN_TECH_NUMBER === 20031, 'MIN_TECH_NUMBER');
 assert_true(TechNumber::parseOptional([]) === null, 'absent => null');
-assert_true(TechNumber::parseOptional(['tech_number' => null]) === null, 'null => null');
 assert_true(TechNumber::parseOptional(['tech_number' => 20031]) === 20031, '20031 valid');
 assert_true(
     TechNumber::parseOptional(['tech_number' => TechNumber::MAX_SAFE_INTEGER]) === TechNumber::MAX_SAFE_INTEGER,
@@ -48,7 +47,8 @@ assert_true(
 );
 
 expect_code(fn () => TechNumber::parseRequired([]), 'tech_number_required', 409);
-expect_code(fn () => TechNumber::parseRequired(['tech_number' => null]), 'tech_number_required', 409);
+expect_code(fn () => TechNumber::parseRequired(['tech_number' => null]), 'invalid_tech_number', 400);
+expect_code(fn () => TechNumber::parseOptional(['tech_number' => null]), 'invalid_tech_number', 400);
 
 expect_code(fn () => TechNumber::parseOptional(['tech_number' => 20030]), 'invalid_tech_number', 400);
 expect_code(fn () => TechNumber::parseOptional(['tech_number' => 0]), 'invalid_tech_number', 400);
