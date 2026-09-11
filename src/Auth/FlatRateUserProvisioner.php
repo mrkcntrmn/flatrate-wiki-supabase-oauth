@@ -4,6 +4,8 @@ namespace FlatRate\SupabaseOAuth\Auth;
 
 use FlatRate\SupabaseOAuth\Identity\ForumEmailPolicy;
 use FlatRate\SupabaseOAuth\Identity\NeutralIdentity;
+use FlatRate\SupabaseOAuth\Identity\TechNumber;
+use FlatRate\SupabaseOAuth\Sso\SsoException;
 use Flarum\User\Command\RegisterUser;
 use Flarum\User\Command\RegisterUserHandler;
 use Flarum\User\Guest;
@@ -33,13 +35,16 @@ final class FlatRateUserProvisioner
             throw new AuthenticationException('verified_email_required');
         }
 
+        // Existing linked Community identities never require tech_number and
+        // must never trigger site-side allocation on login.
         if ($linked = $this->linkedUser($sub)) {
             return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
         }
 
         // Email is an attribute, never the cross-system identity key. If an
         // unrelated local account already owns it, require the explicit legacy
-        // linking flow instead of silently joining two identities.
+        // linking flow instead of silently joining two identities. Do this
+        // before requesting a tech number so blocked identities allocate zero.
         if (User::where('email', $email)->exists()) {
             throw new AuthenticationException('existing_account_requires_explicit_link');
         }
@@ -66,16 +71,19 @@ final class FlatRateUserProvisioner
                     throw new AuthenticationException('existing_account_requires_explicit_link');
                 }
 
-                // The public default nickname is intentionally human-readable
-                // and sequential. Lock the existing FlatRate provider rows so
-                // concurrent registrations allocate different numbers. The
-                // immutable routing username remains the hashed Supabase-sub
-                // handle above, and users may still edit their nickname later.
-                $linkedUsers = LoginProvider::where('provider', 'flatrate')
-                    ->lockForUpdate()
-                    ->get(['user_id']);
-                $userNumber = $linkedUsers->count() + 1;
-                $nickname = NeutralIdentity::nickname($userNumber);
+                // Forward-only: Supabase allocates immutable tech numbers.
+                // Existing linked users return above without requiring this
+                // field. New/unlinked users must present a signed tech_number
+                // inside the HMAC body (parsed only after linkage checks).
+                $techNumber = TechNumber::parseOptional($payload);
+                if ($techNumber === null) {
+                    throw new SsoException('tech_number_required', 409);
+                }
+
+                $nickname = NeutralIdentity::nickname($techNumber);
+                if ($this->nicknameOccupied($nickname)) {
+                    throw new SsoException('tech_number_nickname_collision', 409);
+                }
 
                 $token = RegistrationToken::generate(
                     'flatrate',
@@ -106,6 +114,8 @@ final class FlatRateUserProvisioner
             });
 
             return $user;
+        } catch (SsoException $error) {
+            throw $error;
         } catch (QueryException $error) {
             // Unique constraints on the deterministic username/provider link
             // provide the final race barrier. If another request won, resolve
@@ -115,6 +125,10 @@ final class FlatRateUserProvisioner
                     return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
                 }
                 usleep(20000);
+            }
+
+            if ($this->isNicknameCollision($error)) {
+                throw new SsoException('tech_number_nickname_collision', 409);
             }
 
             throw $error;
@@ -221,5 +235,26 @@ final class FlatRateUserProvisioner
         }
 
         return $user;
+    }
+
+    /**
+     * Case-insensitive occupancy of the reserved numeric nickname namespace.
+     * Preflight is advisory; DB uniqueness remains the final barrier.
+     */
+    private function nicknameOccupied(string $nickname): bool
+    {
+        $needle = strtolower($nickname);
+
+        return User::query()
+            ->whereRaw('LOWER(nickname) = ?', [$needle])
+            ->exists();
+    }
+
+    private function isNicknameCollision(QueryException $error): bool
+    {
+        $message = strtolower($error->getMessage());
+
+        return str_contains($message, 'nickname')
+            && (str_contains($message, 'unique') || str_contains($message, 'duplicate'));
     }
 }

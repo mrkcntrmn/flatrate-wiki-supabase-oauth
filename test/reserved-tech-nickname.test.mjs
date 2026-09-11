@@ -68,14 +68,11 @@ test("R3-A: token registration keeps nickname out of request attributes", async 
   );
 });
 
-test("R3-A: count()+1 still present until later identity patch", async () => {
+test("R3-D: count()+1 removed; TechNumber wired for new identities only", async () => {
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
-  assert.match(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
-});
-
-test("R3-A: TechNumberPayload remains unwired / parked outside reservation deploy", async () => {
-  const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
-  assert.doesNotMatch(provisioner, /TechNumberPayload/);
+  assert.doesNotMatch(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
+  assert.match(provisioner, /TechNumber::parseOptional/);
+  assert.match(provisioner, /tech_number_required/);
   const extend = await text("extend.php");
-  assert.doesNotMatch(extend, /TechNumberPayload/);
+  assert.match(extend, /RejectReservedTechNickname::class/);
 });

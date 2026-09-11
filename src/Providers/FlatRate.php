@@ -93,8 +93,9 @@ final class FlatRate extends Provider
             // email address. Keep it as an opaque, stable public handle instead.
             ->suggestUsername(NeutralIdentity::handle($sub))
             // Do not synthesize the public nickname here. The reusable provisioner
-            // allocates tech_<user count> while holding the provider-row lock, so
-            // the ticket bridge and OAuth fallback share one race-safe sequence.
+            // derives tech_<N> from a signed tech_number in the HMAC body after
+            // existing provider/email checks, so ticket bridge and OAuth fallback
+            // share one authoritative allocation contract.
             ->setPayload($payload);
 
         $picture = trim((string) ($payload['picture'] ?? ''));
