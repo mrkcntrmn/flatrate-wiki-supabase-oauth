@@ -27,6 +27,7 @@ test("R3D: linked-user check precedes tech_number requirement", async () => {
   assert.ok(emailIdx > linkedIdx && emailIdx < techIdx, "email collision before tech_number");
   assert.ok(requiredIdx > techIdx, "required error after parse");
 
+  // Second linked check inside transaction must also precede tech parse.
   const txLinked = provisioner.indexOf("if ($linked = $this->linkedUser($sub))", linkedIdx + 1);
   assert.ok(txLinked > linkedIdx && txLinked < techIdx, "in-transaction linked check before tech_number");
 });
