@@ -58,7 +58,7 @@ Hard rules:
 - Human nickname edits and direct Flarum signup that set `attributes.nickname` to a reserved value are rejected.
 - Grandfathered users who already store `tech_N` are untouched; unrelated profile saves without `attributes.nickname` are not rejected.
 - FlatRate SSO RegistrationToken nicknames are applied on the user model (not via request `attributes.nickname`), so system registration remains allowed.
-- R3-A does **not** remove the legacy `count()+1` allocator; that lands after Supabase allocation + negotiation.
+- R3-D removes the legacy `count()+1` allocator; new users require a signed `tech_number` from Supabase.
 
 ## Requirements
 

@@ -30,7 +30,7 @@ test("provider keeps PKCE S256 and immutable Supabase sub identity", async () =>
   assert.doesNotMatch(provider, /provideTrustedEmail/);
 });
 
-test("routing identity stays hash-based while default nickname is sequential", async () => {
+test("routing identity stays hash-based while default nickname uses signed tech_number", async () => {
   const identity = await text("src/Identity/NeutralIdentity.php");
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
   const provider = await text("src/Providers/FlatRate.php");
@@ -40,10 +40,11 @@ test("routing identity stays hash-based while default nickname is sequential", a
   assert.doesNotMatch(identity, /nickname\(string \$sub\)/);
   assert.match(provisioner, /LoginProvider::where\('provider', 'flatrate'\)/);
   assert.match(provisioner, /->lockForUpdate\(\)/);
-  assert.match(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
-  assert.match(provisioner, /NeutralIdentity::nickname\(\$userNumber\)/);
+  assert.doesNotMatch(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
+  assert.match(provisioner, /TechNumberPayload::parseOptional/);
+  assert.match(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
   assert.doesNotMatch(provider, /NeutralIdentity::nickname\(/);
-  assert.match(provider, /allocates tech_<user count>/);
+  assert.match(provider, /signed tech_number/);
 });
 
 test("reusable provisioner is idempotent and never links by email", async () => {
@@ -58,7 +59,7 @@ test("reusable provisioner is idempotent and never links by email", async () => 
   assert.match(provisioner, /->transaction\(/);
   assert.match(provisioner, /catch \(QueryException/);
   assert.match(provisioner, /NeutralIdentity::handle\(\$sub\)/);
-  assert.match(provisioner, /NeutralIdentity::nickname\(\$userNumber\)/);
+  assert.match(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
   assert.match(provisioner, /reconcileLinkedEmail\(/);
   assert.match(provisioner, /ForumEmailPolicy::canPromote/);
 });
