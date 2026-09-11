@@ -4,6 +4,8 @@ namespace FlatRate\SupabaseOAuth\Auth;
 
 use FlatRate\SupabaseOAuth\Identity\ForumEmailPolicy;
 use FlatRate\SupabaseOAuth\Identity\NeutralIdentity;
+use FlatRate\SupabaseOAuth\Identity\TechNumberPayload;
+use FlatRate\SupabaseOAuth\Sso\SsoException;
 use Flarum\User\Command\RegisterUser;
 use Flarum\User\Command\RegisterUserHandler;
 use Flarum\User\Guest;
@@ -66,16 +68,16 @@ final class FlatRateUserProvisioner
                     throw new AuthenticationException('existing_account_requires_explicit_link');
                 }
 
-                // The public default nickname is intentionally human-readable
-                // and sequential. Lock the existing FlatRate provider rows so
-                // concurrent registrations allocate different numbers. The
-                // immutable routing username remains the hashed Supabase-sub
-                // handle above, and users may still edit their nickname later.
-                $linkedUsers = LoginProvider::where('provider', 'flatrate')
-                    ->lockForUpdate()
-                    ->get(['user_id']);
-                $userNumber = $linkedUsers->count() + 1;
-                $nickname = NeutralIdentity::nickname($userNumber);
+                // Forward-only: Supabase allocates immutable tech numbers.
+                // Existing linked users return above without requiring this
+                // field. New/unlinked users must present a signed tech_number
+                // inside the HMAC body (parsed only after linkage checks).
+                $techNumber = TechNumberPayload::parseOptional($payload);
+                if ($techNumber === null) {
+                    throw new SsoException('forum_tech_number_required', 409);
+                }
+
+                $nickname = NeutralIdentity::nickname($techNumber);
 
                 $token = RegistrationToken::generate(
                     'flatrate',
