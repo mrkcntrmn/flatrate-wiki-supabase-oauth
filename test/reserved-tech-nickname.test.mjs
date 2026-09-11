@@ -68,9 +68,11 @@ test("R3-A: token registration keeps nickname out of request attributes", async 
   );
 });
 
-test("R3-D: count()+1 allocator removed; TechNumberPayload wired for new users", async () => {
+test("R3-D: count()+1 removed; TechNumber wired for new identities only", async () => {
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
   assert.doesNotMatch(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
-  assert.match(provisioner, /TechNumberPayload::parseOptional/);
-  assert.match(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
+  assert.match(provisioner, /TechNumber::parseOptional/);
+  assert.match(provisioner, /tech_number_required/);
+  const extend = await text("extend.php");
+  assert.match(extend, /RejectReservedTechNickname::class/);
 });

@@ -35,6 +35,9 @@ jobs:
       - name: Run reserved email policy gates
         run: php test/forum-email-policy.php
 
+      - name: Run tech_number payload gates
+        run: php test/tech-number.php
+
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 

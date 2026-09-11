@@ -41,8 +41,10 @@ test("routing identity stays hash-based while default nickname uses signed tech_
   assert.match(provisioner, /LoginProvider::where\('provider', 'flatrate'\)/);
   assert.match(provisioner, /->lockForUpdate\(\)/);
   assert.doesNotMatch(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
-  assert.match(provisioner, /TechNumberPayload::parseOptional/);
+  assert.doesNotMatch(provisioner, /count\(\)\s*\+\s*1/);
+  assert.match(provisioner, /TechNumber::parseOptional/);
   assert.match(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
+  assert.match(provisioner, /tech_number_nickname_collision/);
   assert.doesNotMatch(provider, /NeutralIdentity::nickname\(/);
   assert.match(provider, /signed tech_number/);
 });

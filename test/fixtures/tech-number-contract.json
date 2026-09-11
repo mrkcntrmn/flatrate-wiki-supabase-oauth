@@ -2,17 +2,21 @@
   "field": "tech_number",
   "json_type": "integer",
   "valid_example": 20031,
-  "min": 1,
+  "min": 20031,
   "max_safe_integer": 9007199254740991,
   "missing": {
     "status": 409,
-    "error": "forum_tech_number_required"
+    "error": "tech_number_required"
   },
   "invalid": {
     "status": 400,
     "error": "invalid_tech_number"
   },
-  "invalid_examples": [0, -1, 1.2, "20031", "tech_20031", null],
+  "collision": {
+    "status": 409,
+    "error": "tech_number_nickname_collision"
+  },
+  "invalid_examples": [20030, 0, -1, 1.5, false, "20031", "abc", "tech_20031", null],
   "hmac_covers_field": true,
   "negotiation_max_retries": 1
 }

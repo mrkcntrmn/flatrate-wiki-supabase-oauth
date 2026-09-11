@@ -58,7 +58,7 @@ Hard rules:
 - Human nickname edits and direct Flarum signup that set `attributes.nickname` to a reserved value are rejected.
 - Grandfathered users who already store `tech_N` are untouched; unrelated profile saves without `attributes.nickname` are not rejected.
 - FlatRate SSO RegistrationToken nicknames are applied on the user model (not via request `attributes.nickname`), so system registration remains allowed.
-- R3-D removes the legacy `count()+1` allocator; new users require a signed `tech_number` from Supabase.
+- R3-A reservation remains live. R3-D candidate source removes `count()+1` and requires a signed `tech_number` (≥ 20031) for new unlinked identities only; existing linked users never allocate.
 
 ## Requirements
 
@@ -158,7 +158,7 @@ Request body:
 Behavior is idempotent:
 
 - return the user already linked by `login_providers(provider=flatrate, identifier=sub)`; or
-- create exactly one Flarum user with deterministic routing username and neutral nickname;
+- create exactly one Flarum user with deterministic routing username and nickname `tech_<tech_number>` from the signed SSO body;
 - create the `flatrate` provider link keyed to `sub`;
 - never join an unrelated account solely because email matches.
 
