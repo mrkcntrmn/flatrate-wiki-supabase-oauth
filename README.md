@@ -47,7 +47,18 @@ Hard rules:
 | Login/account address | Supabase/Flarum email | `tech@example.com` | No |
 | Internal Flarum schema email | FlatRate placeholder | `forum-<hash>@users.flatrate.wiki` | No |
 | Flarum routing username | Derived from `sub` | `tech_a1b2c3d4` | Yes |
-| Display name / nickname | Flarum Nicknames | `EV Tech` | Yes |
+| FlatRate tech number | Supabase assignment (forward-only; R3) | `20031` | No |
+| System nickname | Derived from tech number | `tech_20031` | Yes (initial) |
+| Display name / nickname | Flarum Nicknames (editable) | `EV Tech` / `DieselDan` | Yes |
+
+### Reserved numeric nickname namespace (FORUM-IDENTITY-001-R3-A)
+
+`^tech_[0-9]+$` (case-insensitive) is reserved for system technician IDs.
+
+- Human nickname edits and direct Flarum signup that set `attributes.nickname` to a reserved value are rejected.
+- Grandfathered users who already store `tech_N` are untouched; unrelated profile saves without `attributes.nickname` are not rejected.
+- FlatRate SSO RegistrationToken nicknames are applied on the user model (not via request `attributes.nickname`), so system registration remains allowed.
+- R3-A does **not** remove the legacy `count()+1` allocator; that lands after Supabase allocation + negotiation.
 
 ## Requirements
 

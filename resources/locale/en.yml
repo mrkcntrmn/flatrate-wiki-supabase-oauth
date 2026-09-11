@@ -19,6 +19,10 @@ fof-oauth:
     providers:
       flatrate: FlatRate.wiki
 
+flatrate-identity:
+  api:
+    reserved_tech_nickname: That nickname is reserved for FlatRate technician IDs.
+
 flatrate-email-policy:
   email:
     subscriptions:

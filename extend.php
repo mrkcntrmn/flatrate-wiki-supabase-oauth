@@ -11,6 +11,7 @@ use Flarum\Post\Event\Deleted;
 use Flarum\Post\Event\Posted;
 use Flarum\Post\Event\Saving;
 use Flarum\User\Event\RegisteringFromProvider;
+use Flarum\User\Event\Saving as UserSaving;
 use FoF\OAuth\Extend as OAuthExtend;
 
 return [
@@ -66,6 +67,7 @@ return [
 
     (new Extend\Event())
         ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class)
+        ->listen(UserSaving::class, Listeners\RejectReservedTechNickname::class)
         ->listen(Saving::class, Markers\SaveJobBreakdownMarker::class)
         ->listen(Deleted::class, Markers\DeletePostMarkers::class)
         ->listen(Started::class, Activity\EmitDiscussionCreated::class)
