@@ -81,9 +81,13 @@ test("IDENTITY-002: backfill command is dry-runnable and digest-guarded", async 
 
 test("IDENTITY-002: schema derives member_number from users.id", async () => {
   const migration = await text("migrations/2026_09_12_000000_create_flatrate_member_profiles.php");
-  assert.match(migration, /flatrate_member_profiles/);
-  assert.match(migration, /REFERENCES users \(id\)/);
+  assert.match(migration, /Migration::createTable/);
+  assert.match(migration, /unsignedInteger\('user_id'\)/);
+  assert.match(migration, /unsignedInteger\('member_number'\)/);
+  assert.match(migration, /->on\('users'\)/);
   assert.match(migration, /member_number > 0/);
+  assert.doesNotMatch(migration, /CREATE TABLE IF NOT EXISTS flatrate_member_profiles/);
+  assert.doesNotMatch(migration, /REFERENCES users \(id\)/);
   assert.doesNotMatch(migration, /AUTO_INCREMENT/);
   assert.doesNotMatch(migration, /member_number_sequence/);
 });

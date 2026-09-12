@@ -1,0 +1,11 @@
+{
+  "name": "flatrate/mariadb-member-profile-migration-harness",
+  "description": "Disposable Illuminate schema harness for FORUM-IDENTITY-002-R2 MariaDB migration tests.",
+  "require": {
+    "php": ">=8.1",
+    "illuminate/database": "^10.48"
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

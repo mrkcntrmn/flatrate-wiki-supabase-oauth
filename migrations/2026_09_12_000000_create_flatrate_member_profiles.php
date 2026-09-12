@@ -1,33 +1,50 @@
 <?php
 
+use Flarum\Database\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\Builder;
 
-return [
-    'up' => function (Builder $schema) {
-        $db = $schema->getConnection();
+$definition = Migration::createTable(
+    'flatrate_member_profiles',
+    function (Blueprint $table) {
+        $table->unsignedInteger('user_id');
+        $table->unsignedInteger('member_number');
+        $table->string('display_mode', 32);
+        $table->string('custom_nickname', 255)->nullable();
+        $table->string('custom_nickname_origin', 32)->nullable();
+        $table->dateTime('assigned_at');
+        $table->dateTime('updated_at');
 
-        $db->statement('CREATE TABLE IF NOT EXISTS flatrate_member_profiles (
-            user_id INT UNSIGNED NOT NULL,
-            member_number INT UNSIGNED NOT NULL,
-            display_mode VARCHAR(32) NOT NULL,
-            custom_nickname VARCHAR(255) NULL,
-            custom_nickname_origin VARCHAR(32) NULL,
-            assigned_at DATETIME NOT NULL,
-            updated_at DATETIME NOT NULL,
-            PRIMARY KEY (user_id),
-            UNIQUE KEY flatrate_member_profiles_member_number_unique (member_number),
-            CONSTRAINT flatrate_member_profiles_user_id_fk
-                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-            CONSTRAINT flatrate_member_profiles_member_number_positive
-                CHECK (member_number > 0),
-            CONSTRAINT flatrate_member_profiles_display_mode_chk
-                CHECK (display_mode IN (\'member_number\', \'custom\')),
-            CONSTRAINT flatrate_member_profiles_origin_chk
-                CHECK (custom_nickname_origin IN (\'grandfathered\', \'user\') OR custom_nickname_origin IS NULL)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+        $table->primary('user_id');
+        $table->unique('member_number');
+
+        $table->foreign('user_id')
+            ->references('id')
+            ->on('users')
+            ->onDelete('cascade');
+    }
+);
+
+return [
+    'up' => function (Builder $schema) use ($definition) {
+        $definition['up']($schema);
+
+        $connection = $schema->getConnection();
+        $table = $connection->getTablePrefix().'flatrate_member_profiles';
+        if (! preg_match('/^[A-Za-z0-9_]*flatrate_member_profiles$/', $table)) {
+            throw new \RuntimeException('unsafe_member_profile_table_name');
+        }
+
+        // Illuminate 8 Blueprint has no check(); MariaDB 11.4 parses and enforces these.
+        $connection->statement(
+            'ALTER TABLE `'.$table.'` ADD CONSTRAINT `'.$table.'_member_number_positive` CHECK (member_number > 0)'
+        );
+        $connection->statement(
+            'ALTER TABLE `'.$table."` ADD CONSTRAINT `{$table}_display_mode_chk` CHECK (display_mode IN ('member_number', 'custom'))"
+        );
+        $connection->statement(
+            'ALTER TABLE `'.$table."` ADD CONSTRAINT `{$table}_origin_chk` CHECK (custom_nickname_origin IN ('grandfathered', 'user') OR custom_nickname_origin IS NULL)"
+        );
     },
-    'down' => function (Builder $schema) {
-        $db = $schema->getConnection();
-        $db->statement('DROP TABLE IF EXISTS flatrate_member_profiles');
-    },
+    'down' => $definition['down'],
 ];

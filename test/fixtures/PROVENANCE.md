@@ -1,3 +1,12 @@
+# FORUM-IDENTITY-002-R2 MariaDB fixtures
+
+| Fixture | Upstream path | Provenance |
+|---|---|---|
+| `flarum-1.8.19-Migration.php` | `src/Database/Migration.php` | flarum/core 1.8.19, slimmed to `createTable` only |
+| `flarum-1.8.19-create-users-table.php` | `migrations/2015_02_24_000000_create_users_table.php` | flarum/core 1.8.19 |
+
+`Migration::createTable()` routes `$schema->create($name, ...)` so the active connection prefix is applied. Do not reintroduce raw `CREATE TABLE` / `REFERENCES users (id)` DDL.
+
 # FORUM-SUB-001 pinned upstream fixtures
 
 Exact APIs depended on for GM/CDJR family notification inheritance.
