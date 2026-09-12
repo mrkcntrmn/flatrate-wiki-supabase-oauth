@@ -5,6 +5,7 @@ namespace FlatRate\SupabaseOAuth;
 use FlatRate\SupabaseOAuth\Subscription\FilterInheritedIgnoredTagMentions;
 use FlatRate\SupabaseOAuth\Subscription\FollowTagsFamilyServiceProvider;
 use Flarum\Api\Serializer\PostSerializer;
+use Flarum\Api\Serializer\UserSerializer;
 use Flarum\Discussion\Event\Started;
 use Flarum\Extend;
 use Flarum\Post\Event\Deleted;
@@ -17,7 +18,7 @@ use FoF\OAuth\Extend as OAuthExtend;
 return [
     // Flarum 1.8 Frontend::js() stores one scalar path (overwrite).
     // Register each forum JS file through its own Frontend extender so all
-    // three sources reach the compiled forum asset in load order.
+    // four sources reach the compiled forum asset in load order.
     (new Extend\Frontend('forum'))
         ->css(__DIR__.'/resources/less/forum.less')
         ->css(__DIR__.'/resources/less/mobile-brand-drawer.less')
@@ -28,6 +29,9 @@ return [
 
     (new Extend\Frontend('forum'))
         ->js(__DIR__.'/js/dist/mobile-brand-drawer.js'),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/member-display.js'),
 
     new Extend\Locales(__DIR__.'/resources/locale'),
 
@@ -68,6 +72,7 @@ return [
     (new Extend\Event())
         ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class)
         ->listen(UserSaving::class, Listeners\RejectReservedTechNickname::class)
+        ->listen(UserSaving::class, Listeners\SyncMemberDisplayFromNickname::class)
         ->listen(Saving::class, Markers\SaveJobBreakdownMarker::class)
         ->listen(Deleted::class, Markers\DeletePostMarkers::class)
         ->listen(Started::class, Activity\EmitDiscussionCreated::class)
@@ -75,6 +80,9 @@ return [
 
     (new Extend\ApiSerializer(PostSerializer::class))
         ->attribute('flatRateJobBreakdown', Api\SerializePostJobBreakdownMarker::class),
+
+    (new Extend\ApiSerializer(UserSerializer::class))
+        ->attributes(Api\SerializeMemberProfile::class),
 
     (new Extend\Settings())
         ->default('flatrate-activity.emit_enabled', false)
@@ -86,11 +94,13 @@ return [
         ->command(Activity\DrainActivityOutboxCommand::class)
         ->schedule(Activity\DrainActivityOutboxCommand::class, function ($event) {
             $event->everyMinute()->withoutOverlapping();
-        }),
+        })
+        ->command(Identity\BackfillMemberProfilesCommand::class),
 
     (new Extend\Routes('api'))
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
-        ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class),
+        ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class)
+        ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class),
 
     (new Extend\Routes('forum'))
         ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),

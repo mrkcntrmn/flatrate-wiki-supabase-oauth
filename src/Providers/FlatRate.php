@@ -93,9 +93,9 @@ final class FlatRate extends Provider
             // email address. Keep it as an opaque, stable public handle instead.
             ->suggestUsername(NeutralIdentity::handle($sub))
             // Do not synthesize the public nickname here. The reusable provisioner
-            // derives tech_<N> from a signed tech_number in the HMAC body after
-            // existing provider/email checks, so ticket bridge and OAuth fallback
-            // share one authoritative allocation contract.
+            // assigns tech_#<users.id> after Flarum creates the row. A signed tech_number
+            // in the HMAC body is ignored on the canonical path and remains only as
+            // older-extension rollback compatibility.
             ->setPayload($payload);
 
         $picture = trim((string) ($payload['picture'] ?? ''));

@@ -38,6 +38,15 @@ jobs:
       - name: Run tech_number payload gates
         run: php test/tech-number.php
 
+      - name: Run reserved nickname gates
+        run: php test/reserved-tech-nickname.php
+
+      - name: Run member identity gates
+        run: php test/member-identity.php
+
+      - name: Run member display policy gates
+        run: php test/member-display-policy.php
+
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 

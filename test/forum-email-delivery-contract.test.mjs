@@ -51,7 +51,8 @@ test("ForumEmailPolicy reserves the whole users.flatrate.wiki namespace", async 
 test("FlatRateUserProvisioner reconciles linked users with one-way promotion only", async () => {
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
   assert.match(provisioner, /reconcileLinkedEmail\(/);
-  assert.match(provisioner, /if \(\$linked = \$this->linkedUser\(\$sub\)\) \{\s*return \$this->reconcileLinkedEmail\(/s);
+  assert.match(provisioner, /if \(\$linked = \$this->linkedUser\(\$sub\)\) \{\s*return \$this->finishLinkedUser\(/s);
+  assert.match(provisioner, /function finishLinkedUser[\s\S]*reconcileLinkedEmail\(/s);
   assert.match(provisioner, /ForumEmailPolicy::canPromote/);
   assert.match(provisioner, /->changeEmail\(\$incomingEmail\)/);
   assert.match(provisioner, /->activate\(\)/);

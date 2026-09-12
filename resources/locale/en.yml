@@ -20,8 +20,21 @@ fof-oauth:
       flatrate: FlatRate.wiki
 
 flatrate-identity:
+  forum:
+    settings:
+      heading: Community identity
+      member_number: "Member #{number}"
+      member_number_help: Your member number reflects when your Community account was created and is permanently yours.
+      choose_appearance: Choose how your name appears
+      member_identity: Use my permanent FlatRate.wiki member identity
+      custom_nickname: Custom nickname
+      custom_nickname_placeholder: Choose a custom nickname
+      permanence: Your member number is permanent even if you use a custom nickname.
+      save: Save
+      saved: Saved
+      error: Could not update how your name appears.
   api:
-    reserved_tech_nickname: That nickname is reserved for FlatRate technician IDs.
+    reserved_tech_nickname: That nickname is reserved for FlatRate Community member identities.
 
 flatrate-email-policy:
   email:
