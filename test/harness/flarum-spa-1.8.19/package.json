@@ -1,0 +1,11 @@
+{
+  "name": "flatrate-flarum-spa-1.8.19-harness",
+  "private": true,
+  "description": "Disposable Flarum 1.8.19 browser boot harness. Not a production dependency.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.2"
+  }
+}
