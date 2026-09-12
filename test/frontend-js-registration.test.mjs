@@ -240,6 +240,10 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   assert.match(member, /flatrate-wiki-member-display/);
   assert.match(member, /flatrate\/member-display/);
   assert.match(member, /Community identity|member_number|flatRateMemberNumber/);
+  assert.match(member, /module\.exports = \{\}/);
+  assert.match(member, /coreExport\('common\/extend'\)/);
+  assert.match(member, /forum\/components\/SettingsPage/);
+  assert.match(member, /flarum\.core\.compat/);
 
   for (const rel of EXPECTED_JS) {
     assert.ok(existsSync(join(ROOT, rel)), `missing ${rel}`);
