@@ -11,6 +11,27 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
+    env:
+      MARIADB_HOST: 127.0.0.1
+      MARIADB_PORT: 3306
+      MARIADB_DATABASE: flarum_test
+      MARIADB_USER: flarum
+      MARIADB_PASSWORD: flarum
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: test
+          MARIADB_DATABASE: flarum_test
+          MARIADB_USER: flarum
+          MARIADB_PASSWORD: flarum
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +49,7 @@ jobs:
           php-version: '8.2'
           coverage: none
           tools: composer:v2
+          extensions: pdo_mysql
 
       - name: Validate Composer metadata
         run: composer validate --strict --no-check-publish
@@ -72,6 +94,13 @@ jobs:
 
       - name: Run FORUM-SUB-001 runtime resolver/binding gates
         run: php test/forum-sub001-runtime.php
+
+      - name: Install MariaDB member-profile migration harness
+        working-directory: test/harness/mariadb-migration
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run MariaDB member-profile migration gates
+        run: php test/member-profile-mariadb-migration.php
 
       - name: Lint PHP
         run: find . -name '*.php' -not -path './test/harness/*/vendor/*' -print0 | xargs -0 -n1 php -l

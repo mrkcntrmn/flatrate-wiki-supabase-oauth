@@ -78,6 +78,14 @@ composer require flatrate/wiki-supabase-oauth:^0.2
 
 For the managed PikaPods/Flarum image, persist the package in `/data/extensions/list` so it is restored after restart.
 
+PikaPods does not expose an application console. Existing member profiles are created by lazy self-heal on provision/login; production bulk CLI backfill is not required.
+
+```text
+PIKAPODS_APPLICATION_CONSOLE=unavailable
+PRODUCTION_BULK_CLI_BACKFILL=not_required
+EXISTING_PROFILE_MIGRATION=lazy_self_heal
+```
+
 Enable dependencies in this order:
 
 1. **Nicknames**
@@ -327,8 +335,17 @@ node --test test/*.test.mjs
 Run PHP syntax validation:
 
 ```bash
-find . -name '*.php' -print0 | xargs -0 -n1 php -l
+find . -name '*.php' -not -path './test/harness/*/vendor/*' -print0 | xargs -0 -n1 php -l
 ```
+
+MariaDB 11.4 migration compatibility (requires a disposable `mariadb:11.4` and the harness vendor tree):
+
+```bash
+composer install --no-interaction --prefer-dist --working-dir=test/harness/mariadb-migration
+php test/member-profile-mariadb-migration.php
+```
+
+The member-profile table is created through Flarum `Migration::createTable` / `Blueprint` so the active connection prefix is applied. CHECK invariants (`member_number > 0`, `display_mode`, `custom_nickname_origin`) are added with MariaDB `ALTER TABLE` because Illuminate 8's Blueprint has no `check()` helper.
 
 ## License
 
