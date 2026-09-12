@@ -36,12 +36,28 @@ test("IDENTITY-002: linked users self-heal without allocator", async () => {
   assert.doesNotMatch(provisioner, /tech_number_required/);
 });
 
-test("IDENTITY-002: display API ignores client member_number", async () => {
+test("IDENTITY-002: CustomNicknameValidator is not a production policy", async () => {
+  const { existsSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const root = dirname(fileURLToPath(new URL("../", import.meta.url)));
+  assert.equal(
+    existsSync(join(root, "src/Identity/CustomNicknameValidator.php")),
+    false,
+  );
+});
+
+test("IDENTITY-002: display API ignores client member_number and uses EditUser", async () => {
   const controller = await text("src/Api/MemberDisplayController.php");
   assert.match(controller, /unset\(\$body\['member_number'\]\)/);
   assert.match(controller, /DISPLAY_MODE_MEMBER_NUMBER/);
-  assert.match(controller, /applyTrustedCustom/);
+  assert.match(controller, /EditUserHandler/);
+  assert.match(controller, /new EditUser\(/);
+  assert.match(controller, /assertActorMayChangeDisplay/);
   assert.match(controller, /assertRegistered/);
+  assert.match(controller, /MEMBER_DISPLAY_REQUIRES_EDIT_NICKNAME_PERMISSION=true/);
+  assert.doesNotMatch(controller, /CustomNicknameValidator/);
+  assert.doesNotMatch(controller, /applyTrustedCustom/);
 });
 
 test("IDENTITY-002: serializer exposes self-only custom fields", async () => {

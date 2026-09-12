@@ -2,12 +2,16 @@
 
 namespace FlatRate\SupabaseOAuth\Api;
 
-use FlatRate\SupabaseOAuth\Identity\CustomNicknameValidator;
 use FlatRate\SupabaseOAuth\Identity\MemberDisplayException;
+use FlatRate\SupabaseOAuth\Identity\MemberDisplayPolicy;
 use FlatRate\SupabaseOAuth\Identity\MemberDisplayService;
 use FlatRate\SupabaseOAuth\Identity\MemberIdentity;
 use FlatRate\SupabaseOAuth\Identity\MemberProfileStore;
+use Flarum\Foundation\ValidationException;
 use Flarum\Http\RequestUtil;
+use Flarum\User\Command\EditUser;
+use Flarum\User\Command\EditUserHandler;
+use Flarum\User\Exception\PermissionDeniedException;
 use Flarum\User\User;
 use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -18,13 +22,18 @@ use Psr\Http\Server\RequestHandlerInterface;
  * PATCH /api/flatrate/member-display
  *
  * Actor may change only their own display mode. Client member_number is ignored.
+ * Ordinary custom nicknames go through EditUser so Nicknames validation,
+ * editNickname permission, and Saving/UserValidator remain authoritative.
+ *
+ * MEMBER_DISPLAY_REQUIRES_EDIT_NICKNAME_PERMISSION=true
  */
 final class MemberDisplayController implements RequestHandlerInterface
 {
     public function __construct(
         private MemberProfileStore $profiles,
         private MemberDisplayService $display,
-        private CustomNicknameValidator $nicknames
+        private MemberDisplayPolicy $policy,
+        private EditUserHandler $editUser
     ) {
     }
 
@@ -50,24 +59,38 @@ final class MemberDisplayController implements RequestHandlerInterface
                     throw new MemberDisplayException('member_profile_missing', 404);
                 }
 
+                $this->policy->assertActorMayChangeDisplay($actor, $user);
                 $profile = $this->profiles->requireFor($user);
 
                 if ($mode === MemberIdentity::DISPLAY_MODE_MEMBER_NUMBER) {
+                    $this->policy->assertCanonicalAssignable($user, [$this, 'identityOccupiedByOther']);
                     $this->display->applyMemberNumber($user, $profile);
-                } elseif ($mode === MemberIdentity::DISPLAY_MODE_CUSTOM) {
-                    if (is_string($nickname) && ! $this->isRetainedRestore($profile, $nickname)) {
-                        $this->nicknames->assertAcceptable($nickname, (int) $user->id);
-                    }
-                    $this->display->applyTrustedCustom($user, $profile, $nickname);
-                } else {
+                    $profile->updated_at = date('Y-m-d H:i:s');
+                    $user->save();
+                    $profile->save();
+
+                    return $user;
+                }
+
+                if ($mode !== MemberIdentity::DISPLAY_MODE_CUSTOM) {
                     throw new MemberDisplayException('invalid_display_mode');
                 }
 
-                $profile->updated_at = date('Y-m-d H:i:s');
-                $user->save();
-                $profile->save();
+                $action = $this->policy->resolveCustomAction($profile, $nickname);
+                if ($action['kind'] === 'trusted_restore') {
+                    $this->display->restoreCustom($user, $profile);
+                    $profile->updated_at = date('Y-m-d H:i:s');
+                    $user->save();
+                    $profile->save();
 
-                return $user;
+                    return $user;
+                }
+
+                return $this->editUser->handle(new EditUser($user->id, $actor, [
+                    'attributes' => [
+                        'nickname' => $action['nickname'],
+                    ],
+                ]));
             });
 
             $profile = $this->profiles->requireFor($user);
@@ -88,14 +111,24 @@ final class MemberDisplayController implements RequestHandlerInterface
             ]);
         } catch (MemberDisplayException $error) {
             return $this->json(['errors' => [['code' => $error->errorCode]]], $error->statusCode);
+        } catch (PermissionDeniedException $error) {
+            return $this->json(['errors' => [['code' => 'permission_denied']]], 403);
+        } catch (ValidationException $error) {
+            return $this->json(['errors' => [['code' => 'invalid_nickname']]], 422);
         }
     }
 
-    private function isRetainedRestore(object $profile, string $nickname): bool
+    public function identityOccupiedByOther(string $value, int $userId): bool
     {
-        $retained = trim((string) ($profile->custom_nickname ?? ''));
+        $needle = strtolower($value);
 
-        return $retained !== '' && strcasecmp(trim($nickname), $retained) === 0;
+        return User::query()
+            ->where('id', '!=', $userId)
+            ->where(function ($query) use ($needle) {
+                $query->whereRaw('LOWER(nickname) = ?', [$needle])
+                    ->orWhereRaw('LOWER(username) = ?', [$needle]);
+            })
+            ->exists();
     }
 
     private function payload(ServerRequestInterface $request): array

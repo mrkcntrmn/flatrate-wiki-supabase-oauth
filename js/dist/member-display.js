@@ -1,6 +1,35 @@
 /*! FlatRate Wiki Community member-number display settings. */
-(function () {
+(function (root) {
     'use strict';
+
+    var FlatRateMemberDisplayState = {
+        retainedCustomNickname: function (user) {
+            if (!user || typeof user.attribute !== 'function') {
+                return '';
+            }
+            var value = user.attribute('flatRateCustomNickname');
+            if (value == null || value === '') {
+                return '';
+            }
+            return String(value);
+        },
+        nicknameMode: function (user) {
+            var value = user && typeof user.attribute === 'function' ? user.attribute('flatRateNicknameMode') : null;
+            return value === 'custom' ? 'custom' : 'member_number';
+        },
+        customRadioEnabled: function (user, busy) {
+            return !busy && this.retainedCustomNickname(user) !== '';
+        },
+        initialCustomDraft: function (user) {
+            return this.retainedCustomNickname(user);
+        },
+    };
+
+    root.FlatRateMemberDisplayState = FlatRateMemberDisplayState;
+
+    if (typeof app === 'undefined') {
+        return;
+    }
 
     app.initializers.add('flatrate-wiki-member-display', function () {
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
@@ -32,18 +61,6 @@
             return value || ('tech_#' + number);
         }
 
-        function nicknameMode(user) {
-            var value = user && typeof user.attribute === 'function' ? user.attribute('flatRateNicknameMode') : null;
-            return value === 'member_number' ? 'member_number' : 'custom';
-        }
-
-        function customNickname(user) {
-            if (!user || typeof user.attribute !== 'function') {
-                return '';
-            }
-            return String(user.attribute('flatRateCustomNickname') || user.displayName() || '');
-        }
-
         function applyAttributes(user, attributes) {
             if (!user || !attributes) {
                 return;
@@ -52,11 +69,9 @@
                 user.pushAttributes(attributes);
                 return;
             }
-            Object.keys(attributes).forEach(function (key) {
-                if (typeof user.pushData === 'function') {
-                    user.pushData({ attributes: attributes });
-                }
-            });
+            if (typeof user.pushData === 'function') {
+                user.pushData({ attributes: attributes });
+            }
         }
 
         function saveDisplay(payload) {
@@ -70,11 +85,7 @@
         extend(SettingsPage.prototype, 'oninit', function () {
             this.flatRateMemberBusy = false;
             this.flatRateMemberError = false;
-            this.flatRateCustomDraft = '';
-            var user = currentUser();
-            if (user) {
-                this.flatRateCustomDraft = customNickname(user);
-            }
+            this.flatRateCustomDraft = FlatRateMemberDisplayState.initialCustomDraft(currentUser());
         });
 
         extend(SettingsPage.prototype, 'settingsItems', function (items) {
@@ -85,9 +96,9 @@
             }
 
             var self = this;
-            var mode = nicknameMode(user);
+            var mode = FlatRateMemberDisplayState.nicknameMode(user);
             var reserved = memberNickname(user, number);
-            var retained = customNickname(user);
+            var retained = FlatRateMemberDisplayState.retainedCustomNickname(user);
             if (!self.flatRateCustomDraft && retained) {
                 self.flatRateCustomDraft = retained;
             }
@@ -146,7 +157,7 @@
                                 type: 'radio',
                                 name: 'flatrate-member-display-mode',
                                 checked: mode === 'custom',
-                                disabled: !!self.flatRateMemberBusy || !retained,
+                                disabled: !FlatRateMemberDisplayState.customRadioEnabled(user, !!self.flatRateMemberBusy),
                                 onchange: function () {
                                     self.flatRateMemberBusy = true;
                                     self.flatRateMemberError = false;
@@ -197,7 +208,7 @@
                                     })
                                         .then(function (response) {
                                             applyAttributes(user, response && response.data && response.data.attributes);
-                                            self.flatRateCustomDraft = customNickname(user);
+                                            self.flatRateCustomDraft = FlatRateMemberDisplayState.retainedCustomNickname(user);
                                             self.flatRateMemberBusy = false;
                                             if (typeof m.redraw === 'function') {
                                                 m.redraw();
@@ -222,4 +233,4 @@
             );
         });
     });
-})();
+})(typeof globalThis !== 'undefined' ? globalThis : this);
