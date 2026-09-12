@@ -3,8 +3,9 @@
 namespace FlatRate\SupabaseOAuth\Auth;
 
 use FlatRate\SupabaseOAuth\Identity\ForumEmailPolicy;
+use FlatRate\SupabaseOAuth\Identity\MemberIdentity;
+use FlatRate\SupabaseOAuth\Identity\MemberProfileStore;
 use FlatRate\SupabaseOAuth\Identity\NeutralIdentity;
-use FlatRate\SupabaseOAuth\Identity\TechNumber;
 use FlatRate\SupabaseOAuth\Sso\SsoException;
 use Flarum\User\Command\RegisterUser;
 use Flarum\User\Command\RegisterUserHandler;
@@ -18,8 +19,10 @@ use RuntimeException;
 
 final class FlatRateUserProvisioner
 {
-    public function __construct(private RegisterUserHandler $registerUser)
-    {
+    public function __construct(
+        private RegisterUserHandler $registerUser,
+        private MemberProfileStore $profiles
+    ) {
     }
 
     public function ensure(string $sub, string $email, bool $emailVerified, array $payload = []): User
@@ -35,16 +38,15 @@ final class FlatRateUserProvisioner
             throw new AuthenticationException('verified_email_required');
         }
 
-        // Existing linked Community identities never require tech_number and
-        // must never trigger site-side allocation on login.
+        // Existing linked Community identities never require a tech_number and
+        // must never trigger site-side 20031+ allocation on login.
         if ($linked = $this->linkedUser($sub)) {
-            return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
+            return $this->finishLinkedUser($linked, $email, $emailVerified);
         }
 
         // Email is an attribute, never the cross-system identity key. If an
         // unrelated local account already owns it, require the explicit legacy
-        // linking flow instead of silently joining two identities. Do this
-        // before requesting a tech number so blocked identities allocate zero.
+        // linking flow instead of silently joining two identities.
         if (User::where('email', $email)->exists()) {
             throw new AuthenticationException('existing_account_requires_explicit_link');
         }
@@ -54,35 +56,23 @@ final class FlatRateUserProvisioner
             'email' => $email,
             'email_verified' => true,
         ]);
+        unset($payload['tech_number']);
 
         $username = NeutralIdentity::handle($sub);
+        $temporaryNickname = $username;
         $connection = (new User())->getConnection();
 
         try {
             /** @var User $user */
-            $user = $connection->transaction(function () use ($sub, $email, $emailVerified, $payload, $username) {
+            $user = $connection->transaction(function () use ($sub, $email, $emailVerified, $payload, $username, $temporaryNickname) {
                 // Re-check inside the transaction so retries and concurrent
                 // requests converge on an already-linked account when possible.
                 if ($linked = $this->linkedUser($sub)) {
-                    return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
+                    return $this->finishLinkedUser($linked, $email, $emailVerified);
                 }
 
                 if (User::where('email', $email)->exists()) {
                     throw new AuthenticationException('existing_account_requires_explicit_link');
-                }
-
-                // Forward-only: Supabase allocates immutable tech numbers.
-                // Existing linked users return above without requiring this
-                // field. New/unlinked users must present a signed tech_number
-                // inside the HMAC body (parsed only after linkage checks).
-                $techNumber = TechNumber::parseOptional($payload);
-                if ($techNumber === null) {
-                    throw new SsoException('tech_number_required', 409);
-                }
-
-                $nickname = NeutralIdentity::nickname($techNumber);
-                if ($this->nicknameOccupied($nickname)) {
-                    throw new SsoException('tech_number_nickname_collision', 409);
                 }
 
                 $token = RegistrationToken::generate(
@@ -91,7 +81,7 @@ final class FlatRateUserProvisioner
                     [
                         'username' => $username,
                         'email' => $email,
-                        'nickname' => $nickname,
+                        'nickname' => $temporaryNickname,
                     ],
                     $payload
                 );
@@ -101,7 +91,7 @@ final class FlatRateUserProvisioner
                 // RegisteringFromProvider listener. The provider identifier is
                 // the immutable Supabase sub, so the resulting LoginProvider is
                 // the durable cross-system link.
-                return $this->registerUser->handle(new RegisterUser(
+                $user = $this->registerUser->handle(new RegisterUser(
                     new Guest(),
                     [
                         'attributes' => [
@@ -111,6 +101,18 @@ final class FlatRateUserProvisioner
                         ],
                     ]
                 ));
+
+                $memberNumber = MemberIdentity::memberNumber($user);
+                $memberNickname = MemberIdentity::nickname($memberNumber);
+                if ($this->nicknameOccupiedByOther($memberNickname, $memberNumber)) {
+                    throw new SsoException('member_nickname_collision', 409);
+                }
+
+                $this->profiles->createForNewUser($user);
+                $user->nickname = $memberNickname;
+                $user->save();
+
+                return $user;
             });
 
             return $user;
@@ -122,17 +124,31 @@ final class FlatRateUserProvisioner
             // its committed provider row instead of creating a duplicate user.
             for ($attempt = 0; $attempt < 3; $attempt++) {
                 if ($linked = $this->linkedUser($sub)) {
-                    return $this->reconcileLinkedEmail($linked, $email, $emailVerified);
+                    return $this->finishLinkedUser($linked, $email, $emailVerified);
                 }
                 usleep(20000);
             }
 
             if ($this->isNicknameCollision($error)) {
-                throw new SsoException('tech_number_nickname_collision', 409);
+                throw new SsoException('member_nickname_collision', 409);
             }
 
             throw $error;
         }
+    }
+
+    /**
+     * Linked-user return path: email reconcile + deterministic profile self-heal.
+     *
+     * Nickname is unchanged unless the visible value is still the unfinished
+     * temporary routing handle (username). Retries then converge to tech_#N.
+     */
+    private function finishLinkedUser(User $linked, string $email, bool $emailVerified): User
+    {
+        $user = $this->reconcileLinkedEmail($linked, $email, $emailVerified);
+        $this->profiles->selfHeal($user);
+
+        return $user->fresh() ?? $user;
     }
 
     /**
@@ -238,15 +254,16 @@ final class FlatRateUserProvisioner
     }
 
     /**
-     * Case-insensitive occupancy of the reserved numeric nickname namespace.
+     * Case-insensitive occupancy of a nickname by a different user.
      * Preflight is advisory; DB uniqueness remains the final barrier.
      */
-    private function nicknameOccupied(string $nickname): bool
+    private function nicknameOccupiedByOther(string $nickname, int $userId): bool
     {
         $needle = strtolower($nickname);
 
         return User::query()
             ->whereRaw('LOWER(nickname) = ?', [$needle])
+            ->where('id', '!=', $userId)
             ->exists();
     }
 

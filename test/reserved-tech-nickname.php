@@ -1,7 +1,7 @@
 <?php
 
 /**
- * FORUM-IDENTITY-001-R3-A behavioral checks for reserved tech nickname guard.
+ * Reserved tech nickname guard — legacy tech_N and canonical tech_#N.
  * Run: php test/reserved-tech-nickname.php
  */
 
@@ -20,25 +20,43 @@ function assert_true(bool $cond, string $msg): void
     }
 }
 
-$cases = [
+$legacy = [
     ['tech_999', true],
     ['TECH_999', true],
     ['Tech_999', true],
     ['tech_000999', true],
     ['tech_20031', true],
+    ['tech_#307', false],
     ['DieselDan', false],
     ['tech_master', false],
-    ['tech_diesel', false],
     ['technician_307', false],
     ['tech_', false],
     ['', false],
 ];
 
-foreach ($cases as [$value, $expected]) {
-    assert_true(ReservedTechNickname::matches($value) === $expected, "matches(".json_encode($value).") expected ".(int) $expected);
+foreach ($legacy as [$value, $expected]) {
+    assert_true(ReservedTechNickname::matchesLegacy($value) === $expected, "legacy(".json_encode($value).")");
 }
 
-// Simulate listener decision table without full Flarum bootstrap.
+$canonical = [
+    ['tech_#1', true],
+    ['tech_#42', true],
+    ['tech_#307', true],
+    ['TECH_#307', true],
+    ['Tech_#307', true],
+    ['tech_307', false],
+    ['DieselDave', false],
+];
+
+foreach ($canonical as [$value, $expected]) {
+    assert_true(ReservedTechNickname::matchesCanonical($value) === $expected, "canonical(".json_encode($value).")");
+}
+
+assert_true(ReservedTechNickname::matches('tech_307') === true, 'matches legacy');
+assert_true(ReservedTechNickname::matches('tech_#307') === true, 'matches canonical');
+assert_true(ReservedTechNickname::matches('DieselDave') === false, 'custom allowed');
+assert_true('tech_307' !== 'tech_#307', 'namespaces are distinct');
+
 function should_reject(array $data): bool
 {
     $attributes = $data['attributes'] ?? null;
@@ -54,9 +72,10 @@ assert_true(should_reject(['attributes' => ['bio' => 'x']]) === false, 'unrelate
 assert_true(should_reject(['attributes' => ['nickname' => 'DieselDan']]) === false, 'custom nickname');
 assert_true(should_reject(['attributes' => ['nickname' => 'tech_999']]) === true, 'human tech_999');
 assert_true(should_reject(['attributes' => ['nickname' => 'TECH_999']]) === true, 'human TECH_999');
+assert_true(should_reject(['attributes' => ['nickname' => 'tech_#322']]) === true, 'human tech_#322');
+assert_true(should_reject(['attributes' => ['nickname' => 'TECH_#322']]) === true, 'human TECH_#322');
 assert_true(should_reject(['attributes' => ['nickname' => 'tech_master']]) === false, 'non-numeric tech_master');
 
-// Token path: nickname applied on model; request attributes omit nickname.
 $tokenRegistrationData = [
     'attributes' => [
         'username' => 'tech_abcdef12',

@@ -47,18 +47,19 @@ Hard rules:
 | Login/account address | Supabase/Flarum email | `tech@example.com` | No |
 | Internal Flarum schema email | FlatRate placeholder | `forum-<hash>@users.flatrate.wiki` | No |
 | Flarum routing username | Derived from `sub` | `tech_a1b2c3d4` | Yes |
-| FlatRate tech number | Supabase assignment (forward-only; R3) | `20031` | No |
-| System nickname | Derived from tech number | `tech_20031` | Yes (initial) |
-| Display name / nickname | Flarum Nicknames (editable) | `EV Tech` / `DieselDan` | Yes |
+| Community member number | Flarum `users.id` (FORUM-IDENTITY-002) | `322` | Yes as `Member #322` |
+| Permanent member identity | Derived from member number | `tech_#322` | Yes (initial for new users) |
+| Custom / grandfathered nickname | Flarum Nicknames + member profile | `tech_20031` / `DieselDave` | Yes |
+| Legacy FlatRate tech number | Supabase assignment (R3 rollback only) | `20031` | No |
 
-### Reserved numeric nickname namespace (FORUM-IDENTITY-001-R3-A)
+### Reserved nickname namespaces
 
-`^tech_[0-9]+$` (case-insensitive) is reserved for system technician IDs.
+Legacy `^tech_[0-9]+$` and canonical `^tech_#[0-9]+$` (case-insensitive) are reserved.
 
-- Human nickname edits and direct Flarum signup that set `attributes.nickname` to a reserved value are rejected.
-- Grandfathered users who already store `tech_N` are untouched; unrelated profile saves without `attributes.nickname` are not rejected.
-- FlatRate SSO RegistrationToken nicknames are applied on the user model (not via request `attributes.nickname`), so system registration remains allowed.
-- R3-A reservation remains live. R3-D candidate source removes `count()+1` and requires a signed `tech_number` (≥ 20031) for new unlinked identities only; existing linked users never allocate.
+- Human nickname edits and direct Flarum signup that set `attributes.nickname` to either reserved form are rejected.
+- Grandfathered users who already store `tech_N` keep that visible nickname; unrelated profile saves without `attributes.nickname` are not rejected.
+- Trusted member-display actions and SSO registration set nicknames on the user model (not via request `attributes.nickname`).
+- Historical R3-A/R3-D `tech_N` + signed `tech_number` (≥ 20031) remains rollback compatibility. Canonical new users take `tech_#<users.id>` and do not require the 20031 allocator.
 
 ## Requirements
 
@@ -158,7 +159,7 @@ Request body:
 Behavior is idempotent:
 
 - return the user already linked by `login_providers(provider=flatrate, identifier=sub)`; or
-- create exactly one Flarum user with deterministic routing username and nickname `tech_<tech_number>` from the signed SSO body;
+- create exactly one Flarum user with deterministic routing username and nickname `tech_#<Flarum users.id>`;
 - create the `flatrate` provider link keyed to `sub`;
 - never join an unrelated account solely because email matches.
 

@@ -30,21 +30,23 @@ test("provider keeps PKCE S256 and immutable Supabase sub identity", async () =>
   assert.doesNotMatch(provider, /provideTrustedEmail/);
 });
 
-test("routing identity stays hash-based while default nickname uses signed tech_number", async () => {
+test("routing identity stays hash-based while default nickname uses member number", async () => {
   const identity = await text("src/Identity/NeutralIdentity.php");
+  const member = await text("src/Identity/MemberIdentity.php");
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
   const provider = await text("src/Providers/FlatRate.php");
   assert.match(identity, /'tech_'\.substr\(hash\('sha256', \$sub\), 0, 8\)/);
   assert.match(identity, /nickname\(int \$userNumber\)/);
   assert.match(identity, /return 'tech_'\.\$userNumber/);
   assert.doesNotMatch(identity, /nickname\(string \$sub\)/);
+  assert.match(member, /return 'tech_#'\.\$memberNumber/);
   assert.match(provisioner, /LoginProvider::where\('provider', 'flatrate'\)/);
   assert.match(provisioner, /->lockForUpdate\(\)/);
   assert.doesNotMatch(provisioner, /\$userNumber = \$linkedUsers->count\(\) \+ 1/);
   assert.doesNotMatch(provisioner, /count\(\)\s*\+\s*1/);
-  assert.match(provisioner, /TechNumber::parseOptional/);
-  assert.match(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
-  assert.match(provisioner, /tech_number_nickname_collision/);
+  assert.doesNotMatch(provisioner, /TechNumber::parseOptional/);
+  assert.match(provisioner, /MemberIdentity::nickname\(\$memberNumber\)/);
+  assert.match(provisioner, /member_nickname_collision/);
   assert.doesNotMatch(provider, /NeutralIdentity::nickname\(/);
   assert.match(provider, /signed tech_number/);
 });
@@ -61,7 +63,8 @@ test("reusable provisioner is idempotent and never links by email", async () => 
   assert.match(provisioner, /->transaction\(/);
   assert.match(provisioner, /catch \(QueryException/);
   assert.match(provisioner, /NeutralIdentity::handle\(\$sub\)/);
-  assert.match(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
+  assert.match(provisioner, /MemberIdentity::nickname\(\$memberNumber\)/);
+  assert.match(provisioner, /finishLinkedUser\(/);
   assert.match(provisioner, /reconcileLinkedEmail\(/);
   assert.match(provisioner, /ForumEmailPolicy::canPromote/);
 });

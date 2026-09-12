@@ -3,21 +3,39 @@
 namespace FlatRate\SupabaseOAuth\Identity;
 
 /**
- * System-controlled numeric technician nickname namespace.
+ * Reserved public nickname namespaces.
  *
- * Pattern (case-insensitive): tech_<decimal digits>
- * Canonical generation remains NeutralIdentity::nickname() → lowercase tech_<N>.
+ * Legacy historical identities: tech_<decimal digits>
+ * Canonical permanent member identities: tech_#<decimal digits>
  *
- * Human-controlled nickname claims matching this namespace are rejected.
- * FlatRate RegistrationToken system nicknames are applied onto the User model
- * without placing nickname in request attributes, so reservation listeners that
- * only inspect attributes.nickname do not block SSO registration.
+ * Human-controlled generic nickname claims matching either namespace are
+ * rejected. Trusted system/member-display actions set nicknames on the User
+ * model without placing nickname in request attributes.
  */
 final class ReservedTechNickname
 {
-    public const PATTERN = '/^tech_[0-9]+$/i';
+    public const LEGACY_PATTERN = '/^tech_[0-9]+$/i';
+    public const CANONICAL_PATTERN = '/^tech_#[0-9]+$/i';
+
+    /** Combined reservation: legacy numeric or canonical member identity. */
+    public const PATTERN = '/^tech_(?:[0-9]+|#[0-9]+)$/i';
+
+    public static function matchesLegacy(mixed $nickname): bool
+    {
+        return self::matchesPattern($nickname, self::LEGACY_PATTERN);
+    }
+
+    public static function matchesCanonical(mixed $nickname): bool
+    {
+        return self::matchesPattern($nickname, self::CANONICAL_PATTERN);
+    }
 
     public static function matches(mixed $nickname): bool
+    {
+        return self::matchesLegacy($nickname) || self::matchesCanonical($nickname);
+    }
+
+    private static function matchesPattern(mixed $nickname, string $pattern): bool
     {
         if (! is_string($nickname)) {
             return false;
@@ -28,6 +46,6 @@ final class ReservedTechNickname
             return false;
         }
 
-        return (bool) preg_match(self::PATTERN, $value);
+        return (bool) preg_match($pattern, $value);
     }
 }

@@ -9,7 +9,7 @@ use Illuminate\Contracts\Translation\Translator;
 use Illuminate\Support\Arr;
 
 /**
- * Reject human nickname claims in the reserved numeric tech_* namespace.
+ * Reject human nickname claims in reserved tech_N and tech_#N namespaces.
  *
  * Only runs when the request explicitly includes attributes.nickname so
  * grandfathered stored tech_N nicknames survive unrelated profile saves, and

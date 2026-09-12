@@ -5,34 +5,27 @@ import test from "node:test";
 const packageDir = new URL("../", import.meta.url);
 const text = (path) => readFile(new URL(path, packageDir), "utf8");
 
-test("R3D: count()+1 allocator removed from live provisioner", async () => {
+test("R3D: count()+1 allocator remains removed from live provisioner", async () => {
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
   assert.doesNotMatch(provisioner, /\$linkedUsers\s*=\s*LoginProvider::where\('provider', 'flatrate'\)/);
   assert.doesNotMatch(provisioner, /\$userNumber\s*=\s*\$linkedUsers->count\(\)\s*\+\s*1/);
   assert.doesNotMatch(provisioner, /count\(\)\s*\+\s*1/);
-  assert.match(provisioner, /TechNumber::parseOptional/);
-  assert.match(provisioner, /tech_number_required/);
-  assert.match(provisioner, /tech_number_nickname_collision/);
-  assert.match(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
+  assert.doesNotMatch(provisioner, /max\s*\(\s*\$/);
   assert.doesNotMatch(provisioner, /ensure_forum_tech_assignment|SUPABASE_|createClient\(|curl_exec|file_get_contents\s*\(\s*['\"]https?:\/\//i);
 });
 
-test("R3D: linked-user check precedes tech_number requirement", async () => {
+test("IDENTITY-002: new users do not require the 20031+ tech_number allocator", async () => {
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
-  const linkedIdx = provisioner.indexOf("if ($linked = $this->linkedUser($sub))");
-  const emailIdx = provisioner.indexOf("existing_account_requires_explicit_link");
-  const techIdx = provisioner.indexOf("TechNumber::parseOptional");
-  const requiredIdx = provisioner.indexOf("tech_number_required");
-  assert.ok(linkedIdx >= 0 && techIdx > linkedIdx, "parse tech_number after first linked check");
-  assert.ok(emailIdx > linkedIdx && emailIdx < techIdx, "email collision before tech_number");
-  assert.ok(requiredIdx > techIdx, "required error after parse");
-
-  // Second linked check inside transaction must also precede tech parse.
-  const txLinked = provisioner.indexOf("if ($linked = $this->linkedUser($sub))", linkedIdx + 1);
-  assert.ok(txLinked > linkedIdx && txLinked < techIdx, "in-transaction linked check before tech_number");
+  assert.doesNotMatch(provisioner, /TechNumber::parseOptional/);
+  assert.doesNotMatch(provisioner, /TechNumber::parseRequired/);
+  assert.doesNotMatch(provisioner, /tech_number_required/);
+  assert.doesNotMatch(provisioner, /NeutralIdentity::nickname\(\$techNumber\)/);
+  assert.match(provisioner, /MemberIdentity::nickname/);
+  assert.match(provisioner, /createForNewUser/);
+  assert.match(provisioner, /unset\(\$payload\['tech_number'\]\)/);
 });
 
-test("R3D: TechNumber enforces MIN 20031 and strict JSON integers", async () => {
+test("R3D: TechNumber remains legacy rollback contract only", async () => {
   const payload = await text("src/Identity/TechNumber.php");
   assert.match(payload, /MIN_TECH_NUMBER = 20031/);
   assert.match(payload, /MAX_SAFE_INTEGER = 9007199254740991/);
@@ -40,7 +33,6 @@ test("R3D: TechNumber enforces MIN 20031 and strict JSON integers", async () => 
   assert.match(payload, /tech_number_required/);
   assert.match(payload, /invalid_tech_number/);
   assert.doesNotMatch(payload, /preg_match/);
-  // Explicit null is present-but-invalid (parseBoundedInteger), not missing.
   assert.match(
     payload,
     /if \(! array_key_exists\('tech_number', \$payload\)\) \{\s*return null;/s,
@@ -48,14 +40,15 @@ test("R3D: TechNumber enforces MIN 20031 and strict JSON integers", async () => 
   assert.doesNotMatch(payload, /\$payload\['tech_number'\] === null/);
 });
 
-test("R3D: existing linked path precedes any tech_number parse (null ignored)", async () => {
+test("R3D: existing linked path precedes registration", async () => {
   const provisioner = await text("src/Auth/FlatRateUserProvisioner.php");
   const linkedIdx = provisioner.indexOf("if ($linked = $this->linkedUser($sub))");
-  const techIdx = provisioner.indexOf("TechNumber::parseOptional");
-  assert.ok(linkedIdx >= 0 && techIdx > linkedIdx);
-  // First return after linked check must happen before tech parse.
-  const firstReturn = provisioner.indexOf("return $this->reconcileLinkedEmail", linkedIdx);
-  assert.ok(firstReturn > linkedIdx && firstReturn < techIdx);
+  const emailIdx = provisioner.indexOf("existing_account_requires_explicit_link");
+  const registerIdx = provisioner.indexOf("RegisterUser(");
+  assert.ok(linkedIdx >= 0 && registerIdx > linkedIdx);
+  assert.ok(emailIdx > linkedIdx && emailIdx < registerIdx);
+  const firstReturn = provisioner.indexOf("return $this->finishLinkedUser", linkedIdx);
+  assert.ok(firstReturn > linkedIdx && firstReturn < registerIdx);
 });
 
 test("R3D: controllers pass HMAC body through to provisioner", async () => {
@@ -74,7 +67,7 @@ test("R3D: reservation guard remains registered", async () => {
   assert.match(extend, /RejectReservedTechNickname::class/);
 });
 
-test("R3D: cross-repo contract fixture agrees on field and codes", async () => {
+test("R3D: cross-repo contract fixture still documents legacy 409 codes", async () => {
   const fixture = JSON.parse(await text("test/fixtures/tech-number-contract.json"));
   assert.equal(fixture.field, "tech_number");
   assert.equal(fixture.valid_example, 20031);
