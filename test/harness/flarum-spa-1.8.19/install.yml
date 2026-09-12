@@ -1,0 +1,16 @@
+debug: false
+baseUrl: http://127.0.0.1:8080
+databaseConfiguration:
+  driver: mysql
+  host: 127.0.0.1
+  port: 3306
+  database: flarum_spa
+  username: flarum
+  password: flarum
+  prefix: flarum_
+adminUser:
+  username: admin
+  password: AdminPass123
+  email: admin@example.com
+settings:
+  forum_title: FlatRate SPA Harness

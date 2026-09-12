@@ -347,6 +347,19 @@ php test/member-profile-mariadb-migration.php
 
 The member-profile table is created through Flarum `Migration::createTable` / `Blueprint` so the active connection prefix is applied. CHECK invariants (`member_number > 0`, `display_mode`, `custom_nickname_origin`) are added with MariaDB `ALTER TABLE` because Illuminate 8's Blueprint has no `check()` helper.
 
+Flarum 1.8.19 forum SPA boot (requires disposable MariaDB 11.4, Composer, and Playwright):
+
+```bash
+bash test/harness/flarum-spa-1.8.19/bin/bootstrap.sh
+php -S 127.0.0.1:8080 -t test/harness/flarum-spa-1.8.19/.work/flarum/public test/harness/flarum-spa-1.8.19/.work/flarum/router.php
+# in another shell
+cd test/harness/flarum-spa-1.8.19 && npm install && npx playwright install chromium && npx playwright test
+```
+
+See `docs/forum-identity-002-r3-spa-boot.md`. Production already applied
+`2026_09_12_000000_create_flatrate_member_profiles` and created the control
+user-322 profile row; do not rerun or redesign that migration.
+
 ## License
 
 MIT.

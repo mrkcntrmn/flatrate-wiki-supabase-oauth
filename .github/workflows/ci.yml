@@ -11,27 +11,6 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    env:
-      MARIADB_HOST: 127.0.0.1
-      MARIADB_PORT: 3306
-      MARIADB_DATABASE: flarum_test
-      MARIADB_USER: flarum
-      MARIADB_PASSWORD: flarum
-    services:
-      mariadb:
-        image: mariadb:11.4
-        env:
-          MARIADB_ROOT_PASSWORD: test
-          MARIADB_DATABASE: flarum_test
-          MARIADB_USER: flarum
-          MARIADB_PASSWORD: flarum
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=12
     steps:
       - uses: actions/checkout@v4
 
@@ -49,7 +28,7 @@ jobs:
           php-version: '8.2'
           coverage: none
           tools: composer:v2
-          extensions: pdo_mysql
+          extensions: pdo_mysql, gd, mbstring, tokenizer, xml, curl, fileinfo
 
       - name: Validate Composer metadata
         run: composer validate --strict --no-check-publish
@@ -95,6 +74,43 @@ jobs:
       - name: Run FORUM-SUB-001 runtime resolver/binding gates
         run: php test/forum-sub001-runtime.php
 
+      - name: Lint PHP
+        run: find . -name '*.php' -not -path './test/harness/*/vendor/*' -not -path './test/harness/*/.work/*' -print0 | xargs -0 -n1 php -l
+
+  mariadb-migration:
+    runs-on: ubuntu-latest
+    env:
+      MARIADB_HOST: 127.0.0.1
+      MARIADB_PORT: 3306
+      MARIADB_DATABASE: flarum_test
+      MARIADB_USER: flarum
+      MARIADB_PASSWORD: flarum
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: test
+          MARIADB_DATABASE: flarum_test
+          MARIADB_USER: flarum
+          MARIADB_PASSWORD: flarum
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo_mysql
+
       - name: Install MariaDB member-profile migration harness
         working-directory: test/harness/mariadb-migration
         run: composer install --no-interaction --prefer-dist
@@ -102,5 +118,72 @@ jobs:
       - name: Run MariaDB member-profile migration gates
         run: php test/member-profile-mariadb-migration.php
 
-      - name: Lint PHP
-        run: find . -name '*.php' -not -path './test/harness/*/vendor/*' -print0 | xargs -0 -n1 php -l
+  flarum-spa-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      MARIADB_HOST: 127.0.0.1
+      MARIADB_PORT: 3306
+      MARIADB_DATABASE: flarum_spa
+      MARIADB_USER: flarum
+      MARIADB_PASSWORD: flarum
+      FLARUM_BASE_URL: http://127.0.0.1:8080
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: test
+          MARIADB_DATABASE: flarum_spa
+          MARIADB_USER: flarum
+          MARIADB_PASSWORD: flarum
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo_mysql, gd, mbstring, tokenizer, xml, curl, fileinfo, zip, intl
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bootstrap disposable Flarum 1.8.19
+        run: bash test/harness/flarum-spa-1.8.19/bin/bootstrap.sh
+
+      - name: Install Playwright
+        working-directory: test/harness/flarum-spa-1.8.19
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Start Flarum
+        run: |
+          FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
+          php -S 127.0.0.1:8080 -t "$FLARUM_DIR/public" "$FLARUM_DIR/router.php" > test/harness/flarum-spa-1.8.19/.work/php-server.log 2>&1 &
+          echo $! > test/harness/flarum-spa-1.8.19/.work/php-server.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/ >/dev/null; then
+              echo FLARUM_HTTP=200
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Flarum HTTP did not become ready"
+          cat test/harness/flarum-spa-1.8.19/.work/php-server.log || true
+          exit 1
+
+      - name: Run Flarum 1.8.19 browser boot gates
+        working-directory: test/harness/flarum-spa-1.8.19
+        run: npx playwright test
