@@ -141,3 +141,13 @@ test("candidate member-display.js is last and must assign module.exports", () =>
   assert.notEqual(result.exportValue, null);
   assert.equal(result.exportValue.extend, undefined);
 });
+
+test("legacy desktop navigation bundle assigns module.exports for Frontend wrapper", () => {
+  const result = bootError([
+    ...EXISTING_ASSETS,
+    "js/dist/forum-desktop-navigation.js",
+    "js/dist/member-display.js",
+  ]);
+  assert.equal(result.error, null, String(result.error && result.error.stack));
+  assert.equal(typeof result.exportValue, "object");
+});

@@ -76,6 +76,7 @@ test("forum navigation has one shared production tree source", async () => {
   const files = {
     shared: await text("js/dist/forum-navigation.js"),
     forum: await text("js/dist/forum.js"),
+    desktop: await text("js/dist/forum-desktop-navigation.js"),
     drawer: await text("js/dist/mobile-brand-drawer.js"),
   };
 
@@ -84,13 +85,17 @@ test("forum navigation has one shared production tree source", async () => {
   ).length;
   assert.equal(sourceCount, 1);
   assert.match(files.shared, /var GROUPS = deepFreeze\(\[/);
-  assert.match(files.forum, /FlatRateForumNavigation/);
+  assert.match(files.desktop, /FlatRateForumNavigation/);
   assert.match(files.drawer, /FlatRateForumNavigation/);
+  assert.doesNotMatch(files.forum, /FlatRateForumNavigation/);
   assert.doesNotMatch(files.forum, /var GROUPS = /);
+  assert.doesNotMatch(files.desktop, /var GROUPS = /);
   assert.doesNotMatch(files.drawer, /var GROUPS = /);
   assert.doesNotMatch(files.forum, /FlatRateBrandsNavigation/);
+  assert.doesNotMatch(files.desktop, /FlatRateBrandsNavigation/);
   assert.doesNotMatch(files.drawer, /FlatRateBrandsNavigation/);
   assert.doesNotMatch(files.forum, /const brands\s*=\s*\[/);
+  assert.doesNotMatch(files.desktop, /const brands\s*=\s*\[/);
   assert.doesNotMatch(files.drawer, /const brands\s*=\s*\[/);
 });
 
@@ -359,6 +364,7 @@ test("navigation sources do not mutate Flarum tags over HTTP", async () => {
   const files = [
     await text("js/dist/forum-navigation.js"),
     await text("js/dist/forum.js"),
+    await text("js/dist/forum-desktop-navigation.js"),
     await text("js/dist/mobile-brand-drawer.js"),
   ].join("\n");
 
@@ -374,10 +380,12 @@ test("frontend extender loads navigation source before renderers", async () => {
   const extendPhp = await text("extend.php");
   const navigationIndex = extendPhp.indexOf("js/dist/forum-navigation.js");
   const forumIndex = extendPhp.indexOf("js/dist/forum.js");
+  const desktopIndex = extendPhp.indexOf("js/dist/forum-desktop-navigation.js");
   const drawerIndex = extendPhp.indexOf("js/dist/mobile-brand-drawer.js");
 
   assert.ok(navigationIndex > -1);
   assert.ok(navigationIndex < forumIndex);
-  assert.ok(forumIndex < drawerIndex);
+  assert.ok(forumIndex < desktopIndex);
+  assert.ok(desktopIndex < drawerIndex);
   assert.doesNotMatch(extendPhp, /brands-navigation\.js/);
 });

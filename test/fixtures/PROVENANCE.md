@@ -23,7 +23,7 @@ Notes:
 - `NotificationSyncer::sync()` reconciles existing rows into `toDelete` /
   `toUndelete` / `newRecipients` **before** invoking `beforeSending` callbacks.
 - `NotificationServiceProvider` does **not** bind `NotificationSyncer::class`.
-- `Extend\Conditional::whenExtensionEnabled()` is the supported conditional API.
+- `Extend\Conditional::whenExtensionEnabled()` and `whenExtensionDisabled()` are the supported conditional APIs.
 
 ## FoF Follow Tags 1.3.0
 

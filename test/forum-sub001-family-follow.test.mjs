@@ -53,6 +53,7 @@ test("FORUM-SUB-001: IA-013 product assets untouched by family feature allowlist
   for (const rel of [
     "js/dist/forum-navigation.js",
     "js/dist/forum.js",
+    "js/dist/forum-desktop-navigation.js",
     "js/dist/mobile-brand-drawer.js",
     "resources/less/forum.less",
     "resources/less/mobile-brand-drawer.less",
