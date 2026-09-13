@@ -136,7 +136,7 @@ function sidebarLinkNodes(group) {
 
 async function sidebarRuntime({ activeSlug = "toyota", tags = [] } = {}) {
   const shared = await text("js/dist/forum-navigation.js");
-  const bundle = await text("js/dist/forum.js");
+  const bundle = await text("js/dist/forum-desktop-navigation.js");
   const initializers = new Map();
 
   class IndexPage {
@@ -188,7 +188,11 @@ async function sidebarRuntime({ activeSlug = "toyota", tags = [] } = {}) {
 }
 
 test("desktop forum navigation hooks IndexPage through Flarum compat", async () => {
-  const bundle = await text("js/dist/forum.js");
+  const forum = await text("js/dist/forum.js");
+  assert.doesNotMatch(forum, /flatrate-wiki-forum-navigation-sidebar/);
+  assert.doesNotMatch(forum, /FlatRateForumNav--sidebar/);
+
+  const bundle = await text("js/dist/forum-desktop-navigation.js");
 
   assert.match(bundle, /app\.initializers\.add\('flatrate-wiki-forum-navigation-sidebar'/);
   assert.match(bundle, /compat\['components\/IndexPage'\]/);

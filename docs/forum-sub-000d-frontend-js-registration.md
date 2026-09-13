@@ -38,11 +38,16 @@ LIVE_MOBILE_INITIALIZER_PRESENT=true
 
 ## Fix
 
-Register the three existing JS sources through separate `Extend\Frontend('forum')` instances (one JS path each), preserving load order:
+Register each JS source through its own `Extend\Frontend('forum')` instance
+(one JS path each). The shared contract, main forum bundle, mobile drawer,
+and member display stay unconditional. Only the extracted legacy desktop
+IndexPage sidebar bundle is gated:
 
-1. `js/dist/forum-navigation.js` — `FlatRateForumNavigation` contract
-2. `js/dist/forum.js` — desktop sidebar initializer
-3. `js/dist/mobile-brand-drawer.js` — mobile drawer initializer
+1. `js/dist/forum-navigation.js` — `FlatRateForumNavigation` contract (unconditional)
+2. `js/dist/forum.js` — login / Job Breakdown / Affiliated Brand (unconditional)
+3. `js/dist/forum-desktop-navigation.js` — legacy IndexPage sidebar, loaded only while `flatrate-forum-navigation` is disabled
+4. `js/dist/mobile-brand-drawer.js` — mobile drawer initializer (unconditional)
+5. `js/dist/member-display.js` — member display (unconditional)
 
 Both LESS files remain on the first extender (`css()` appends safely):
 
@@ -52,10 +57,12 @@ resources/less/mobile-brand-drawer.less
 ```
 
 ```text
-FRONTEND_EXTENDER_COUNT_FOR_FLATRATE_JS=3
+UNCONDITIONAL_FORUM_JS_COUNT=4
+CONDITIONAL_LEGACY_DESKTOP_JS=1
 MAX_JS_CALLS_PER_EXTENDER=1
-EFFECTIVE_JS_SOURCE_COUNT_EXPECTED=3
-THREE_SOURCE_FILES=true
+SHARED_NAV_CONTRACT_GUARDED=false
+MOBILE_DRAWER_GUARDED=false
+MAIN_FORUM_BUNDLE_GUARDED=false
 IA013_JS_SOURCE_CHANGED=false
 FLARUM_CORE_PATCHES=0
 ```
@@ -65,7 +72,9 @@ FLARUM_CORE_PATCHES=0
 ```text
 test/frontend-js-registration.test.mjs
 test/frontend-js-registration.php
+test/forum-desktop-navigation-handoff.php
 test/fixtures/flarum-1.8.19-Extend-Frontend.php
+test/fixtures/flarum-1.8.19-Extend-Conditional.php
 ```
 
 ## Not in this tranche

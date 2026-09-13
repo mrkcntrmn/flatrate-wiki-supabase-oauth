@@ -47,6 +47,26 @@ function resolveFlarumFrontendSource() {
  * Parse `(new Extend\Frontend(...))` chains from extend.php into
  * { frontend, jsPaths[], cssPaths[] } records in source order.
  */
+function withoutWhenExtensionDisabled(extendPhp) {
+  return extendPhp.replace(
+    /->whenExtensionDisabled\s*\(\s*'[^']+'\s*,\s*\[[\s\S]*?\]\s*\)/g,
+    "->whenExtensionDisabled('stripped', [])",
+  );
+}
+
+function parseWhenExtensionDisabled(extendPhp) {
+  const matches = [...extendPhp.matchAll(
+    /whenExtensionDisabled\s*\(\s*'([^']+)'\s*,\s*\[([\s\S]*?)\]\s*\)/g,
+  )];
+  return matches.map((m) => ({
+    extensionId: m[1],
+    body: m[2],
+    jsPaths: [...m[2].matchAll(/->js\s*\(\s*__DIR__\s*\.\s*['"]([^'"]+)['"]\s*\)/g)].map(
+      (x) => x[1].replace(/^\//, ""),
+    ),
+  }));
+}
+
 function parseFrontendExtenders(extendPhp) {
   const records = [];
   // Prefer the grouped form `(new Extend\Frontend(...))` used in extend.php.
@@ -127,7 +147,7 @@ test("Flarum 1.8.19 Frontend::js is a scalar overwrite; css appends", () => {
 });
 
 test("companion registers four forum JS paths via separate Frontend extenders", () => {
-  const extendPhp = text("extend.php");
+  const extendPhp = withoutWhenExtensionDisabled(text("extend.php"));
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum" && r.jsPaths.length > 0,
   );
@@ -191,7 +211,7 @@ return [
 });
 
 test("forum LESS paths register exactly once on the first JS extender", () => {
-  const extendPhp = text("extend.php");
+  const extendPhp = withoutWhenExtensionDisabled(text("extend.php"));
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum",
   );
@@ -218,18 +238,21 @@ test("forum LESS paths register exactly once on the first JS extender", () => {
 test("IA-013 JS source markers remain present and unchanged in role", () => {
   const nav = text("js/dist/forum-navigation.js");
   const forum = text("js/dist/forum.js");
+  const desktop = text("js/dist/forum-desktop-navigation.js");
   const mobile = text("js/dist/mobile-brand-drawer.js");
   const member = text("js/dist/member-display.js");
 
   assert.match(nav, /FlatRateForumNavigation/);
   assert.match(nav, /root\.FlatRateForumNavigation\s*=/);
 
+  assert.doesNotMatch(forum, /flatrate-wiki-forum-navigation-sidebar/);
+  assert.doesNotMatch(forum, /FlatRateForumNav--sidebar/);
   assert.match(
-    forum,
+    desktop,
     /flatrate-wiki-forum-navigation-sidebar/,
   );
-  assert.match(forum, /flatrateForumNavigation/);
-  assert.match(forum, /FlatRateForumNav--sidebar/);
+  assert.match(desktop, /flatrateForumNavigation/);
+  assert.match(desktop, /FlatRateForumNav--sidebar/);
 
   assert.match(mobile, /FlatRateForumNavigation/);
   assert.match(
@@ -252,4 +275,29 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   console.error("NAV_CONTRACT_SOURCE_MARKER=PASS");
   console.error("DESKTOP_NAV_SOURCE_MARKER=PASS");
   console.error("MOBILE_NAV_SOURCE_MARKER=PASS");
+});
+
+test("legacy desktop IndexPage renderer is gated only while dedicated nav is disabled", () => {
+  const extendPhp = text("extend.php");
+  const disabled = parseWhenExtensionDisabled(extendPhp);
+  const desktop = disabled.filter((row) =>
+    row.jsPaths.includes("js/dist/forum-desktop-navigation.js"),
+  );
+  assert.equal(desktop.length, 1);
+  assert.equal(desktop[0].extensionId, "flatrate-forum-navigation");
+  assert.deepEqual(desktop[0].jsPaths, ["js/dist/forum-desktop-navigation.js"]);
+
+  const unconditional = parseFrontendExtenders(withoutWhenExtensionDisabled(extendPhp))
+    .filter((r) => r.frontend === "forum")
+    .flatMap((r) => r.jsPaths);
+  assert.deepEqual(unconditional, EXPECTED_JS);
+  assert.equal(unconditional.includes("js/dist/forum-desktop-navigation.js"), false);
+
+  assert.match(extendPhp, /js\/dist\/forum-navigation\.js/);
+  assert.match(extendPhp, /js\/dist\/mobile-brand-drawer\.js/);
+  assert.match(extendPhp, /js\/dist\/member-display\.js/);
+  assert.doesNotMatch(
+    withoutWhenExtensionDisabled(extendPhp),
+    /js\/dist\/forum-desktop-navigation\.js/,
+  );
 });
