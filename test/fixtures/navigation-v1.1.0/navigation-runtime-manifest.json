@@ -1,0 +1,294 @@
+{
+  "schemaVersion": 1,
+  "kind": "forum-navigation-runtime-manifest",
+  "status": "planned-not-live",
+  "groups": [
+    {
+      "id": "community",
+      "label": "Community",
+      "mode": "link",
+      "destination": {
+        "type": "route",
+        "routeKey": "community"
+      }
+    },
+    {
+      "id": "technician-topics",
+      "label": "Technician Topics",
+      "mode": "link",
+      "destination": {
+        "type": "tag",
+        "boardKey": "general-shop-discussion",
+        "slug": "general-shop-discussion"
+      }
+    },
+    {
+      "id": "brands",
+      "label": "Brands",
+      "mode": "tree",
+      "boards": [
+        {
+          "boardKey": "acura",
+          "name": "Acura",
+          "slug": "acura",
+          "children": []
+        },
+        {
+          "boardKey": "alfa-romeo",
+          "name": "Alfa Romeo",
+          "slug": "alpha-romeo",
+          "children": []
+        },
+        {
+          "boardKey": "audi",
+          "name": "Audi",
+          "slug": "audi",
+          "children": []
+        },
+        {
+          "boardKey": "bentley",
+          "name": "Bentley",
+          "slug": "bentley",
+          "children": []
+        },
+        {
+          "boardKey": "bmw",
+          "name": "BMW",
+          "slug": "bmw",
+          "children": []
+        },
+        {
+          "boardKey": "cdjr",
+          "name": "CDJR",
+          "slug": "cdjr",
+          "children": [
+            {
+              "boardKey": "chrysler",
+              "name": "Chrysler",
+              "slug": "chrysler",
+              "children": []
+            },
+            {
+              "boardKey": "dodge",
+              "name": "Dodge",
+              "slug": "dodge",
+              "children": []
+            },
+            {
+              "boardKey": "jeep",
+              "name": "Jeep",
+              "slug": "jeep",
+              "children": []
+            },
+            {
+              "boardKey": "ram",
+              "name": "Ram",
+              "slug": "ram",
+              "children": []
+            }
+          ]
+        },
+        {
+          "boardKey": "ferrari",
+          "name": "Ferrari",
+          "slug": "ferrari",
+          "children": []
+        },
+        {
+          "boardKey": "ford",
+          "name": "Ford",
+          "slug": "ford",
+          "children": []
+        },
+        {
+          "boardKey": "genesis",
+          "name": "Genesis",
+          "slug": "genisis",
+          "children": []
+        },
+        {
+          "boardKey": "gm",
+          "name": "GM",
+          "slug": "gm",
+          "children": [
+            {
+              "boardKey": "buick",
+              "name": "Buick",
+              "slug": "buick",
+              "children": []
+            },
+            {
+              "boardKey": "cadillac",
+              "name": "Cadillac",
+              "slug": "cadillac",
+              "children": []
+            },
+            {
+              "boardKey": "chevrolet",
+              "name": "Chevrolet",
+              "slug": "chevrolet",
+              "children": []
+            },
+            {
+              "boardKey": "gmc",
+              "name": "GMC",
+              "slug": "gmc",
+              "children": []
+            }
+          ]
+        },
+        {
+          "boardKey": "honda",
+          "name": "Honda",
+          "slug": "honda",
+          "children": []
+        },
+        {
+          "boardKey": "hyundai",
+          "name": "Hyundai",
+          "slug": "hyundai",
+          "children": []
+        },
+        {
+          "boardKey": "infiniti",
+          "name": "Infiniti",
+          "slug": "infiniti",
+          "children": []
+        },
+        {
+          "boardKey": "jaguar",
+          "name": "Jaguar",
+          "slug": "jaguar",
+          "children": []
+        },
+        {
+          "boardKey": "kia",
+          "name": "Kia",
+          "slug": "kia",
+          "children": []
+        },
+        {
+          "boardKey": "lamborghini",
+          "name": "Lamborghini",
+          "slug": "lamborghini",
+          "children": []
+        },
+        {
+          "boardKey": "lexus",
+          "name": "Lexus",
+          "slug": "lexus",
+          "children": []
+        },
+        {
+          "boardKey": "lincoln",
+          "name": "Lincoln",
+          "slug": "lincoln",
+          "children": []
+        },
+        {
+          "boardKey": "maserati",
+          "name": "Maserati",
+          "slug": "maserati",
+          "children": []
+        },
+        {
+          "boardKey": "mazda",
+          "name": "Mazda",
+          "slug": "mazda",
+          "children": []
+        },
+        {
+          "boardKey": "mclaren",
+          "name": "McLaren",
+          "slug": "mclaren",
+          "children": []
+        },
+        {
+          "boardKey": "mercedes-benz",
+          "name": "Mercedes-Benz",
+          "slug": "mercedes-benz",
+          "children": []
+        },
+        {
+          "boardKey": "mini",
+          "name": "MINI",
+          "slug": "mini",
+          "children": []
+        },
+        {
+          "boardKey": "mitsubishi",
+          "name": "Mitsubishi",
+          "slug": "mitsubishi",
+          "children": []
+        },
+        {
+          "boardKey": "nissan",
+          "name": "Nissan",
+          "slug": "nissan",
+          "children": []
+        },
+        {
+          "boardKey": "other-makes",
+          "name": "Other Makes",
+          "slug": "other-makes",
+          "children": []
+        },
+        {
+          "boardKey": "porsche",
+          "name": "Porsche",
+          "slug": "porsche",
+          "children": []
+        },
+        {
+          "boardKey": "rivian",
+          "name": "Rivian",
+          "slug": "rivian",
+          "children": []
+        },
+        {
+          "boardKey": "subaru",
+          "name": "Subaru",
+          "slug": "subaru",
+          "children": []
+        },
+        {
+          "boardKey": "tesla",
+          "name": "Tesla",
+          "slug": "tesla",
+          "children": []
+        },
+        {
+          "boardKey": "toyota",
+          "name": "Toyota",
+          "slug": "toyota",
+          "children": []
+        },
+        {
+          "boardKey": "volkswagen",
+          "name": "Volkswagen",
+          "slug": "volkswagen",
+          "children": []
+        },
+        {
+          "boardKey": "volvo",
+          "name": "Volvo",
+          "slug": "volvo",
+          "children": []
+        }
+      ]
+    }
+  ],
+  "community": {
+    "route": "/community",
+    "routeKey": "community",
+    "generalLiveAvailable": true,
+    "generalLive": {
+      "roomKey": "community-general-live",
+      "route": "/live/community-general-live"
+    },
+    "startHere": {
+      "boardKey": "start-here",
+      "slug": "start-here"
+    }
+  }
+}

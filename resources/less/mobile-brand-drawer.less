@@ -41,6 +41,15 @@
     text-transform: uppercase;
   }
 
+  .FlatRateForumNav--drawer .FlatRateForumNav-groupTitle--direct {
+    margin: 0;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
   .FlatRateForumNav--drawer .FlatRateForumNav-links {
     max-height: 60vh;
     margin: 0;
@@ -66,7 +75,9 @@
     list-style: none;
   }
 
-  .FlatRateForumNav--drawer .FlatRateForumNav-link.TagLinkButton {
+  .FlatRateForumNav--drawer .FlatRateForumNav-link.TagLinkButton,
+  .FlatRateForumNav--drawer .FlatRateForumNav-link.LinkButton,
+  .FlatRateForumNav--drawer .FlatRateForumNav-directLink {
     display: flex;
     align-items: center;
     width: 100%;
@@ -81,20 +92,27 @@
     text-decoration: none;
   }
 
-  .FlatRateForumNav--drawer .FlatRateForumNav-item--child .FlatRateForumNav-link.TagLinkButton {
+  .FlatRateForumNav--drawer .FlatRateForumNav-item--child .FlatRateForumNav-link.TagLinkButton,
+  .FlatRateForumNav--drawer .FlatRateForumNav-item--child .FlatRateForumNav-link.LinkButton {
     padding-left: 24px;
     color: @muted-color;
     font-size: 12px;
   }
 
   .FlatRateForumNav--drawer .FlatRateForumNav-link.TagLinkButton:hover,
-  .FlatRateForumNav--drawer .FlatRateForumNav-link.TagLinkButton:focus-visible {
+  .FlatRateForumNav--drawer .FlatRateForumNav-link.TagLinkButton:focus-visible,
+  .FlatRateForumNav--drawer .FlatRateForumNav-link.LinkButton:hover,
+  .FlatRateForumNav--drawer .FlatRateForumNav-link.LinkButton:focus-visible,
+  .FlatRateForumNav--drawer .FlatRateForumNav-directLink:hover,
+  .FlatRateForumNav--drawer .FlatRateForumNav-directLink:focus-visible {
     background: @control-bg;
     color: @primary-color;
     text-decoration: none;
   }
 
-  .FlatRateForumNav--drawer .FlatRateForumNav-item.active > .FlatRateForumNav-link.TagLinkButton {
+  .FlatRateForumNav--drawer .FlatRateForumNav-item.active > .FlatRateForumNav-link.TagLinkButton,
+  .FlatRateForumNav--drawer .FlatRateForumNav-item.active > .FlatRateForumNav-link.LinkButton,
+  .FlatRateForumNav--drawer .FlatRateForumNav-groupTitle--direct.active > .FlatRateForumNav-directLink {
     background: @control-bg;
     color: var(--color, @primary-color);
     font-weight: 700;

@@ -54,3 +54,17 @@ discussion_user.last_read_post_number >= lastPostNumber - 1
 where the reply job is constructed with `lastPostNumber = post.number - 1`.
 
 See `SHA256SUMS.txt` for per-file digests.
+
+# FORUM-UI-REG-002H navigation v1.1.0 manifest fixture
+
+Exact dedicated-navigation runtime manifest used only as a mobile-drawer
+enabled-state test fixture. Do not treat this copy as OAuth presentation
+authority.
+
+| Fixture | Upstream path | Provenance |
+|---|---|---|
+| `navigation-v1.1.0/navigation-runtime-manifest.json` | `resources/navigation-runtime-manifest.json` | `flatrate/flarum-forum-navigation` tag `v1.1.0` / commit `e57412070dc285d5b63e43d3fa9156617684a5ba` |
+
+```text
+FIXTURE_SHA256=f262df400d7f8c1070cb14978472c3b549843e7d2678bdd934e538baa9903c65
+```

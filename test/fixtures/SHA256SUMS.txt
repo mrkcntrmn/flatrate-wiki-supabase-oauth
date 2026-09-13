@@ -1,3 +1,4 @@
+f262df400d7f8c1070cb14978472c3b549843e7d2678bdd934e538baa9903c65  navigation-v1.1.0/navigation-runtime-manifest.json
 abc66b04e50f1ff6f67a7703d193de0a3b5edd0397ed968cecdf2cb79090cc04  flarum-1.8.19-Extend-Conditional.php
 dcd56e4a51d0ee4a6eccbfed7e2d4a0b6c7232ca289c2771abd0ef937b906141  flarum-1.8.19-Extend-Frontend.php
 5196be4c2d04ca35975b345bbf8973e4c6e4a7b36bfb40bd2f13d136105038cf  flarum-1.8.19-NotificationServiceProvider.php

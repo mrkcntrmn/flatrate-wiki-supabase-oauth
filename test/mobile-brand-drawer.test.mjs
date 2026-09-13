@@ -39,7 +39,9 @@ function flarumExtend(object, method, callback) {
   };
 }
 
-function createMithril(activeSlug = "") {
+const CANONICAL_MANIFEST_PATH = "test/fixtures/navigation-v1.1.0/navigation-runtime-manifest.json";
+
+function createMithril(activeSlug = "", routePath) {
   function mithril(selector, attrsOrChildren, children) {
     if (arguments.length === 2) {
       if (
@@ -70,6 +72,12 @@ function createMithril(activeSlug = "") {
   mithril.route = {
     param(name) {
       return name === "tags" ? activeSlug : undefined;
+    },
+    get() {
+      if (routePath != null) {
+        return routePath;
+      }
+      return activeSlug ? `/t/${activeSlug}` : "";
     },
   };
 
@@ -150,7 +158,61 @@ function drawerLinkItems(group) {
   });
 }
 
-async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
+function flattenBoards(boards, acc = []) {
+  for (const board of boards || []) {
+    acc.push(board);
+    flattenBoards(board.children, acc);
+  }
+  return acc;
+}
+
+function tagsForManifest(manifest) {
+  const tags = [];
+  const brands = manifest.groups.find((group) => group.id === "brands");
+  for (const board of flattenBoards(brands.boards)) {
+    tags.push(tag({ name: board.name, slug: board.slug, position: 1000 - tags.length, child: false }));
+  }
+  tags.push(tag({ name: "General Shop Discussion", slug: "general-shop-discussion", position: 1000 - tags.length, child: false }));
+  tags.push(tag({ name: "Start Here", slug: "start-here", position: 1000 - tags.length, child: false }));
+  tags.push(tag({ name: "Job Breakdown", slug: "job-breakdown", position: null, child: false }));
+  return tags.reverse();
+}
+
+function collectText(node, acc = []) {
+  if (node == null) return acc;
+  if (typeof node === "string" || typeof node === "number") {
+    acc.push(String(node));
+    return acc;
+  }
+  if (Array.isArray(node)) {
+    for (const child of node) collectText(child, acc);
+    return acc;
+  }
+  if (typeof node === "object" && "children" in node) {
+    collectText(node.children, acc);
+  }
+  return acc;
+}
+
+function groupById(nav, id) {
+  return groupSections(nav).find((section) => section.attrs["data-group"] === id);
+}
+
+function groupChildCount(group) {
+  return group.children[1].children.length;
+}
+
+async function loadCanonicalManifest() {
+  return JSON.parse(await text(CANONICAL_MANIFEST_PATH));
+}
+
+async function drawerRuntime({
+  activeSlug = "toyota",
+  routePath,
+  tags = [],
+  forumAttributes = {},
+  extraHeaderItems = [],
+} = {}) {
   const shared = await text("js/dist/forum-navigation.js");
   const bundle = await text("js/dist/mobile-brand-drawer.js");
   const initializers = new Map();
@@ -161,17 +223,24 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
       items.add("search", { selector: "Search" }, 30);
       items.add("notifications", { selector: "Notifications" }, 10);
       items.add("Messages", { selector: "Messages" }, 5);
+      items.add("liveChat", { selector: "Live Chat" }, 3);
       items.add("session", { selector: "Session" }, 0);
+      for (const [name, item, priority] of extraHeaderItems) {
+        items.add(name, item, priority);
+      }
       return items;
     }
   }
 
   class TagLinkButton {}
+  class LinkButton {}
 
   const compat = {
     extend: { extend: flarumExtend },
     "components/HeaderSecondary": HeaderSecondary,
     "tags/components/TagLinkButton": TagLinkButton,
+    "components/LinkButton": LinkButton,
+    "flarum/common/components/LinkButton": LinkButton,
   };
 
   const app = {
@@ -185,12 +254,22 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
         return type === "tags" ? tags : [];
       },
     },
+    forum: {
+      attribute(name) {
+        return forumAttributes[name];
+      },
+    },
+    route(name, params) {
+      if (name === "community") return "/community";
+      if (name === "tag") return `/t/${params.tags}`;
+      throw new Error(`unknown route ${name}`);
+    },
   };
 
   runInNewContext(`${shared}\n${bundle}`, {
     app,
     flarum: { core: { compat } },
-    m: createMithril(activeSlug),
+    m: createMithril(activeSlug, routePath),
     module: { exports: {} },
   });
 
@@ -198,7 +277,7 @@ async function drawerRuntime({ activeSlug = "toyota", tags = [] } = {}) {
   assert.equal(typeof initializer, "function");
   initializer();
 
-  return { HeaderSecondary, TagLinkButton };
+  return { HeaderSecondary, TagLinkButton, LinkButton };
 }
 
 test("mobile forum navigation hooks HeaderSecondary below core drawer controls", async () => {
@@ -207,11 +286,16 @@ test("mobile forum navigation hooks HeaderSecondary below core drawer controls",
   assert.match(bundle, /compat\['components\/HeaderSecondary'\]/);
   assert.match(bundle, /compat\['flarum\/forum\/components\/HeaderSecondary'\]/);
   assert.match(bundle, /compat\['tags\/components\/TagLinkButton'\]/);
+  assert.match(bundle, /compat\['components\/LinkButton'\]/);
+  assert.match(bundle, /compat\['flarum\/common\/components\/LinkButton'\]/);
   assert.match(bundle, /extend\(HeaderSecondary\.prototype, 'items'/);
   assert.doesNotMatch(bundle, /components\/HeaderPrimary|forum\/components\/HeaderPrimary/);
   assert.doesNotMatch(bundle, /IndexPage\.prototype/);
   assert.doesNotMatch(bundle, /sidebarItems/);
   assert.match(bundle, /FlatRateForumNavigation/);
+  assert.match(bundle, /flatrateForumNavigationManifest/);
+  assert.match(bundle, /forum-navigation-runtime-manifest/);
+  assert.doesNotMatch(bundle, /window\.location/);
   assert.doesNotMatch(bundle, /var GROUPS = /);
   assert.doesNotMatch(bundle, /FlatRateBrandsNavigation/);
 });
@@ -355,4 +439,196 @@ test("frontend extender loads the drawer bundle and override stylesheet", async 
   assert.match(extendPhp, /js\/dist\/forum-navigation\.js/);
   assert.match(extendPhp, /js\/dist\/mobile-brand-drawer\.js/);
   assert.match(extendPhp, /js\/dist\/forum\.js/);
+});
+
+test("absent manifest keeps the legacy FlatRateForumNavigation drawer", async () => {
+  const contract = await sharedNavigationContract();
+  const { HeaderSecondary } = await drawerRuntime({
+    tags: tagsForContract(contract),
+    forumAttributes: {},
+  });
+  const nav = new HeaderSecondary().items().get("flatrateForumNavigationDrawer");
+
+  assert.equal(nav.attrs["data-nav-source"], "legacy-contract");
+  assert.deepEqual(
+    plain(groupSections(nav).map((section) => section.children[0].children[0])),
+    ["Community", "Brands"],
+  );
+  assert.deepEqual(
+    plain(drawerTopLevelItems(groupById(nav, "community")).map((item) => item.children[0].children[0])),
+    ["Start Here", "General Shop Discussion"],
+  );
+});
+
+test("invalid present manifest fails closed without removing other HeaderSecondary items", async () => {
+  const contract = await sharedNavigationContract();
+  const { HeaderSecondary } = await drawerRuntime({
+    tags: tagsForContract(contract),
+    forumAttributes: {
+      flatrateForumNavigationManifest: { kind: "not-a-manifest", schemaVersion: 1, groups: [] },
+    },
+  });
+  const items = new HeaderSecondary().items();
+
+  assert.equal(items.has("flatrateForumNavigationDrawer"), false);
+  assert.equal(items.has("search"), true);
+  assert.equal(items.has("notifications"), true);
+  assert.equal(items.has("Messages"), true);
+  assert.equal(items.has("liveChat"), true);
+  assert.equal(items.has("session"), true);
+});
+
+test("canonical v1.1.0 manifest owns the enabled-state mobile drawer", async () => {
+  const manifest = await loadCanonicalManifest();
+  assert.equal(manifest.kind, "forum-navigation-runtime-manifest");
+  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.status, "planned-not-live");
+
+  const { HeaderSecondary, TagLinkButton, LinkButton } = await drawerRuntime({
+    activeSlug: "chevrolet",
+    tags: tagsForManifest(manifest),
+    forumAttributes: { flatrateForumNavigationManifest: manifest },
+  });
+
+  const items = new HeaderSecondary().items();
+  assert.equal(items.has("flatrateForumNavigationDrawer"), true);
+  assert.equal(items.getPriority("flatrateForumNavigationDrawer"), -50);
+
+  const nav = items.get("flatrateForumNavigationDrawer");
+  assert.equal(nav.attrs["data-nav-source"], "canonical-manifest");
+  assert.deepEqual(
+    plain(groupSections(nav).map((section) => [section.attrs["data-group"], section.attrs["data-mode"]])),
+    [
+      ["community", "link"],
+      ["technician-topics", "link"],
+      ["brands", "tree"],
+    ],
+  );
+
+  const community = groupById(nav, "community");
+  const technician = groupById(nav, "technician-topics");
+  const brands = groupById(nav, "brands");
+
+  assert.equal(community.children[0].children[0].children[0], "Community");
+  assert.equal(community.children[0].children[0].selector, LinkButton);
+  assert.equal(community.children[0].children[0].attrs.href, "/community");
+  assert.equal(groupChildCount(community), 0);
+
+  assert.equal(technician.children[0].children[0].children[0], "Technician Topics");
+  assert.equal(technician.children[0].children[0].selector, LinkButton);
+  assert.equal(technician.children[0].children[0].attrs.href, "/t/general-shop-discussion");
+  assert.equal(groupChildCount(technician), 0);
+
+  const visible = collectText(nav);
+  assert.equal(visible.includes("Start Here"), false);
+  assert.equal(visible.includes("General Shop Discussion"), false);
+  assert.equal(visible.includes("General Live"), false);
+
+  assert.deepEqual(
+    plain(drawerTopLevelItems(brands).map((item) => item.children[0].children[0])),
+    plain(flattenBoards(manifest.groups.find((group) => group.id === "brands").boards)
+      .filter((board) => !["chrysler", "dodge", "jeep", "ram", "buick", "cadillac", "chevrolet", "gmc"].includes(board.slug))
+      .map((board) => board.name)),
+  );
+  assert.deepEqual(
+    plain(
+      brands.children[1].children
+        .at(brands.children[1].children.findIndex((item) => item.children[0].children[0] === "GM") + 1)
+        .children[0].children.map((item) => item.children[0].children[0]),
+    ),
+    ["Buick", "Cadillac", "Chevrolet", "GMC"],
+  );
+  assert.deepEqual(
+    plain(
+      brands.children[1].children
+        .at(brands.children[1].children.findIndex((item) => item.children[0].children[0] === "CDJR") + 1)
+        .children[0].children.map((item) => item.children[0].children[0]),
+    ),
+    ["Chrysler", "Dodge", "Jeep", "Ram"],
+  );
+  assert.equal(drawerLinkItems(brands).length, 41);
+  assert.ok(drawerLinkItems(brands).every((item) => item.children[0].selector === TagLinkButton));
+  assert.ok(
+    drawerLinkItems(brands)
+      .filter((item) => ["GM", "CDJR"].includes(item.children[0].children[0]))
+      .every((item) => item.children[0].attrs.model),
+  );
+  assert.deepEqual(
+    plain(
+      drawerLinkItems(brands)
+        .filter((item) => item.selector.includes(".active"))
+        .map((item) => item.children[0].children[0]),
+    ),
+    ["Chevrolet"],
+  );
+  assert.ok(
+    drawerTopLevelItems(brands)
+      .find((item) => item.children[0].children[0] === "GM")
+      .selector.includes("FlatRateForumNav-item--branch-active"),
+  );
+});
+
+test("canonical drawer highlights representative current-tag routes", async () => {
+  const manifest = await loadCanonicalManifest();
+  const tags = tagsForManifest(manifest);
+  const cases = [
+    { activeSlug: "gm", expected: "GM", group: "brands" },
+    { activeSlug: "chevrolet", expected: "Chevrolet", group: "brands" },
+    { activeSlug: "cdjr", expected: "CDJR", group: "brands" },
+    { activeSlug: "jeep", expected: "Jeep", group: "brands" },
+    { activeSlug: "general-shop-discussion", expected: "Technician Topics", group: "technician-topics" },
+  ];
+
+  for (const { activeSlug, expected, group } of cases) {
+    const { HeaderSecondary } = await drawerRuntime({
+      activeSlug,
+      tags,
+      forumAttributes: { flatrateForumNavigationManifest: manifest },
+    });
+    const nav = new HeaderSecondary().items().get("flatrateForumNavigationDrawer");
+    const section = groupById(nav, group);
+    const visible = collectText(nav);
+
+    assert.equal(visible.includes("General Shop Discussion"), false);
+    if (group === "technician-topics") {
+      assert.ok(section.children[0].selector.includes(".active"));
+      assert.equal(section.children[0].children[0].children[0], expected);
+    } else {
+      assert.deepEqual(
+        plain(
+          drawerLinkItems(section)
+            .filter((item) => item.selector.includes(".active"))
+            .map((item) => item.children[0].children[0]),
+        ),
+        [expected],
+      );
+    }
+  }
+});
+
+test("HeaderSecondary Search Notifications Messages Live Chat and session survive both drawer modes", async () => {
+  const contract = await sharedNavigationContract();
+  const manifest = await loadCanonicalManifest();
+
+  for (const forumAttributes of [{}, { flatrateForumNavigationManifest: manifest }]) {
+    const { HeaderSecondary } = await drawerRuntime({
+      tags: forumAttributes.flatrateForumNavigationManifest
+        ? tagsForManifest(manifest)
+        : tagsForContract(contract),
+      forumAttributes,
+    });
+    const items = new HeaderSecondary().items();
+    assert.equal(items.has("search"), true);
+    assert.equal(items.has("notifications"), true);
+    assert.equal(items.has("Messages"), true);
+    assert.equal(items.has("liveChat"), true);
+    assert.equal(items.has("session"), true);
+    assert.equal(items.has("flatrateForumNavigationDrawer"), true);
+    assert.equal(items.getPriority("search"), 30);
+    assert.equal(items.getPriority("notifications"), 10);
+    assert.equal(items.getPriority("Messages"), 5);
+    assert.equal(items.getPriority("liveChat"), 3);
+    assert.equal(items.getPriority("session"), 0);
+    assert.equal(items.getPriority("flatrateForumNavigationDrawer"), -50);
+  }
 });
