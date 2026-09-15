@@ -48,6 +48,9 @@ jobs:
       - name: Run member display policy gates
         run: php test/member-display-policy.php
 
+      - name: Run owner dashboard DTO gates
+        run: php test/owner-dashboard-dto.php
+
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 

@@ -19,6 +19,29 @@ fof-oauth:
     providers:
       flatrate: FlatRate.wiki
 
+core:
+  forum:
+    header:
+      profile_button: My Profile
+
+flatrate-dashboard:
+  forum:
+    member_number: "Member #{number}"
+    overview: Overview
+    identity: Identity
+    contributions: Contributions
+    account_security: Account & Security
+    notifications: Notifications
+    overview_intro: This is your Community dashboard. Public visitors still see your normal profile.
+    identity_help: Your member number is public and cannot be changed. Nickname appearance stays a Community identity control.
+    contributions_help: Your public discussions and posts stay on this profile.
+    account_help: Email, phone, and sign-in methods stay on your FlatRate.wiki account.
+    notifications_help: Forum notification preferences stay on Community Settings.
+    manage_identity: Manage Community identity
+    manage_account: Manage account & security
+    manage_notifications: Notification preferences
+    view_discussions: View discussions
+
 flatrate-identity:
   forum:
     settings:
