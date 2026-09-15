@@ -325,3 +325,57 @@
 .FlatRateMemberDisplay-error {
   color: @alert-error-color;
 }
+
+.FlatRateMemberNumber {
+  font-weight: 700;
+}
+
+.FlatRateOwnerDashboard {
+  margin: 0 0 24px;
+  max-width: 100%;
+}
+
+.FlatRateOwnerDashboard-heading {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.FlatRateOwnerDashboard-help,
+.FlatRateOwnerDashboard-displayName {
+  margin: 0 0 12px;
+  color: @muted-color;
+}
+
+.FlatRateOwnerDashboard-memberNumber {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.FlatRateOwnerDashboard-cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+  margin: 0 0 24px;
+}
+
+.FlatRateOwnerDashboard-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid @control-bg;
+  border-radius: 8px;
+}
+
+.FlatRateOwnerDashboard-cardTitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.FlatRateOwnerDashboard-contributions {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .FlatRateOwnerDashboard-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -96,6 +96,7 @@ namespace {
     expect((bool) preg_match("/->js\(__DIR__\.'\/js\/dist\/forum\.js'\)/", $extend), 'forum.js unconditional');
     expect((bool) preg_match("/->js\(__DIR__\.'\/js\/dist\/mobile-brand-drawer\.js'\)/", $extend), 'mobile drawer unconditional');
     expect((bool) preg_match("/->js\(__DIR__\.'\/js\/dist\/member-display\.js'\)/", $extend), 'member display unconditional');
+    expect((bool) preg_match("/->js\(__DIR__\.'\/js\/dist\/member-dashboard\.js'\)/", $extend), 'member dashboard unconditional');
 
     $forum = file_get_contents($root.'/js/dist/forum.js');
     $desktop = file_get_contents($root.'/js/dist/forum-desktop-navigation.js');
