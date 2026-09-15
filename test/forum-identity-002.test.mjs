@@ -60,10 +60,11 @@ test("IDENTITY-002: display API ignores client member_number and uses EditUser",
   assert.doesNotMatch(controller, /applyTrustedCustom/);
 });
 
-test("IDENTITY-002: serializer exposes self-only custom fields", async () => {
+test("IDENTITY-002: serializer exposes public member number and self-only owner fields", async () => {
   const serializer = await text("src/Api/SerializeMemberProfile.php");
   assert.match(serializer, /flatRateMemberNumber/);
   assert.match(serializer, /flatRateMemberNickname/);
+  assert.match(serializer, /flatRateOwnerDashboard/);
   assert.match(serializer, /flatRateNicknameMode/);
   assert.match(serializer, /flatRateCustomNickname/);
   assert.match(serializer, /\$actor->id !== \$memberNumber/);

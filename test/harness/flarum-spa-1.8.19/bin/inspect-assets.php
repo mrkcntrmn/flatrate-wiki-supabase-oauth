@@ -27,6 +27,7 @@ $desktopCount = preg_match_all('/flatrate-wiki-forum-navigation-sidebar/', $sour
 $contractCount = preg_match_all('/FlatRateForumNavigation/', $source, $mc);
 $drawerCount = preg_match_all('/flatrate-wiki-mobile-forum-navigation/', $source, $mv);
 $initCount = preg_match_all('/flatrate-wiki-member-display/', $source, $m);
+$dashboardCount = preg_match_all('/flatrate-wiki-member-dashboard/', $source, $mdash);
 $apiCount = preg_match_all('/flatrate\/member-display/', $source, $m2);
 $exportCount = preg_match_all('/module\.exports = \{\};/', $source, $m3);
 
@@ -46,6 +47,10 @@ if ($initCount !== 1) {
     fwrite(STDERR, "MEMBER_DISPLAY_INITIALIZER_COUNT=$initCount\n");
     exit(1);
 }
+if ($dashboardCount !== 1) {
+    fwrite(STDERR, "MEMBER_DASHBOARD_INITIALIZER_COUNT=$dashboardCount\n");
+    exit(1);
+}
 if ($apiCount < 1) {
     fwrite(STDERR, "MEMBER_DISPLAY_API_PATH_MISSING\n");
     exit(1);
@@ -54,10 +59,12 @@ if ($apiCount < 1) {
 $payload = [
     'forumJs' => $forumJs,
     'initializerCount' => $initCount,
+    'dashboardInitializerCount' => $dashboardCount,
     'apiPathCount' => $apiCount,
     'moduleExportsEmptyObjectCount' => $exportCount,
 ];
 file_put_contents($outFile, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
 fwrite(STDOUT, "PRODUCTION_ASSET_SHAPE=PASS\n");
 fwrite(STDOUT, "MEMBER_DISPLAY_CODE_PRESENT_ONCE=true\n");
+fwrite(STDOUT, "MEMBER_DASHBOARD_CODE_PRESENT_ONCE=true\n");
 fwrite(STDOUT, "INITIALIZER_REGISTERED_ONCE=true\n");
