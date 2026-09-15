@@ -15,7 +15,7 @@ function attachErrorCollectors(page) {
   page.on("console", (msg) => {
     if (msg.type() === "error") {
       const text = msg.text();
-      if (/flatrate|member-display|wiki-supabase-oauth/i.test(text)) {
+      if (/flatrate|member-display|member-dashboard|wiki-supabase-oauth/i.test(text)) {
         consoleErrors.push(text);
       }
     }
@@ -143,5 +143,85 @@ test("discussion and navigation still boot with member-display enabled", async (
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.locator("#app")).toBeVisible();
+  errors.assertClean();
+});
+
+test("guest public profile shows Member # without owner dashboard DTO", async ({ page }) => {
+  const errors = attachErrorCollectors(page);
+  const response = await page.goto(`/u/${seed.grandfatheredUsername}`, { waitUntil: "networkidle" });
+  expect(response && response.status()).toBe(200);
+  await expect(page.locator(".UserPage")).toBeVisible();
+  await expect(page.locator(".FlatRateMemberNumber")).toHaveText(`Member #${seed.grandfatheredUserId}`);
+  await expect(page.locator(".FlatRateOwnerDashboard")).toHaveCount(0);
+  const bootAttrs = await page.evaluate(() =>
+    app.store.all("users").map((user) => user.data && user.data.attributes),
+  );
+  for (const attrs of bootAttrs) {
+    expect(attrs && attrs.flatRateOwnerDashboard).toBeUndefined();
+  }
+  const api = await page.request.get(`/api/users/${seed.grandfatheredUserId}`);
+  expect(api.ok()).toBeTruthy();
+  const body = await api.json();
+  expect(Number(body.data.attributes.flatRateMemberNumber)).toBe(seed.grandfatheredUserId);
+  expect(body.data.attributes.flatRateOwnerDashboard).toBeUndefined();
+  expect(body.data.attributes.flatRateNicknameMode).toBeUndefined();
+  errors.assertClean();
+});
+
+test("another member sees public Member # and never receives owner DTO", async ({ page }) => {
+  const errors = attachErrorCollectors(page);
+  await login(page, seed.newToken);
+  await page.goto(`/u/${seed.grandfatheredUsername}`, { waitUntil: "networkidle" });
+  await expect(page.locator(".UserPage")).toBeVisible();
+  await expect(page.locator(".FlatRateMemberNumber")).toHaveText(`Member #${seed.grandfatheredUserId}`);
+  await expect(page.locator(".FlatRateOwnerDashboard")).toHaveCount(0);
+  const body = await page.evaluate(async (id) => {
+    const res = await fetch("/api/users/" + id, { credentials: "same-origin" });
+    return res.json();
+  }, seed.grandfatheredUserId);
+  expect(body.data.attributes.flatRateOwnerDashboard).toBeUndefined();
+  expect(body.data.attributes.flatRateNicknameMode).toBeUndefined();
+  expect(Number(body.data.attributes.flatRateMemberNumber)).toBe(seed.grandfatheredUserId);
+  errors.assertClean();
+});
+
+test("owner dashboard chrome is server-authorized and compatibility routes remain", async ({ page }) => {
+  const errors = attachErrorCollectors(page);
+  await login(page, seed.grandfatheredToken);
+  await page.goto(`/u/${seed.grandfatheredUsername}`, { waitUntil: "networkidle" });
+  await expect(page.locator(".FlatRateOwnerDashboard")).toBeVisible();
+  await expect(page.locator(".FlatRateMemberNumber")).toHaveText(`Member #${seed.grandfatheredUserId}`);
+  await expect(page.getByRole("link", { name: "Manage account & security" })).toHaveAttribute(
+    "href",
+    "https://flatrate.wiki/account",
+  );
+  await expect(page.getByRole("link", { name: "Manage Community identity" })).toHaveAttribute(
+    "href",
+    "/settings",
+  );
+  await expect(page.getByRole("link", { name: "Notification preferences" })).toHaveAttribute(
+    "href",
+    "/settings",
+  );
+  await expect(page.locator('input[name="member-number"], input[name="member_number"]')).toHaveCount(0);
+  const self = await page.evaluate(async () => {
+    const res = await fetch("/api/users/" + app.session.user.id(), { credentials: "same-origin" });
+    const body = await res.json();
+    return body.data.attributes;
+  });
+  expect(self.flatRateOwnerDashboard).toBeTruthy();
+  expect(self.flatRateOwnerDashboard.schema_version).toBe(1);
+  expect(self.flatRateOwnerDashboard.account_url).toBe("https://flatrate.wiki/account");
+  expect(self.flatRateOwnerDashboard.settings_path).toBe("/settings");
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.locator(".FlatRateOwnerDashboard")).toBeVisible();
+  await page.locator(".SessionDropdown .Dropdown-toggle").click();
+  await expect(page.getByRole("link", { name: "My Profile" })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".FlatRateOwnerDashboard")).toBeVisible();
+  await expect(page.locator(".FlatRateOwnerDashboard-cards")).toBeVisible();
+  await page.goto("/settings", { waitUntil: "networkidle" });
+  await expect(page.locator(".SettingsPage")).toBeVisible();
+  await expect(page.locator(".FlatRateMemberDisplay")).toBeVisible();
   errors.assertClean();
 });

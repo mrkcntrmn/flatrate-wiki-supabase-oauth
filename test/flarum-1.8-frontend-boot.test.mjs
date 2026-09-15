@@ -128,8 +128,12 @@ test("CASE_A / OLD_BBC9A62: last-file missing module.exports reproduces Applicat
   console.error("MEMBER_DISPLAY_ASSET_CAUSAL=true");
 });
 
-test("candidate member-display.js is last and must assign module.exports", () => {
-  const result = bootError([...EXISTING_ASSETS, "js/dist/member-display.js"]);
+test("candidate member-display.js then member-dashboard.js assign module.exports", () => {
+  const result = bootError([
+    ...EXISTING_ASSETS,
+    "js/dist/member-display.js",
+    "js/dist/member-dashboard.js",
+  ]);
   if (result.error) {
     console.error("NEW_CANDIDATE_SPA_BOOT=FAIL");
     console.error("CANDIDATE_BOOT_ERROR=" + result.error.message);
@@ -147,6 +151,7 @@ test("legacy desktop navigation bundle assigns module.exports for Frontend wrapp
     ...EXISTING_ASSETS,
     "js/dist/forum-desktop-navigation.js",
     "js/dist/member-display.js",
+    "js/dist/member-dashboard.js",
   ]);
   assert.equal(result.error, null, String(result.error && result.error.stack));
   assert.equal(typeof result.exportValue, "object");

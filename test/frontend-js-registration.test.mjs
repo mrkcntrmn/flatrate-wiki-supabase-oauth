@@ -25,6 +25,7 @@ const EXPECTED_JS = [
   "js/dist/forum.js",
   "js/dist/mobile-brand-drawer.js",
   "js/dist/member-display.js",
+  "js/dist/member-dashboard.js",
 ];
 
 function resolveFlarumFrontendSource() {
@@ -146,13 +147,13 @@ test("Flarum 1.8.19 Frontend::js is a scalar overwrite; css appends", () => {
   console.error("FLARUM_FRONTEND_CSS_METHOD_APPENDS=true");
 });
 
-test("companion registers four forum JS paths via separate Frontend extenders", () => {
+test("companion registers five forum JS paths via separate Frontend extenders", () => {
   const extendPhp = withoutWhenExtensionDisabled(text("extend.php"));
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum" && r.jsPaths.length > 0,
   );
 
-  assert.equal(forum.length, 4, "expected four forum Frontend JS extenders");
+  assert.equal(forum.length, 5, "expected five forum Frontend JS extenders");
 
   const registered = forum.map((r) => r.jsPaths.join(","));
   assert.deepEqual(
@@ -182,7 +183,11 @@ test("companion registers four forum JS paths via separate Frontend extenders", 
   const forumJs = allJs.indexOf(EXPECTED_JS[1]);
   const drawer = allJs.indexOf(EXPECTED_JS[2]);
   const member = allJs.indexOf(EXPECTED_JS[3]);
-  assert.ok(nav < forumJs && forumJs < drawer && drawer < member, "FRONTEND_JS_ORDER_GATE=PASS");
+  const dashboard = allJs.indexOf(EXPECTED_JS[4]);
+  assert.ok(
+    nav < forumJs && forumJs < drawer && drawer < member && member < dashboard,
+    "FRONTEND_JS_ORDER_GATE=PASS",
+  );
 
   console.error(`REGISTERED_FORUM_JS_PATHS=${allJs.join(",")}`);
   console.error("FRONTEND_JS_ORDER_GATE=PASS");
@@ -233,6 +238,7 @@ test("forum LESS paths register exactly once on the first JS extender", () => {
   assert.deepEqual(forum[1].cssPaths, []);
   assert.deepEqual(forum[2].cssPaths, []);
   assert.deepEqual(forum[3].cssPaths, []);
+  assert.deepEqual(forum[4].cssPaths, []);
 });
 
 test("IA-013 JS source markers remain present and unchanged in role", () => {
@@ -241,6 +247,7 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   const desktop = text("js/dist/forum-desktop-navigation.js");
   const mobile = text("js/dist/mobile-brand-drawer.js");
   const member = text("js/dist/member-display.js");
+  const dashboard = text("js/dist/member-dashboard.js");
 
   assert.match(nav, /FlatRateForumNavigation/);
   assert.match(nav, /root\.FlatRateForumNavigation\s*=/);
@@ -267,6 +274,9 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   assert.match(member, /coreExport\('common\/extend'\)/);
   assert.match(member, /forum\/components\/SettingsPage/);
   assert.match(member, /flarum\.core\.compat/);
+  assert.match(dashboard, /flatrate-wiki-member-dashboard/);
+  assert.match(dashboard, /flatRateOwnerDashboard/);
+  assert.match(dashboard, /module\.exports = \{\}/);
 
   for (const rel of EXPECTED_JS) {
     assert.ok(existsSync(join(ROOT, rel)), `missing ${rel}`);
@@ -296,6 +306,7 @@ test("legacy desktop IndexPage renderer is gated only while dedicated nav is dis
   assert.match(extendPhp, /js\/dist\/forum-navigation\.js/);
   assert.match(extendPhp, /js\/dist\/mobile-brand-drawer\.js/);
   assert.match(extendPhp, /js\/dist\/member-display\.js/);
+  assert.match(extendPhp, /js\/dist\/member-dashboard\.js/);
   assert.doesNotMatch(
     withoutWhenExtensionDisabled(extendPhp),
     /js\/dist\/forum-desktop-navigation\.js/,

@@ -4,6 +4,7 @@ namespace FlatRate\SupabaseOAuth\Api;
 
 use FlatRate\SupabaseOAuth\Identity\MemberIdentity;
 use FlatRate\SupabaseOAuth\Identity\MemberProfile;
+use FlatRate\SupabaseOAuth\Identity\OwnerDashboardDto;
 use Flarum\Api\Serializer\UserSerializer;
 use Flarum\User\User;
 
@@ -25,6 +26,8 @@ final class SerializeMemberProfile
         if (! $actor || (int) $actor->id !== $memberNumber) {
             return $exposed;
         }
+
+        $exposed['flatRateOwnerDashboard'] = OwnerDashboardDto::make();
 
         $profile = MemberProfile::query()->whereKey($memberNumber)->first();
         if (! $profile) {
