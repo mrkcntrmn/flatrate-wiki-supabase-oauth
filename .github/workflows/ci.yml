@@ -48,6 +48,9 @@ jobs:
       - name: Run member display policy gates
         run: php test/member-display-policy.php
 
+      - name: Run guest identity projection gates
+        run: php test/guest-identity-projection.php
+
       - name: Run owner dashboard DTO gates
         run: php test/owner-dashboard-dto.php
 
@@ -193,3 +196,10 @@ jobs:
       - name: Run Flarum 1.8.19 browser boot gates
         working-directory: test/harness/flarum-spa-1.8.19
         run: npx playwright test
+
+      - name: Run guest identity in-process qualification
+        run: |
+          FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
+          php test/harness/flarum-spa-1.8.19/bin/qualify-guest-identity.php \
+            "$FLARUM_DIR" \
+            test/harness/flarum-spa-1.8.19/.work/seed.json

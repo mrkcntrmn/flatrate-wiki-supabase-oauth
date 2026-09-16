@@ -146,43 +146,130 @@ test("discussion and navigation still boot with member-display enabled", async (
   errors.assertClean();
 });
 
-test("guest public profile shows Member # without owner dashboard DTO", async ({ page }) => {
+test("guest public profile hides Member # and custom nickname sentinel", async ({ page }) => {
   const errors = attachErrorCollectors(page);
-  const response = await page.goto(`/u/${seed.grandfatheredUsername}`, { waitUntil: "networkidle" });
+  const response = await page.goto(`/u/${seed.sentinelUsername}`, { waitUntil: "networkidle" });
   expect(response && response.status()).toBe(200);
   await expect(page.locator(".UserPage")).toBeVisible();
-  await expect(page.locator(".FlatRateMemberNumber")).toHaveText(`Member #${seed.grandfatheredUserId}`);
+  await expect(page.locator(".FlatRateMemberNumber")).toHaveCount(0);
   await expect(page.locator(".FlatRateOwnerDashboard")).toHaveCount(0);
-  const bootAttrs = await page.evaluate(() =>
-    app.store.all("users").map((user) => user.data && user.data.attributes),
-  );
-  for (const attrs of bootAttrs) {
-    expect(attrs && attrs.flatRateOwnerDashboard).toBeUndefined();
+  await expect(page.locator("body")).toContainText(seed.sentinelUsername);
+  await expect(page.locator("body")).not.toContainText(seed.sentinelNickname);
+  await expect(page.locator("body")).not.toContainText(`Member #${seed.sentinelUserId}`);
+  await expect(page.locator("body")).not.toContainText(seed.sentinelMemberNickname);
+
+  const bootLeak = await page.evaluate((sentinel) => {
+    const attrs = app.store.all("users").map((user) => user.data && user.data.attributes);
+    const raw = document.documentElement.outerHTML;
+    return {
+      attrs,
+      hasNickname: raw.includes(sentinel.nickname),
+      hasMemberPresentation: raw.includes(`Member #${sentinel.userId}`) || raw.includes(sentinel.memberNickname),
+      title: document.title,
+    };
+  }, {
+    nickname: seed.sentinelNickname,
+    userId: seed.sentinelUserId,
+    memberNickname: seed.sentinelMemberNickname,
+  });
+  for (const attrs of bootLeak.attrs) {
+    if (!attrs) continue;
+    expect(attrs.flatRateMemberNumber).toBeUndefined();
+    expect(attrs.flatRateMemberNickname).toBeUndefined();
+    expect(attrs.flatRateOwnerDashboard).toBeUndefined();
+    if (attrs.username === seed.sentinelUsername) {
+      expect(attrs.displayName).toBe(seed.sentinelUsername);
+      expect(attrs.avatarUrl == null).toBeTruthy();
+    }
   }
-  const api = await page.request.get(`/api/users/${seed.grandfatheredUserId}`);
+  expect(bootLeak.hasNickname).toBe(false);
+  expect(bootLeak.hasMemberPresentation).toBe(false);
+  expect(bootLeak.title).toContain(seed.sentinelUsername);
+  expect(bootLeak.title).not.toContain(seed.sentinelNickname);
+
+  const api = await page.request.get(`/api/users/${seed.sentinelUserId}`);
   expect(api.ok()).toBeTruthy();
   const body = await api.json();
-  expect(Number(body.data.attributes.flatRateMemberNumber)).toBe(seed.grandfatheredUserId);
-  expect(body.data.attributes.flatRateOwnerDashboard).toBeUndefined();
-  expect(body.data.attributes.flatRateNicknameMode).toBeUndefined();
+  expect(body.data.attributes.username).toBe(seed.sentinelUsername);
+  expect(body.data.attributes.displayName).toBe(seed.sentinelUsername);
+  expect(body.data.attributes.flatRateMemberNumber).toBeUndefined();
+  expect(body.data.attributes.flatRateMemberNickname).toBeUndefined();
+  expect(body.data.attributes.avatarUrl == null).toBeTruthy();
+  const rawApi = JSON.stringify(body);
+  expect(rawApi).not.toContain(seed.sentinelNickname);
+  expect(rawApi).not.toContain(`tech_#${seed.sentinelUserId}`);
   errors.assertClean();
 });
 
-test("another member sees public Member # and never receives owner DTO", async ({ page }) => {
+test("authenticated stranger still sees public Member # and nickname", async ({ page }) => {
   const errors = attachErrorCollectors(page);
   await login(page, seed.newToken);
-  await page.goto(`/u/${seed.grandfatheredUsername}`, { waitUntil: "networkidle" });
+  await page.goto(`/u/${seed.sentinelUsername}`, { waitUntil: "networkidle" });
   await expect(page.locator(".UserPage")).toBeVisible();
-  await expect(page.locator(".FlatRateMemberNumber")).toHaveText(`Member #${seed.grandfatheredUserId}`);
-  await expect(page.locator(".FlatRateOwnerDashboard")).toHaveCount(0);
+  await expect(page.locator(".FlatRateMemberNumber")).toHaveText(`Member #${seed.sentinelUserId}`);
+  await expect(page.locator("body")).toContainText(seed.sentinelNickname);
   const body = await page.evaluate(async (id) => {
     const res = await fetch("/api/users/" + id, { credentials: "same-origin" });
     return res.json();
-  }, seed.grandfatheredUserId);
+  }, seed.sentinelUserId);
+  expect(Number(body.data.attributes.flatRateMemberNumber)).toBe(seed.sentinelUserId);
+  expect(body.data.attributes.displayName).toBe(seed.sentinelNickname);
   expect(body.data.attributes.flatRateOwnerDashboard).toBeUndefined();
-  expect(body.data.attributes.flatRateNicknameMode).toBeUndefined();
-  expect(Number(body.data.attributes.flatRateMemberNumber)).toBe(seed.grandfatheredUserId);
   errors.assertClean();
+});
+
+test("guest mention contentHtml projects username not sentinel nickname", async ({ page }) => {
+  const errors = attachErrorCollectors(page);
+  const discussionUrl = `/d/${seed.discussionId}-${seed.discussionSlug}`;
+  const response = await page.goto(discussionUrl, { waitUntil: "networkidle" });
+  expect(response && response.status()).toBe(200);
+  await expect(page.locator(".DiscussionPage")).toBeVisible();
+
+  const guestHtml = await page.request.get(`/api/posts/${seed.mentionPostId}`);
+  expect(guestHtml.ok()).toBeTruthy();
+  const guestBody = await guestHtml.json();
+  const contentHtml = guestBody.data.attributes.contentHtml || "";
+  expect(contentHtml).toContain(seed.sentinelUsername);
+  expect(contentHtml).not.toContain(seed.sentinelNickname);
+
+  const included = JSON.stringify(guestBody.included || []);
+  expect(included).not.toContain(seed.sentinelNickname);
+  expect(included).not.toContain(`flatRateMemberNumber`);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(discussionUrl, { waitUntil: "networkidle" });
+  await expect(page.locator(".PostStream")).toBeVisible();
+  await expect(page.locator("body")).toContainText(seed.sentinelUsername);
+  await expect(page.locator("body")).not.toContainText(seed.sentinelNickname);
+  errors.assertClean();
+});
+
+test("authenticated mention contentHtml keeps nickname", async ({ page }) => {
+  const errors = attachErrorCollectors(page);
+  await login(page, seed.grandfatheredToken);
+  const authHtml = await page.request.get(`/api/posts/${seed.mentionPostId}`);
+  expect(authHtml.ok()).toBeTruthy();
+  const authBody = await authHtml.json();
+  const contentHtml = authBody.data.attributes.contentHtml || "";
+  expect(contentHtml).toContain(seed.sentinelNickname);
+
+  const userApi = await page.evaluate(async (id) => {
+    const res = await fetch("/api/users/" + id, { credentials: "same-origin" });
+    return res.json();
+  }, seed.sentinelUserId);
+  expect(userApi.data.attributes.displayName).toBe(seed.sentinelNickname);
+  expect(Number(userApi.data.attributes.flatRateMemberNumber)).toBe(seed.sentinelUserId);
+  errors.assertClean();
+});
+
+test("guest and auth profile routes share username canonical path", async ({ page }) => {
+  const guest = await page.goto(`/u/${seed.sentinelUsername}`, { waitUntil: "networkidle" });
+  expect(guest && guest.status()).toBe(200);
+  expect(page.url()).toContain(`/u/${seed.sentinelUsername}`);
+  await login(page, seed.newToken);
+  const auth = await page.goto(`/u/${seed.sentinelUsername}`, { waitUntil: "networkidle" });
+  expect(auth && auth.status()).toBe(200);
+  expect(page.url()).toContain(`/u/${seed.sentinelUsername}`);
 });
 
 test("owner dashboard chrome is server-authorized and compatibility routes remain", async ({ page }) => {

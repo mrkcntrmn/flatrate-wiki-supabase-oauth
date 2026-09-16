@@ -4,6 +4,7 @@ namespace FlatRate\SupabaseOAuth;
 
 use FlatRate\SupabaseOAuth\Subscription\FilterInheritedIgnoredTagMentions;
 use FlatRate\SupabaseOAuth\Subscription\FollowTagsFamilyServiceProvider;
+use Flarum\Api\Serializer\BasicUserSerializer;
 use Flarum\Api\Serializer\PostSerializer;
 use Flarum\Api\Serializer\UserSerializer;
 use Flarum\Discussion\Event\Started;
@@ -100,6 +101,11 @@ return [
     (new Extend\ApiSerializer(UserSerializer::class))
         ->attributes(Api\SerializeMemberProfile::class),
 
+    // Guest-only public identity projection (avatar + displayName defense-in-depth).
+    // Registered on BasicUserSerializer so post/like/mention includes are covered.
+    (new Extend\ApiSerializer(BasicUserSerializer::class))
+        ->attributes(Api\SerializeGuestPublicIdentity::class),
+
     (new Extend\Settings())
         ->default('flatrate-activity.emit_enabled', false)
         ->default('flatrate-activity.ingest_url', ''),
@@ -122,8 +128,10 @@ return [
         ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),
 
     (new Extend\Middleware('forum'))
+        ->add(Middleware\ViewerIdentityContextMiddleware::class)
         ->add(Middleware\RequireFlatRateIdentity::class),
 
     (new Extend\Middleware('api'))
+        ->add(Middleware\ViewerIdentityContextMiddleware::class)
         ->add(Middleware\RequireFlatRateIdentity::class),
 ];

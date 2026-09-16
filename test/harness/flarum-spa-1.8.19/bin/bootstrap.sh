@@ -44,6 +44,7 @@ php flarum cache:clear
 php flarum migrate
 php flarum extension:enable flarum-nicknames
 php flarum extension:enable flarum-tags
+php flarum extension:enable flarum-mentions
 php flarum extension:enable fof-oauth
 php flarum extension:enable flatrate-wiki-supabase-oauth
 php flarum migrate

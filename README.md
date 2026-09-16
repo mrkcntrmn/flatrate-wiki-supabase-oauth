@@ -46,11 +46,13 @@ Hard rules:
 | Authentication identity | Supabase `sub` | UUID-like subject | No |
 | Login/account address | Supabase/Flarum email | `tech@example.com` | No |
 | Internal Flarum schema email | FlatRate placeholder | `forum-<hash>@users.flatrate.wiki` | No |
-| Flarum routing username | Derived from `sub` | `tech_a1b2c3d4` | Yes |
-| Community member number | Flarum `users.id` (FORUM-IDENTITY-002) | `322` | Yes as `Member #322` |
-| Permanent member identity | Derived from member number | `tech_#322` | Yes (initial for new users) |
-| Custom / grandfathered nickname | Flarum Nicknames + member profile | `tech_20031` / `DieselDave` | Yes |
+| Flarum routing username | Derived from `sub` | `tech_a1b2c3d4` | Yes (guest open-web display alias; see FORUM-PUBLIC-PSEUDONYM-001) |
+| Community member number | Flarum `users.id` (FORUM-IDENTITY-002) | `322` | Authenticated Community public as `Member #322`; hidden from guest/crawler projection |
+| Permanent member identity | Derived from member number | `tech_#322` | Authenticated Community public (initial for new users); hidden from guest projection |
+| Custom / grandfathered nickname | Flarum Nicknames + member profile | `tech_20031` / `DieselDave` | Authenticated Community public; hidden from guest projection |
 | Legacy FlatRate tech number | Supabase assignment (R3 rollback only) | `20031` | No |
+
+Guest/open-web identity projection (`FORUM-PUBLIC-PSEUDONYM-001`, source stage): unauthenticated responses use the existing routing username (`tech_<8hex>`), omit Member # / custom nickname attributes, and null custom `avatarUrl`. Authenticated Community behavior is unchanged. See `docs/forum-public-pseudonym-001a-inventory.md`. Not production-deployed from this tranche.
 
 ### Reserved nickname namespaces
 
