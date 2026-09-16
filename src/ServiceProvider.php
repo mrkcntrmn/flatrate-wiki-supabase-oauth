@@ -15,14 +15,15 @@ final class ServiceProvider extends AbstractServiceProvider
         // the `flatrate` provider and delegates every other provider upstream.
         $this->container->bind(ResponseFactory::class, AutoProvisioningResponseFactory::class);
 
-        // These two routes are authenticated by their own timestamped,
-        // nonce-bound HMAC. Flarum's normal API stack otherwise rejects POSTs
-        // without a browser session CSRF token before our authenticator runs.
-        // Exempt only the bridge route names; all other API CSRF protection
-        // remains unchanged.
+        // These routes are authenticated by their own credentials (HMAC SSO or
+        // drain bearer digest). Flarum's normal API stack otherwise rejects
+        // POSTs without a browser session CSRF token before our authenticators
+        // run. Exempt only those named bridge routes; all other API CSRF
+        // protection remains unchanged.
         $this->container->extend('flarum.http.csrfExemptPaths', function (array $routes) {
             $routes[] = 'flatrate-sso.provision';
             $routes[] = 'flatrate-sso.ticket';
+            $routes[] = 'flatrate.activity.drain';
 
             return array_values(array_unique($routes));
         });
