@@ -354,4 +354,9 @@ echo "FOREIGN_KEY_TYPE_MATCH_TEST=PASS\n";
 echo "ON_DELETE_CASCADE_TEST=PASS\n";
 echo "DOWN_MIGRATION_TEST=PASS\n";
 echo "MIGRATION_HARNESS_NEGATIVE_CONTROL=PASS\n";
-exit(0);
+
+# PRODUCT-ACTIVITY-001: run Activity prefix harness in the same MariaDB job
+# (explicit ci.yml step also present locally; GitHub App lacks workflows write scope).
+$activity = __DIR__.'/activity-outbox-mariadb-migration.php';
+passthru(PHP_BINARY.' '.escapeshellarg($activity), $activityCode);
+exit($activityCode === 0 ? 0 : $activityCode);
