@@ -11,9 +11,17 @@ ACTIVITY_EMIT_DEFAULT_ENABLED=false
 FLATRATE_ACTIVITY_EMIT_ENABLED=false
 DELIVERY_SEMANTICS=AT_LEAST_ONCE
 OUTBOX_IMPLEMENTED=true
-OUTBOX_AUTOMATIC_DRAIN_PATH=flarum_schedule:flatrate:activity:drain-outbox
+OUTBOX_AUTOMATIC_DRAIN_PATH=external_cloudflare_cron:POST_/api/flatrate-activity/drain
+OUTBOX_NATIVE_FLARUM_SCHEDULER_PATH=flarum_schedule:flatrate:activity:drain-outbox
+OUTBOX_NATIVE_HOST_EXECUTOR=ABSENT_ON_PIKAPODS
 OUTBOX_COMMAND_RUNTIME_DI=PASS
 SCHEDULED_DRAIN_RUNTIME_CONTRACT=PASS
+EXTERNAL_DRAIN_ENDPOINT=POST_/api/flatrate-activity/drain
+EXTERNAL_DRAIN_AUTH=Bearer_token_sha256_digest_only
+EXTERNAL_DRAIN_SETTING=flatrate-activity.drain_token_sha256
+EXTERNAL_DRAIN_ENV=FLATRATE_ACTIVITY_DRAIN_TOKEN_SHA256
+EXTERNAL_DRAIN_CALLER_ARGS=none
+EXTERNAL_DRAIN_DEFAULT_BATCH=25
 RETRY_NEW_NONCE_EACH_ATTEMPT=true
 TERMINAL_PAYLOAD_RETENTION_BOUNDED=true
 BRAND_ATTRIBUTION_CONTRACT=PASS
@@ -52,15 +60,67 @@ canonical Flarum/FoF success
   -> durable outbox
   -> HMAC POST /api/internal/forum-activity
   -> on failure: markFailure / markTerminal
-  -> Flarum schedule everyMinute: drain due rows
-     (fresh timestamp/nonce/signature each attempt)
+  -> ActivityOutboxDrainer (claim lease + fresh HMAC each attempt)
+       ↑
+       ├── Flarum schedule everyMinute (supported; host cron may be absent)
+       ├── CLI flatrate:activity:drain-outbox (operator recovery)
+       └── POST /api/flatrate-activity/drain (external clock; digest auth)
 ```
 
-Host requirement: cron `* * * * * php flarum schedule:run`.
-CLI `php flarum flatrate:activity:drain-outbox` is operator recovery, not the only path.
+### Primary production retry executor (qualified source)
+
+```text
+Cloudflare Cron (* * * * *)
+  -> POST https://forum.flatrate.wiki/api/flatrate-activity/drain
+  -> Authorization: Bearer <ACTIVITY_DRAIN_TOKEN>
+  -> forum compares sha256(token) to flatrate-activity.drain_token_sha256
+     (or FLATRATE_ACTIVITY_DRAIN_TOKEN_SHA256 env digest)
+  -> ActivityOutboxDrainer::drain()  // default batch 25; no caller args
+```
+
+Forum stores **digest only**. Raw token lives only in Worker secret storage
+(after a future deploy work order). Endpoint is inert until a digest is configured
+(`503 scheduler_not_configured`).
+
+### Native Flarum scheduler
+
+Supported in source (`everyMinute()->withoutOverlapping()`), but **not invoked**
+on PikaPods today (no usable host cron / application console). Kept for
+compatibility if the host later gains `php flarum schedule:run`.
+
+CLI `php flarum flatrate:activity:drain-outbox` remains operator recovery where
+a console exists — not a production dependency.
+
+Host requirement (native path only): cron `* * * * * php flarum schedule:run`.
 
 Command DI: `DrainActivityOutboxCommand` constructor-injects `ActivityOutboxDrainer`;
 drainer constructor-injects `ActivityClient` (not builtin `object`).
+
+### Threat model (external drain)
+
+```text
+Threat: unauthenticated internet request
+Control: bearer token + digest-only server storage + hash_equals
+
+Threat: token database disclosure
+Control: database stores digest only
+
+Threat: credential replay
+Impact: only bounded drain invocation (no args / no row selection)
+Controls: DB claim lease, idempotent source_event_key, TLS
+
+Threat: concurrent Worker + native scheduler
+Control: lockForUpdate + available_at lease
+
+Threat: endpoint used as outbox management API
+Control: empty body required; no limit/id/payload parameters
+
+Threat: secret leaks in logs
+Control: log event name + error_class only on drain failure
+```
+
+Optional later hardening (not required for R1 qualification): Cloudflare Access
+service token on exact path, WAF rate limit, rotation automation, terminal-row alerts.
 
 ## Brand attribution
 

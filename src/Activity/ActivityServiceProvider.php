@@ -18,6 +18,8 @@ final class ActivityServiceProvider extends AbstractServiceProvider
         $this->container->singleton(ActivityClient::class);
         $this->container->singleton(ActivityEmitter::class);
         $this->container->singleton(ActivityOutboxDrainer::class);
+        $this->container->singleton(ActivityDrainAuthenticator::class);
+        $this->container->singleton(DrainActivityOutboxController::class);
         $this->container->singleton(EmitVoteActivity::class);
         $this->container->singleton(EmitDiscussionCreated::class);
         $this->container->singleton(EmitReplyCreated::class);

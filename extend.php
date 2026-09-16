@@ -99,10 +99,14 @@ return [
 
     (new Extend\Settings())
         ->default('flatrate-activity.emit_enabled', false)
-        ->default('flatrate-activity.ingest_url', ''),
+        ->default('flatrate-activity.ingest_url', '')
+        ->default('flatrate-activity.drain_token_sha256', ''),
 
     // Automatic outbox drain via Flarum scheduler (requires host cron:
     // * * * * * php flarum schedule:run). CLI alone is not the only retry path.
+    // Primary production executor (when host cron is absent): authenticated
+    // POST /api/flatrate-activity/drain invoked by an external clock
+    // (e.g. Cloudflare Cron). Both paths share ActivityOutboxDrainer + claim lease.
     (new Extend\Console())
         ->command(Activity\DrainActivityOutboxCommand::class)
         ->schedule(Activity\DrainActivityOutboxCommand::class, function ($event) {
@@ -113,7 +117,8 @@ return [
     (new Extend\Routes('api'))
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
         ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class)
-        ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class),
+        ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class)
+        ->post('/flatrate-activity/drain', 'flatrate.activity.drain', Activity\DrainActivityOutboxController::class),
 
     (new Extend\Routes('forum'))
         ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),
