@@ -23,6 +23,7 @@ const text = (rel) => readFileSync(join(ROOT, rel), "utf8");
 const EXPECTED_JS = [
   "js/dist/forum-navigation.js",
   "js/dist/forum.js",
+  "js/dist/tech-club-badge.js",
   "js/dist/mobile-brand-drawer.js",
   "js/dist/member-display.js",
   "js/dist/member-dashboard.js",
@@ -147,13 +148,13 @@ test("Flarum 1.8.19 Frontend::js is a scalar overwrite; css appends", () => {
   console.error("FLARUM_FRONTEND_CSS_METHOD_APPENDS=true");
 });
 
-test("companion registers five forum JS paths via separate Frontend extenders", () => {
+test("companion registers six forum JS paths via separate Frontend extenders", () => {
   const extendPhp = withoutWhenExtensionDisabled(text("extend.php"));
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum" && r.jsPaths.length > 0,
   );
 
-  assert.equal(forum.length, 5, "expected five forum Frontend JS extenders");
+  assert.equal(forum.length, 6, "expected six forum Frontend JS extenders");
 
   const registered = forum.map((r) => r.jsPaths.join(","));
   assert.deepEqual(
@@ -181,11 +182,12 @@ test("companion registers five forum JS paths via separate Frontend extenders", 
 
   const nav = allJs.indexOf(EXPECTED_JS[0]);
   const forumJs = allJs.indexOf(EXPECTED_JS[1]);
-  const drawer = allJs.indexOf(EXPECTED_JS[2]);
-  const member = allJs.indexOf(EXPECTED_JS[3]);
-  const dashboard = allJs.indexOf(EXPECTED_JS[4]);
+  const techClub = allJs.indexOf(EXPECTED_JS[2]);
+  const drawer = allJs.indexOf(EXPECTED_JS[3]);
+  const member = allJs.indexOf(EXPECTED_JS[4]);
+  const dashboard = allJs.indexOf(EXPECTED_JS[5]);
   assert.ok(
-    nav < forumJs && forumJs < drawer && drawer < member && member < dashboard,
+    nav < forumJs && forumJs < techClub && techClub < drawer && drawer < member && member < dashboard,
     "FRONTEND_JS_ORDER_GATE=PASS",
   );
 
@@ -230,20 +232,27 @@ test("forum LESS paths register exactly once on the first JS extender", () => {
       .length,
     1,
   );
+  assert.equal(
+    cssAll.filter((p) => p === "resources/less/tech-club-badge.less").length,
+    1,
+  );
   // CSS should ride with the first JS extender (navigation), not be duplicated.
   assert.deepEqual(forum[0].cssPaths, [
     "resources/less/forum.less",
     "resources/less/mobile-brand-drawer.less",
+    "resources/less/tech-club-badge.less",
   ]);
   assert.deepEqual(forum[1].cssPaths, []);
   assert.deepEqual(forum[2].cssPaths, []);
   assert.deepEqual(forum[3].cssPaths, []);
   assert.deepEqual(forum[4].cssPaths, []);
+  assert.deepEqual(forum[5].cssPaths, []);
 });
 
 test("IA-013 JS source markers remain present and unchanged in role", () => {
   const nav = text("js/dist/forum-navigation.js");
   const forum = text("js/dist/forum.js");
+  const techClub = text("js/dist/tech-club-badge.js");
   const desktop = text("js/dist/forum-desktop-navigation.js");
   const mobile = text("js/dist/mobile-brand-drawer.js");
   const member = text("js/dist/member-display.js");
@@ -254,6 +263,8 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
 
   assert.doesNotMatch(forum, /flatrate-wiki-forum-navigation-sidebar/);
   assert.doesNotMatch(forum, /FlatRateForumNav--sidebar/);
+  assert.match(techClub, /flatrate-wiki-tech-club-badge/);
+  assert.match(techClub, /TECH CLUB 🧼/);
   assert.match(
     desktop,
     /flatrate-wiki-forum-navigation-sidebar/,
@@ -304,6 +315,7 @@ test("legacy desktop IndexPage renderer is gated only while dedicated nav is dis
   assert.equal(unconditional.includes("js/dist/forum-desktop-navigation.js"), false);
 
   assert.match(extendPhp, /js\/dist\/forum-navigation\.js/);
+  assert.match(extendPhp, /js\/dist\/tech-club-badge\.js/);
   assert.match(extendPhp, /js\/dist\/mobile-brand-drawer\.js/);
   assert.match(extendPhp, /js\/dist\/member-display\.js/);
   assert.match(extendPhp, /js\/dist\/member-dashboard\.js/);
