@@ -18,15 +18,19 @@ use FoF\OAuth\Extend as OAuthExtend;
 return [
     // Flarum 1.8 Frontend::js() stores one scalar path (overwrite).
     // Register each forum JS file through its own Frontend extender so all
-    // five unconditional sources reach the compiled forum asset in load order.
-    // Legacy desktop IndexPage navigation is a sixth, conditional source.
+    // six unconditional sources reach the compiled forum asset in load order.
+    // Legacy desktop IndexPage navigation is a seventh, conditional source.
     (new Extend\Frontend('forum'))
         ->css(__DIR__.'/resources/less/forum.less')
         ->css(__DIR__.'/resources/less/mobile-brand-drawer.less')
+        ->css(__DIR__.'/resources/less/tech-club-badge.less')
         ->js(__DIR__.'/js/dist/forum-navigation.js'),
 
     (new Extend\Frontend('forum'))
         ->js(__DIR__.'/js/dist/forum.js'),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/tech-club-badge.js'),
 
     // Flarum 1.8.19 Conditional::whenExtensionDisabled(). Only the legacy
     // IndexPage.sidebarItems renderer is gated. The shared
