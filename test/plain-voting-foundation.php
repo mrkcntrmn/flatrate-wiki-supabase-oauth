@@ -41,6 +41,11 @@ str_contains($extend, 'VotingServiceProvider')
 str_contains($extend, 'GlobalVotingPolicy')
     ? pass('GLOBAL_RANKING_POLICY_PRESENT')
     : fail('GlobalVotingPolicy missing');
+
+$globalSrc = (string) file_get_contents($root.'/src/Voting/GlobalVotingPolicy.php');
+(preg_match('/function\\s+can\\s*\\(\\s*User\\s+\\$actor\\s*,\\s*string\\s+\\$ability\\s*,/', $globalSrc)
+    ? pass('GLOBAL_POLICY_CAN_THREE_ARG')
+    : fail('GlobalVotingPolicy::can must accept ($actor, $ability, $instance)'));
 str_contains($extend, "whenExtensionEnabled('fof-gamification'")
     ? pass('PROVIDER_SOFT_DEPENDENCY_PRESERVED')
     : fail('PostVotePolicy gate missing');
