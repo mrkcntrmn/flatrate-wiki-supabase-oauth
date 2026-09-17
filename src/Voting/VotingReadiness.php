@@ -12,6 +12,9 @@ use Throwable;
 
 /**
  * Admin-only production readiness facts. No secrets, no row payloads.
+ *
+ * Permission facts are tri-state: true | false | null (UNKNOWN).
+ * Permission query failure must never masquerade as false.
  */
 final class VotingReadiness
 {
@@ -25,12 +28,53 @@ final class VotingReadiness
         'updated_at',
     ];
 
+    /**
+     * Optional probe for disposable tests: fn(int $groupId, string $permission): ?bool
+     *
+     * @var (callable(int, string): ?bool)|null
+     */
+    private $permissionProbe;
+
     public function __construct(
         private Container $container,
         private SettingsRepositoryInterface $settings,
         private ExtensionManager $extensions,
-        private ConnectionInterface $db
+        private ConnectionInterface $db,
+        ?callable $permissionProbe = null
     ) {
+        $this->permissionProbe = $permissionProbe;
+    }
+
+    /**
+     * Conservative OR for permission presence.
+     *
+     * TRUE + anything = TRUE (unsafe presence proven)
+     * FALSE + FALSE = FALSE
+     * FALSE + UNKNOWN / UNKNOWN + UNKNOWN = UNKNOWN
+     *
+     * @param ?bool ...$states
+     */
+    public static function orPermissionStates(?bool ...$states): ?bool
+    {
+        $sawFalse = false;
+        $sawUnknown = false;
+
+        foreach ($states as $state) {
+            if ($state === true) {
+                return true;
+            }
+            if ($state === false) {
+                $sawFalse = true;
+            } else {
+                $sawUnknown = true;
+            }
+        }
+
+        if ($sawUnknown) {
+            return null;
+        }
+
+        return $sawFalse ? false : null;
     }
 
     /**
@@ -72,14 +116,7 @@ final class VotingReadiness
                     'up_votes_only' => null,
                     'rate_limit' => null,
                 ],
-                'permissions' => [
-                    'guest_vote_posts' => false,
-                    'member_vote_posts' => false,
-                    'guest_ranking' => false,
-                    'member_ranking' => false,
-                    'guest_can_see_voters' => false,
-                    'member_can_see_voters' => false,
-                ],
+                'permissions' => self::unknownPermissionsPayload(),
                 'safe_to_enable' => false,
                 'blocking_reasons' => ['readiness_error'],
             ];
@@ -126,6 +163,79 @@ final class VotingReadiness
     }
 
     /**
+     * @return array{inspection_ok: bool, guest_vote_posts: ?bool, member_vote_posts: ?bool, guest_ranking: ?bool, member_ranking: ?bool, guest_can_see_voters: ?bool, member_can_see_voters: ?bool}
+     */
+    public function inspectPermissions(): array
+    {
+        $guestVote = self::orPermissionStates(
+            $this->groupPermissionState(Group::GUEST_ID, 'discussion.votePosts'),
+            $this->groupPermissionState(Group::GUEST_ID, 'discussion.vote')
+        );
+        $memberVote = self::orPermissionStates(
+            $this->groupPermissionState(Group::MEMBER_ID, 'discussion.votePosts'),
+            $this->groupPermissionState(Group::MEMBER_ID, 'discussion.vote')
+        );
+        $guestRanking = $this->groupPermissionState(Group::GUEST_ID, 'fof.gamification.viewRankingPage');
+        $memberRanking = $this->groupPermissionState(Group::MEMBER_ID, 'fof.gamification.viewRankingPage');
+        $guestSeeVoters = $this->groupPermissionState(Group::GUEST_ID, 'discussion.canSeeVoters');
+        $memberSeeVoters = $this->groupPermissionState(Group::MEMBER_ID, 'discussion.canSeeVoters');
+
+        $values = [$guestVote, $memberVote, $guestRanking, $memberRanking, $guestSeeVoters, $memberSeeVoters];
+        $inspectionOk = ! in_array(null, $values, true);
+
+        return [
+            'inspection_ok' => $inspectionOk,
+            'guest_vote_posts' => $guestVote,
+            'member_vote_posts' => $memberVote,
+            'guest_ranking' => $guestRanking,
+            'member_ranking' => $memberRanking,
+            'guest_can_see_voters' => $guestSeeVoters,
+            'member_can_see_voters' => $memberSeeVoters,
+        ];
+    }
+
+    /**
+     * Append permission-related blockers. Continues evaluating after each hit.
+     *
+     * @param array{inspection_ok: bool, guest_vote_posts: ?bool, member_vote_posts: ?bool, guest_ranking: ?bool, member_ranking: ?bool, guest_can_see_voters: ?bool, member_can_see_voters: ?bool} $permissions
+     * @param list<string> $blocking
+     * @return list<string>
+     */
+    public static function appendPermissionBlockers(array $permissions, array $blocking = []): array
+    {
+        if ($permissions['guest_vote_posts'] === true) {
+            $blocking[] = 'guest_vote_permission';
+        }
+
+        if ($permissions['guest_can_see_voters'] === true || $permissions['member_can_see_voters'] === true) {
+            $blocking[] = 'ordinary_voter_identity_permission';
+        }
+
+        if (! $permissions['inspection_ok']
+            || $permissions['guest_vote_posts'] === null
+            || $permissions['guest_can_see_voters'] === null
+            || $permissions['member_can_see_voters'] === null
+        ) {
+            $blocking[] = 'permission_state_unavailable';
+        }
+
+        return array_values(array_unique($blocking));
+    }
+
+    /**
+     * Whether permission facts alone allow safe_to_enable (positive knowledge required).
+     *
+     * @param array{inspection_ok: bool, guest_vote_posts: ?bool, member_vote_posts: ?bool, guest_ranking: ?bool, member_ranking: ?bool, guest_can_see_voters: ?bool, member_can_see_voters: ?bool} $permissions
+     */
+    public static function permissionsAllowSafeEnable(array $permissions): bool
+    {
+        return $permissions['inspection_ok'] === true
+            && $permissions['guest_vote_posts'] === false
+            && $permissions['guest_can_see_voters'] === false
+            && $permissions['member_can_see_voters'] === false;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function buildUnsafe(): array
@@ -147,16 +257,7 @@ final class VotingReadiness
             'rate_limit' => $this->optionalBoolSetting('fof-gamification.rateLimit'),
         ];
 
-        $permissions = [
-            'guest_vote_posts' => $this->groupHasPermission(Group::GUEST_ID, 'discussion.votePosts')
-                || $this->groupHasPermission(Group::GUEST_ID, 'discussion.vote'),
-            'member_vote_posts' => $this->groupHasPermission(Group::MEMBER_ID, 'discussion.votePosts')
-                || $this->groupHasPermission(Group::MEMBER_ID, 'discussion.vote'),
-            'guest_ranking' => $this->groupHasPermission(Group::GUEST_ID, 'fof.gamification.viewRankingPage'),
-            'member_ranking' => $this->groupHasPermission(Group::MEMBER_ID, 'fof.gamification.viewRankingPage'),
-            'guest_can_see_voters' => $this->groupHasPermission(Group::GUEST_ID, 'discussion.canSeeVoters'),
-            'member_can_see_voters' => $this->groupHasPermission(Group::MEMBER_ID, 'discussion.canSeeVoters'),
-        ];
+        $permissions = $this->inspectPermissions();
 
         $plainEnabled = (bool) $this->settings->get(VoteSafetyGate::SETTING_ENABLED);
         $blocking = [];
@@ -194,12 +295,9 @@ final class VotingReadiness
         if ($settings['rate_limit'] === false) {
             $blocking[] = 'rate_limit_disabled';
         }
-        if ($permissions['guest_vote_posts']) {
-            $blocking[] = 'guest_vote_permission';
-        }
-        if ($permissions['member_can_see_voters'] || $permissions['guest_can_see_voters']) {
-            $blocking[] = 'ordinary_voter_identity_permission';
-        }
+
+        $blocking = self::appendPermissionBlockers($permissions, $blocking);
+
         if ($providerEnabled && $votes['present'] !== true) {
             $blocking[] = 'provider_vote_table_missing';
         }
@@ -219,9 +317,7 @@ final class VotingReadiness
             && $settings['first_post_only'] === false
             && $settings['up_votes_only'] === false
             && $settings['rate_limit'] === true
-            && ! $permissions['guest_vote_posts']
-            && ! $permissions['member_can_see_voters']
-            && ! $permissions['guest_can_see_voters']
+            && self::permissionsAllowSafeEnable($permissions)
             && $votes['present'] === true
             && ! $plainEnabled;
 
@@ -256,6 +352,22 @@ final class VotingReadiness
         ];
     }
 
+    /**
+     * @return array{inspection_ok: bool, guest_vote_posts: null, member_vote_posts: null, guest_ranking: null, member_ranking: null, guest_can_see_voters: null, member_can_see_voters: null}
+     */
+    private static function unknownPermissionsPayload(): array
+    {
+        return [
+            'inspection_ok' => false,
+            'guest_vote_posts' => null,
+            'member_vote_posts' => null,
+            'guest_ranking' => null,
+            'member_ranking' => null,
+            'guest_can_see_voters' => null,
+            'member_can_see_voters' => null,
+        ];
+    }
+
     private function optionalBoolSetting(string $key): ?bool
     {
         $raw = $this->settings->get($key);
@@ -266,15 +378,26 @@ final class VotingReadiness
         return filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (bool) $raw;
     }
 
-    private function groupHasPermission(int $groupId, string $permission): bool
+    /**
+     * Tri-state permission lookup. null = UNKNOWN (query failed).
+     */
+    private function groupPermissionState(int $groupId, string $permission): ?bool
     {
+        if ($this->permissionProbe !== null) {
+            try {
+                return ($this->permissionProbe)($groupId, $permission);
+            } catch (Throwable $e) {
+                return null;
+            }
+        }
+
         try {
             return Permission::query()
                 ->where('group_id', $groupId)
                 ->where('permission', $permission)
                 ->exists();
         } catch (Throwable $e) {
-            return false;
+            return null;
         }
     }
 

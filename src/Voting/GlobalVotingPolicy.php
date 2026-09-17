@@ -31,6 +31,7 @@ final class GlobalVotingPolicy extends AbstractPolicy
             return null;
         }
 
-        return $this->deny();
+        // FORCE_DENY: FlatRate privacy boundary must beat provider FORCE_ALLOW.
+        return $this->forceDeny();
     }
 }

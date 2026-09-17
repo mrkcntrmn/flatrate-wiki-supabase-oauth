@@ -72,10 +72,32 @@ str_contains($gateSrc, 'isSelfVote')
     ? pass('SELF_VOTE_SAFETY_INDEPENDENT_OF_PROVIDER_SETTING')
     : fail('self-vote helper missing');
 
+$postPolicy = (string) file_get_contents($root.'/src/Voting/PostVotePolicy.php');
+str_contains($postPolicy, 'forceDeny()')
+    ? pass('POST_VOTE_POLICY_UNSAFE_RESULT=FORCE_DENY')
+    : fail('PostVotePolicy must forceDeny');
+! preg_match('/\$this->allow\(/', $postPolicy)
+    ? pass('FLATRATE_POLICY_FORCE_ALLOW=false')
+    : fail('PostVotePolicy must not allow');
+
+$globalSrc = (string) file_get_contents($root.'/src/Voting/GlobalVotingPolicy.php');
+str_contains($globalSrc, 'forceDeny()')
+    ? pass('ORDINARY_RANKING_RESULT=FORCE_DENY')
+    : fail('GlobalVotingPolicy must forceDeny');
+
 $readySrc = (string) file_get_contents($root.'/src/Voting/VotingReadiness.php');
 str_contains($readySrc, 'flatrate_vote_activity_state')
     ? pass('READINESS_ACTIVITY_PREFIX_AWARE')
     : fail('logical vote-state table missing');
+str_contains($readySrc, 'permission_state_unavailable')
+    ? pass('PERMISSION_STATE_UNAVAILABLE_BLOCKER_PRESENT')
+    : fail('permission_state_unavailable missing');
+str_contains($readySrc, 'inspection_ok')
+    ? pass('PERMISSION_STATE_MODEL=TRISTATE')
+    : fail('inspection_ok missing');
+str_contains($readySrc, 'orPermissionStates')
+    ? pass('PERMISSION_UNKNOWN_REPRESENTABLE')
+    : fail('orPermissionStates missing');
 foreach (['post_id', 'user_id', 'last_effective_vote', 'state_version', 'updated_at'] as $col) {
     str_contains($readySrc, "'{$col}'") ? null : fail("column {$col} missing");
 }

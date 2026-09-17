@@ -57,6 +57,9 @@ jobs:
       - name: Run GROWTH-001B plain voting foundation gates
         run: php test/plain-voting-foundation.php
 
+      - name: Run GROWTH-001B1 fail-closed hardening gates
+        run: php test/plain-voting-fail-closed.php
+
       - name: Run desktop navigation handoff gates
         run: php test/forum-desktop-navigation-handoff.php
 
