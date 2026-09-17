@@ -54,6 +54,9 @@ jobs:
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 
+      - name: Run GROWTH-001B plain voting foundation gates
+        run: php test/plain-voting-foundation.php
+
       - name: Run desktop navigation handoff gates
         run: php test/forum-desktop-navigation-handoff.php
 

@@ -26,6 +26,7 @@ const EXPECTED_JS = [
   "js/dist/mobile-brand-drawer.js",
   "js/dist/member-display.js",
   "js/dist/member-dashboard.js",
+  "js/dist/plain-voting.js",
 ];
 
 function resolveFlarumFrontendSource() {
@@ -147,13 +148,13 @@ test("Flarum 1.8.19 Frontend::js is a scalar overwrite; css appends", () => {
   console.error("FLARUM_FRONTEND_CSS_METHOD_APPENDS=true");
 });
 
-test("companion registers five forum JS paths via separate Frontend extenders", () => {
+test("companion registers six forum JS paths via separate Frontend extenders", () => {
   const extendPhp = withoutWhenExtensionDisabled(text("extend.php"));
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum" && r.jsPaths.length > 0,
   );
 
-  assert.equal(forum.length, 5, "expected five forum Frontend JS extenders");
+  assert.equal(forum.length, 6, "expected six forum Frontend JS extenders");
 
   const registered = forum.map((r) => r.jsPaths.join(","));
   assert.deepEqual(
@@ -184,8 +185,13 @@ test("companion registers five forum JS paths via separate Frontend extenders", 
   const drawer = allJs.indexOf(EXPECTED_JS[2]);
   const member = allJs.indexOf(EXPECTED_JS[3]);
   const dashboard = allJs.indexOf(EXPECTED_JS[4]);
+  const plainVoting = allJs.indexOf(EXPECTED_JS[5]);
   assert.ok(
-    nav < forumJs && forumJs < drawer && drawer < member && member < dashboard,
+    nav < forumJs &&
+      forumJs < drawer &&
+      drawer < member &&
+      member < dashboard &&
+      dashboard < plainVoting,
     "FRONTEND_JS_ORDER_GATE=PASS",
   );
 
