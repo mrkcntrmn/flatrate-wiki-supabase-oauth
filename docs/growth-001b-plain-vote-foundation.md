@@ -16,9 +16,19 @@ FlatRate Voting layer (this extension)
         + VoteSafetyGate (fail-closed)
         + PostVotePolicy (FORCE_DENY / abstain)
         + GlobalVotingPolicy (rankings FORCE_DENY for non-admins)
+        + VoterIdentityRelationshipGuard (PostSerializer upvotes/downvotes)
         + GET /api/flatrate-voting/readiness (admin-only)
         + existing Activity soft-bind on PostWasVoted
 ```
+
+## Voter identity privacy (GROWTH-001E2)
+
+FoF 1.6.12 `hasMany(upvotes|downvotes)` is unguarded. FlatRate overrides those
+relationships in `VotingServiceProvider::boot()` so voter identities serialize
+only when `canSeeVoters` holds for **both** discussion and post. Readiness
+requires `privacy.voter_relationship_guard_registered=true` (blocker:
+`voter_identity_serializer_guard_unavailable`). See
+`docs/growth-001e2-voter-identity-serialization-hardening.md`.
 
 ## Qualification scope
 

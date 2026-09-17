@@ -93,6 +93,9 @@ final class VotingReadiness
                     'extension_enabled' => false,
                     'vote_table_present' => false,
                     'vote_row_count' => null,
+                    'vote_row_count_total' => null,
+                    'vote_row_count_active' => null,
+                    'vote_row_count_neutral' => null,
                 ],
                 'pusher' => [
                     'class_exists' => class_exists('Pusher', false),
@@ -108,6 +111,9 @@ final class VotingReadiness
                 'likes' => [
                     'table_present' => false,
                     'row_count' => null,
+                ],
+                'privacy' => [
+                    'voter_relationship_guard_registered' => false,
                 ],
                 'settings' => [
                     'allow_self_votes' => null,
@@ -247,7 +253,8 @@ final class VotingReadiness
 
         $activity = $this->inspectActivitySchema();
         $likes = $this->inspectTable('post_likes');
-        $votes = $this->inspectTable('post_votes');
+        $votes = $this->inspectVoteRows();
+        $guardRegistered = $this->isVoterRelationshipGuardRegistered();
 
         $settings = [
             'allow_self_votes' => $this->optionalBoolSetting('fof-gamification.allowSelfVotes'),
@@ -301,6 +308,9 @@ final class VotingReadiness
         if ($providerEnabled && $votes['present'] !== true) {
             $blocking[] = 'provider_vote_table_missing';
         }
+        if (! $guardRegistered) {
+            $blocking[] = 'voter_identity_serializer_guard_unavailable';
+        }
         if ($plainEnabled) {
             $blocking[] = 'vote_gate_already_open';
         }
@@ -319,6 +329,7 @@ final class VotingReadiness
             && $settings['rate_limit'] === true
             && self::permissionsAllowSafeEnable($permissions)
             && $votes['present'] === true
+            && $guardRegistered
             && ! $plainEnabled;
 
         return [
@@ -328,7 +339,10 @@ final class VotingReadiness
                 'class_present' => $providerClass,
                 'extension_enabled' => $providerEnabled,
                 'vote_table_present' => $votes['present'],
-                'vote_row_count' => $votes['count'],
+                'vote_row_count' => $votes['total'],
+                'vote_row_count_total' => $votes['total'],
+                'vote_row_count_active' => $votes['active'],
+                'vote_row_count_neutral' => $votes['neutral'],
             ],
             'pusher' => [
                 'class_exists' => $pusherExists,
@@ -344,6 +358,9 @@ final class VotingReadiness
             'likes' => [
                 'table_present' => $likes['present'],
                 'row_count' => $likes['count'],
+            ],
+            'privacy' => [
+                'voter_relationship_guard_registered' => $guardRegistered,
             ],
             'settings' => $settings,
             'permissions' => $permissions,
@@ -373,6 +390,9 @@ final class VotingReadiness
         $raw = $this->settings->get($key);
         if ($raw === null || $raw === '') {
             return null;
+        }
+        if (is_bool($raw)) {
+            return $raw;
         }
 
         return filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (bool) $raw;
@@ -418,6 +438,64 @@ final class VotingReadiness
             ];
         } catch (Throwable $e) {
             return ['present' => false, 'count' => null];
+        }
+    }
+
+    /**
+     * Aggregate post_votes counts only — no row IDs.
+     * active = value != 0; neutral = value = 0 (FoF removal history).
+     *
+     * @return array{present: bool, total: int|null, active: int|null, neutral: int|null}
+     */
+    private function inspectVoteRows(): array
+    {
+        try {
+            $schema = $this->db->getSchemaBuilder();
+            if (! $schema->hasTable('post_votes')) {
+                return [
+                    'present' => false,
+                    'total' => null,
+                    'active' => null,
+                    'neutral' => null,
+                ];
+            }
+
+            $total = (int) $this->db->table('post_votes')->count();
+            $active = (int) $this->db->table('post_votes')->where('value', '!=', 0)->count();
+            $neutral = (int) $this->db->table('post_votes')->where('value', '=', 0)->count();
+
+            return [
+                'present' => true,
+                'total' => $total,
+                'active' => $active,
+                'neutral' => $neutral,
+            ];
+        } catch (Throwable $e) {
+            return [
+                'present' => false,
+                'total' => null,
+                'active' => null,
+                'neutral' => null,
+            ];
+        }
+    }
+
+    /**
+     * True only after VotingServiceProvider::boot installed both relationship overrides.
+     */
+    private function isVoterRelationshipGuardRegistered(): bool
+    {
+        try {
+            if (! $this->container->bound(VoterIdentityRelationshipGuard::class)) {
+                return false;
+            }
+
+            /** @var VoterIdentityRelationshipGuard $guard */
+            $guard = $this->container->make(VoterIdentityRelationshipGuard::class);
+
+            return $guard->isRegistered();
+        } catch (Throwable $e) {
+            return false;
         }
     }
 }

@@ -38,6 +38,17 @@ str_contains($extend, 'flatrate.voting.readiness')
 str_contains($extend, 'VotingServiceProvider')
     ? pass('VotingServiceProvider registered')
     : fail('VotingServiceProvider missing');
+is_file($root.'/src/Voting/VoterIdentityRelationshipGuard.php')
+    ? pass('VoterIdentityRelationshipGuard present')
+    : fail('VoterIdentityRelationshipGuard missing');
+$providerSrc = (string) file_get_contents($root.'/src/Voting/VotingServiceProvider.php');
+(str_contains($providerSrc, 'function boot') && str_contains($providerSrc, 'VoterIdentityRelationshipGuard'))
+    ? pass('BOOT_TIME_VOTER_IDENTITY_OVERRIDE')
+    : fail('VotingServiceProvider boot override missing');
+$readySrcEarly = (string) file_get_contents($root.'/src/Voting/VotingReadiness.php');
+str_contains($readySrcEarly, 'voter_identity_serializer_guard_unavailable')
+    ? pass('PRIVACY_GUARD_READINESS_BLOCKER')
+    : fail('voter_identity_serializer_guard_unavailable missing');
 str_contains($extend, 'GlobalVotingPolicy')
     ? pass('GLOBAL_RANKING_POLICY_PRESENT')
     : fail('GlobalVotingPolicy missing');
@@ -152,6 +163,20 @@ str_contains($pv, 'module.exports')
 is_file($root.'/docs/growth-001b-plain-vote-foundation.md')
     ? pass('docs present')
     : fail('docs missing');
+
+
+// GROWTH-001E2: voter privacy gates (also has dedicated CI step when workflow scope available)
+$privacy = $root.'/test/plain-voting-voter-privacy.php';
+if (! is_file($privacy)) {
+    fail('plain-voting-voter-privacy.php missing');
+} else {
+    passthru('php '.escapeshellarg($privacy), $privacyCode);
+    if ($privacyCode !== 0) {
+        fail('GROWTH-001E2 voter privacy gates');
+    } else {
+        pass('GROWTH-001E2_VOTER_PRIVACY_GATES');
+    }
+}
 
 echo 'plain-voting-foundation.php: '.($failures === 0 ? 'all checks passed' : "{$failures} failure(s)")."\n";
 exit($failures === 0 ? 0 : 1);
