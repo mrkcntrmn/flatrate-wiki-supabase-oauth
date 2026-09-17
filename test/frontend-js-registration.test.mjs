@@ -26,7 +26,7 @@ const EXPECTED_JS = [
   "js/dist/mobile-brand-drawer.js",
   "js/dist/member-display.js",
   "js/dist/member-dashboard.js",
-  "js/dist/plain-voting.js",
+  // "js/dist/plain-voting.js", // SPA bisect: temporarily unregistered
 ];
 
 function resolveFlarumFrontendSource() {
@@ -153,7 +153,7 @@ test("companion registers five forum JS paths via separate Frontend extenders", 
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum" && r.jsPaths.length > 0,
   );
-  const expected = EXPECTED_JS.filter((p) => p !== "js/dist/plain-voting.js");
+  const expected = EXPECTED_JS;
 
   assert.equal(forum.length, 5, "expected five forum Frontend JS extenders during SPA bisect");
 
