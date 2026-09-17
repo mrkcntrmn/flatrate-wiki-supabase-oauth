@@ -45,7 +45,17 @@ test("forum homepage SPA boots without extend crash", async ({ page }) => {
   const response = await page.goto("/", { waitUntil: "networkidle" });
   expect(response && response.status()).toBe(200);
   await expect(page.locator("#app")).toBeVisible();
-  await expect(page.locator(".IndexPage")).toBeVisible();
+  try {
+    await expect(page.locator(".IndexPage")).toBeVisible();
+  } catch (err) {
+    const bodyText = await page.locator("body").innerText();
+    const htmlSnippet = (await page.content()).slice(0, 4000);
+    console.error(`SPA_BOOT_PAGEERRORS=${JSON.stringify(errors.pageErrors)}`);
+    console.error(`SPA_BOOT_CONSOLEERRORS=${JSON.stringify(errors.consoleErrors)}`);
+    console.error(`SPA_BOOT_BODY_TEXT=${JSON.stringify(bodyText.slice(0, 2000))}`);
+    console.error(`SPA_BOOT_HTML_SNIPPET=${JSON.stringify(htmlSnippet)}`);
+    throw err;
+  }
   await expect(page.locator("#flarum-loading-error")).toBeHidden();
   await expect(page.locator("body")).not.toContainText("reading 'extend'");
   errors.assertClean();
