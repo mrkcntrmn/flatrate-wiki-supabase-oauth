@@ -55,10 +55,7 @@ return [
     (new Extend\Frontend('forum'))
         ->js(__DIR__.'/js/dist/member-dashboard.js'),
 
-    // GROWTH-001B: plain-voting UI suppression + gate-aware vote chrome.
-    // Separate Frontend extender required (Flarum 1.8 js() overwrites).
-    (new Extend\Frontend('forum'))
-        ->js(__DIR__.'/js/dist/plain-voting.js'),
+    // GROWTH-001B plain-voting.js temporarily unregistered for SPA bisect.
 
     new Extend\Locales(__DIR__.'/resources/locale'),
 
