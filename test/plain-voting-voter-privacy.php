@@ -290,15 +290,24 @@ namespace {
 
     // Neutral value=0 is not in upvotes/downvotes model filters (FoF relation contract)
     $fofPathCandidates = [
+        $root.'/test/fixtures/fof-gamification-1.6.12-vote-relations.excerpt.php',
         $root.'/../vendor/fof/gamification/extend.php',
         '/home/ilove/dev/flatrate-wiki/_scratch-growth001/.work/growth001d-gamification-staged-production-install-r1/phase1-disposable/flarum/vendor/fof/gamification/extend.php',
     ];
     $fofSrc = '';
     foreach ($fofPathCandidates as $cand) {
-        if (is_file($cand)) {
-            $fofSrc = (string) file_get_contents($cand);
-            break;
+        if (! is_file($cand)) {
+            continue;
         }
+        $raw = (string) file_get_contents($cand);
+        // Fixture returns a heredoc string; live extend.php is raw PHP source.
+        if (str_ends_with($cand, '.excerpt.php')) {
+            /** @var string $fofSrc */
+            $fofSrc = (string) (include $cand);
+        } else {
+            $fofSrc = $raw;
+        }
+        break;
     }
     if ($fofSrc !== '') {
         $assertTrue(
