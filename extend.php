@@ -136,13 +136,22 @@ return [
         ->default('flatrate-activity.ingest_url', '')
         ->default('flatrate-activity.drain_token_sha256', '')
         // GROWTH-001B: FlatRate vote gate. Default CLOSED.
-        ->default('flatrate-voting.enabled', false)
-        // Safe provider defaults when FoF later installs (not a hard require).
-        ->default('fof-gamification.autoUpvotePosts', false)
-        ->default('fof-gamification.rateLimit', true)
-        ->default('fof-gamification.firstPostOnly', false)
-        ->default('fof-gamification.upVotesOnly', false)
-        ->default('fof-gamification.allowSelfVotes', false),
+        ->default('flatrate-voting.enabled', false),
+
+    // Safe FoF setting defaults only while the provider is absent/disabled.
+    // Flarum Settings::default() is immutable — registering the same keys
+    // while fof-gamification is enabled collides with FoF's own defaults and
+    // fatals boot (blocks staged provider enablement). With FoF enabled,
+    // explicit admin normalization owns these values (GROWTH-001D).
+    (new Extend\Conditional())
+        ->whenExtensionDisabled('fof-gamification', [
+            (new Extend\Settings())
+                ->default('fof-gamification.autoUpvotePosts', false)
+                ->default('fof-gamification.rateLimit', true)
+                ->default('fof-gamification.firstPostOnly', false)
+                ->default('fof-gamification.upVotesOnly', false)
+                ->default('fof-gamification.allowSelfVotes', false),
+        ]),
 
     // Automatic outbox drain via Flarum scheduler (requires host cron:
     // * * * * * php flarum schedule:run). CLI alone is not the only retry path.

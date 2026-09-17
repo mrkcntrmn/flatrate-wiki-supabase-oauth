@@ -58,6 +58,12 @@ str_contains($extend, "->default('fof-gamification.autoUpvotePosts', false)")
 str_contains($extend, "->default('fof-gamification.rateLimit', true)")
     ? pass('rateLimit default true')
     : fail('rateLimit default missing');
+// FoF setting defaults must be Conditional::whenExtensionDisabled so they do
+// not collide with FoF's immutable Settings::default() when the provider boots.
+(str_contains($extend, "whenExtensionDisabled('fof-gamification'")
+    && str_contains($extend, "->default('fof-gamification.allowSelfVotes', false)"))
+    ? pass('FOF_SETTING_DEFAULTS_GATED_WHEN_PROVIDER_DISABLED')
+    : fail('FoF setting defaults must be gated whenExtensionDisabled(fof-gamification)');
 
 $asp = (string) file_get_contents($root.'/src/Activity/ActivityServiceProvider.php');
 (str_contains($asp, 'PostWasVoted') && str_contains($asp, 'class_exists'))
