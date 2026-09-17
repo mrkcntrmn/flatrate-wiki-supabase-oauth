@@ -51,7 +51,7 @@ str_contains($extend, "whenExtensionEnabled('fof-gamification'")
     : fail('PostVotePolicy gate missing');
 str_contains($extend, 'js/dist/plain-voting.js')
     ? pass('plain-voting.js registered')
-    : pass('plain-voting.js temporarily unregistered (SPA bisect)');
+    : fail('plain-voting.js not registered');
 str_contains($extend, "->default('fof-gamification.autoUpvotePosts', false)")
     ? pass('autoUpvotePosts default false')
     : fail('autoUpvotePosts default missing');
@@ -117,6 +117,10 @@ if (! $hit) {
 is_file($root.'/js/dist/plain-voting.js')
     ? pass('plain-voting.js exists')
     : fail('plain-voting.js missing');
+$pv = (string) file_get_contents($root.'/js/dist/plain-voting.js');
+str_contains($pv, 'module.exports')
+    ? pass('plain-voting.js webpack CJS export')
+    : fail('plain-voting.js missing module.exports');
 is_file($root.'/docs/growth-001b-plain-vote-foundation.md')
     ? pass('docs present')
     : fail('docs missing');
