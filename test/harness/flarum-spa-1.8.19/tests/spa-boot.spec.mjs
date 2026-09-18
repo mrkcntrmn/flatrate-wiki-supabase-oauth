@@ -688,32 +688,59 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   const PINK = /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i;
 
   async function readSummary(token) {
-    if (token) {
-      await login(page, token);
+    const base = process.env.FLARUM_BASE_URL || "http://127.0.0.1:8080";
+    await page.context().clearCookies();
+    if (!token) {
+      await page.goto(discussionUrl, { waitUntil: "networkidle" });
     } else {
-      await page.context().clearCookies();
-    }
-    // Use the browser document session (remember-cookie → PHP session) rather
-    // than page.request, which can stay guest-scoped in this harness.
-    await page.goto(discussionUrl, { waitUntil: "networkidle" });
-    const body = await page.evaluate(async (discussionId) => {
-      const res = await fetch(`/api/discussions/${discussionId}`, {
-        credentials: "same-origin",
-        headers: { Accept: "application/vnd.api+json" },
-      });
-      if (!res.ok) {
-        throw new Error(`discussion summary HTTP ${res.status}`);
+      const username =
+        token === seed.newToken
+          ? seed.newUsername
+          : token === seed.sentinelToken
+            ? seed.sentinelUsername
+            : token === seed.grandfatheredToken
+              ? seed.grandfatheredUsername
+              : null;
+      await page.goto(`${base}/`, { waitUntil: "networkidle" });
+      if (username) {
+        // Password login binds a real session; remember-cookie alone can stay guest
+        // for subsequent API/document reads in a fresh Playwright test context.
+        await page.evaluate(
+          async ({ identification, password }) => {
+            await app.session.login({ identification, password });
+          },
+          { identification: username, password: "HarnessPass1" },
+        );
+      } else {
+        await login(page, token);
       }
-      return res.json();
+      await page.goto(discussionUrl, { waitUntil: "networkidle" });
+    }
+    const summary = await page.evaluate((discussionId) => {
+      const discussion = app.store.getById("discussions", String(discussionId));
+      if (!discussion) {
+        return { missing: true };
+      }
+      return {
+        total: discussion.attribute("flatRateDiscussionUpvotes"),
+        mine: discussion.attribute("flatRateDiscussionViewerUpvoted"),
+        votePostId: discussion.attribute("flatRateDiscussionViewerVotePostId"),
+        canUpvote: discussion.attribute("flatRateDiscussionCanUpvote"),
+        fofVotes: discussion.attribute("votes"),
+        loggedIn: !!(app.session && app.session.user),
+        userId: app.session && app.session.user ? app.session.user.id() : null,
+      };
     }, seed.discussionId);
-    const attrs = body.data.attributes || {};
+    expect(summary.missing, "discussion missing from store").toBeFalsy();
     return {
-      total: attrs.flatRateDiscussionUpvotes,
-      mine: attrs.flatRateDiscussionViewerUpvoted,
-      votePostId: attrs.flatRateDiscussionViewerVotePostId,
-      canUpvote: attrs.flatRateDiscussionCanUpvote,
-      fofVotes: attrs.votes,
-      included: body.included || [],
+      total: summary.total,
+      mine: summary.mine,
+      votePostId: summary.votePostId,
+      canUpvote: summary.canUpvote,
+      fofVotes: summary.fofVotes,
+      included: [],
+      loggedIn: summary.loggedIn,
+      userId: summary.userId,
     };
   }
 
@@ -796,7 +823,12 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   expect(guest.mine).toBe(false);
   expect(guest.canUpvote).toBe(false);
   expect(guest.votePostId).toBeNull();
-  for (const row of guest.included) {
+  const guestInclude = await page.request.get(
+    `/api/discussions/${seed.discussionId}?include=user`,
+  );
+  expect(guestInclude.ok()).toBeTruthy();
+  const guestBody = await guestInclude.json();
+  for (const row of guestBody.included || []) {
     if (row.type === "users") {
       expect(row.id).not.toBe(String(seed.newUserId));
       expect(row.id).not.toBe(String(seed.sentinelUserId));
