@@ -83,6 +83,10 @@ $settings->set('fof-gamification.allowSelfVotes', '0');
 $settings->set('fof-gamification.autoUpvotePosts', '0');
 $settings->set('fof-gamification.rateLimit', '0');
 $settings->set('fof-gamification.firstPostOnly', '0');
+// Presentation parity with production-facing plain-voting.js:
+// altPostVotingUi=0 is required so CommentPost votes stay in actionItems.
+// useAlternateLayout=0 is harness-only (also affects discussion-list chrome);
+// production-facing JS does not force it.
 $settings->set('fof-gamification.useAlternateLayout', '0');
 $settings->set('fof-gamification.altPostVotingUi', '0');
 
@@ -242,11 +246,27 @@ if ($mentionPost) {
     $db->table('posts')->where('id', $mentionPostId)->update(['content' => $postContent]);
 }
 
+$replyB = $db->table('posts')->where('discussion_id', $discussionId)->where('number', 3)->first();
+$replyBId = $replyB
+    ? (int) $replyB->id
+    : (int) $db->table('posts')->insertGetId(filterRow($schema, 'posts', [
+        'discussion_id' => $discussionId,
+        'number' => 3,
+        'created_at' => $now,
+        'user_id' => $grandId,
+        'type' => 'comment',
+        'content' => '<t><p>Harness reply B for discussion aggregate ballot moves.</p></t>',
+        'edited_at' => null,
+        'hidden_at' => null,
+        'ip_address' => '127.0.0.1',
+        'is_private' => 0,
+    ]));
+
 $db->table('discussions')->where('id', $discussionId)->update(filterRow($schema, 'discussions', [
     'first_post_id' => $postId,
-    'last_post_id' => $mentionPostId,
-    'last_post_number' => 2,
-    'comment_count' => 2,
+    'last_post_id' => $replyBId,
+    'last_post_number' => 3,
+    'comment_count' => 3,
     'last_posted_user_id' => $grandId,
 ]));
 if ($schema->hasTable('post_mentions_user')) {
@@ -277,6 +297,7 @@ $seed = [
     'discussionSlug' => 'harness-discussion',
     'authorPostId' => $postId,
     'mentionPostId' => $mentionPostId,
+    'replyBPostId' => $replyBId,
     'cookieName' => 'flarum_remember',
     'votingEnabled' => true,
 ];
@@ -292,7 +313,7 @@ if ($schema->hasTable('discussion_user')) {
         'user_id' => $grandId,
         'discussion_id' => $discussionId,
         'last_read_at' => $now,
-        'last_read_post_number' => 2,
+        'last_read_post_number' => 3,
     ]));
 }
 

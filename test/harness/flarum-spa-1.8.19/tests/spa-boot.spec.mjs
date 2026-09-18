@@ -347,7 +347,11 @@ async function openAuthorPost(page) {
 }
 
 function upvoteButton(page) {
-  return page.locator(".CommentPost-votes .Post-upvote, .Post-votes .Post-voteButton--up").first();
+  return page
+    .locator(
+      ".Post-actions .CommentPost-votes .Post-upvote, .CommentPost-votes .Post-upvote, .Post-votes .Post-voteButton--up",
+    )
+    .first();
 }
 
 function downvoteButton(page) {
@@ -389,6 +393,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   async function readVoteChrome(page) {
     return page.evaluate(() => {
       const votes =
+        document.querySelector(".Post-actions .CommentPost-votes") ||
         document.querySelector(".CommentPost-votes") ||
         document.querySelector(".Post-votes");
       const btn =
@@ -417,6 +422,99 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
     });
   }
 
+  async function readPostChromeGeometry(page) {
+    return page.evaluate(() => {
+      const post =
+        document.querySelector(".PostStream article.Post.CommentPost") ||
+        document.querySelector("article.Post.CommentPost");
+      if (!post) {
+        return { present: false };
+      }
+      const actions = post.querySelector(".Post-actions");
+      if (actions) {
+        actions.style.opacity = "1";
+      }
+      const header = post.querySelector(".Post-header");
+      const username =
+        header?.querySelector(".PostUser .username") ||
+        header?.querySelector(".PostUser-name .username") ||
+        header?.querySelector(".username");
+      const reply = actions?.querySelector(".item-reply");
+      const votesItem = actions?.querySelector(".item-votes");
+      const votesBox =
+        votesItem?.querySelector(".CommentPost-votes") ||
+        votesItem?.querySelector(".Post-votes");
+      const thumb =
+        votesBox?.querySelector(".Post-upvote") ||
+        votesBox?.querySelector(".Post-voteButton--up");
+      const count =
+        votesBox?.querySelector(".Post-points") ||
+        votesBox?.querySelector(".Post-voteCount");
+      const controls =
+        actions?.querySelector(".Post-controls .Dropdown-toggle") ||
+        actions?.querySelector(".Post-controls");
+      const headerVotes = post.querySelector(
+        ".Post-header .item-votes .Post-votes, .Post-header .item-votes .CommentPost-votes",
+      );
+
+      const center = (el) => {
+        const box = el.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2, box };
+      };
+
+      const out = {
+        present: true,
+        COMMENT_POST_VOTE_OWNER: votesItem && votesBox ? "POST_ACTIONS" : "MISSING",
+        ALTERNATE_POST_VOTE_UI: !!headerVotes,
+        hasReply: !!reply,
+        hasVotes: !!votesItem,
+        hasControls: !!controls,
+        hasUsername: !!username,
+      };
+
+      if (username && controls) {
+        const u = center(username);
+        const c = center(controls);
+        out.usernameCenterY = u.y;
+        out.controlsCenterY = c.y;
+        out.headerMenuDeltaY = Math.abs(u.y - c.y);
+        out.controlsNearRight =
+          Math.abs(c.box.right - post.getBoundingClientRect().right) < 24;
+      }
+
+      if (reply && votesItem) {
+        const r = center(reply);
+        const v = center(votesItem);
+        const postBox = post.getBoundingClientRect();
+        const actionsBox = actions.getBoundingClientRect();
+        out.replyCenterY = r.y;
+        out.votesCenterY = v.y;
+        out.actionRowDeltaY = Math.abs(r.y - v.y);
+        out.replyCentered = Math.abs(r.x - (postBox.left + postBox.width / 2)) < postBox.width * 0.12;
+        out.votesRightOfReply = v.box.left > r.box.right - 4;
+        out.votesNearRight = Math.abs(v.box.right - actionsBox.right) < 24;
+        out.votesSameRowAsReply = Math.abs(r.y - v.y) <= 4;
+        out.replyLabel = /reply/i.test((reply.textContent || "").trim());
+      }
+
+      if (thumb && count && votesBox) {
+        const t = center(thumb);
+        const n = center(count);
+        const thumbBox = thumb.getBoundingClientRect();
+        const countBox = count.getBoundingClientRect();
+        const voteBox = votesBox.getBoundingClientRect();
+        out.thumbCountDeltaY = Math.abs(t.y - n.y);
+        out.countRightOfThumb = countBox.left >= thumbBox.right - 2;
+        out.countNotUnderThumb = countBox.top < thumbBox.bottom - 2;
+        out.voteBoxWiderThanThumb = voteBox.width > thumbBox.width + 4;
+        out.voteBoxHeight = voteBox.height;
+        out.thumbHeight = thumbBox.height;
+      }
+
+      return out;
+    });
+  }
+
   // Peer voter (not the author) exercises the visible upvote control.
   await login(page, seed.newToken);
   await openAuthorPost(page);
@@ -431,88 +529,57 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(chrome.countRight).toBe(true);
   expect(chrome.thumbColor).toMatch(WHITE);
 
-  const actionLayout = await page.evaluate(() => {
-    const post =
-      document.querySelector(".PostStream article.Post.CommentPost") ||
-      document.querySelector("article.Post.CommentPost");
-    const actions = post?.querySelector(".Post-actions");
-    const reply = actions?.querySelector(".item-reply");
-    const votes = actions?.querySelector(".item-votes");
-    const controls = actions?.querySelector(".Post-controls");
-    if (!post || !actions || !reply || !votes) {
-      return {
-        present: false,
-        hasReply: !!reply,
-        hasVotes: !!votes,
-        hasControls: !!controls,
-      };
-    }
-    const postBox = post.getBoundingClientRect();
-    const replyBox = reply.getBoundingClientRect();
-    const votesBox = votes.getBoundingClientRect();
-    const actionsBox = actions.getBoundingClientRect();
-    const replyCenter = replyBox.left + replyBox.width / 2;
-    const postCenter = postBox.left + postBox.width / 2;
-    const replyBtn = reply.querySelector(".Button") || reply;
-    const replyText = (replyBtn.textContent || "").trim();
-    const out = {
-      present: true,
-      hasControls: !!controls,
-      replyCentered: Math.abs(replyCenter - postCenter) < postBox.width * 0.12,
-      votesRightOfReply: votesBox.left > replyBox.right - 4,
-      votesNearRight: Math.abs(votesBox.right - actionsBox.right) < 24,
-      replyLabel: /reply/i.test(replyText),
-    };
-    if (controls) {
-      const controlsBox = controls.getBoundingClientRect();
-      out.controlsNearTop = controlsBox.top <= postBox.top + 48;
-      out.controlsNearRight = Math.abs(controlsBox.right - postBox.right) < 24;
-      out.controlsAboveActions = controlsBox.bottom < actionsBox.top + 8;
-    }
-    return out;
-  });
-  expect(actionLayout.present).toBe(true);
-  expect(actionLayout.replyCentered).toBe(true);
-  expect(actionLayout.votesRightOfReply).toBe(true);
-  expect(actionLayout.votesNearRight).toBe(true);
-  expect(actionLayout.replyLabel).toBe(true);
+  const viewports = [
+    { name: "DESKTOP_1024", width: 1024, height: 768 },
+    { name: "TABLET_768", width: 768, height: 1024 },
+    { name: "MOBILE_390", width: 390, height: 844 },
+    { name: "MOBILE_360", width: 360, height: 800 },
+  ];
 
-  // Admin always has post controls — prove ⋯ sits in the post top-right.
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await login(page, seed.newToken);
+    await openAuthorPost(page);
+    const geo = await readPostChromeGeometry(page);
+    expect(geo.present, `${viewport.name} present`).toBe(true);
+    expect(geo.COMMENT_POST_VOTE_OWNER, `${viewport.name} vote owner`).toBe("POST_ACTIONS");
+    expect(geo.ALTERNATE_POST_VOTE_UI, `${viewport.name} alt header votes`).toBe(false);
+    expect(geo.replyCentered, `${viewport.name} reply centered`).toBe(true);
+    expect(geo.votesRightOfReply, `${viewport.name} votes right of reply`).toBe(true);
+    expect(geo.votesNearRight, `${viewport.name} votes near right`).toBe(true);
+    expect(geo.replyLabel, `${viewport.name} reply label`).toBe(true);
+    expect(geo.actionRowDeltaY, `${viewport.name} ACTION_ROW_ALIGNMENT`).toBeLessThanOrEqual(4);
+    expect(geo.votesSameRowAsReply, `${viewport.name} REPLY_VOTE_SINGLE_ROW`).toBe(true);
+    expect(geo.countRightOfThumb, `${viewport.name} count right of thumb`).toBe(true);
+    expect(geo.thumbCountDeltaY, `${viewport.name} THUMB_COUNT_INLINE`).toBeLessThanOrEqual(3);
+    expect(geo.countNotUnderThumb, `${viewport.name} count not under thumb`).toBe(true);
+    expect(geo.voteBoxWiderThanThumb, `${viewport.name} not vertical provider box`).toBe(true);
+  }
+
+  // Admin always has post controls — prove ⋯ aligns with username/time row.
   await login(page, seed.adminToken);
-  await openAuthorPost(page);
-  const authorControls = await page.evaluate(() => {
-    const post =
-      document.querySelector(".PostStream article.Post.CommentPost") ||
-      document.querySelector("article.Post.CommentPost");
-    const actions = post?.querySelector(".Post-actions");
-    const controls = actions?.querySelector(".Post-controls");
-    if (!post || !actions || !controls) {
-      return { present: false };
-    }
-    // Desktop hides actions until hover; force visible for geometry.
-    actions.style.opacity = "1";
-    const postBox = post.getBoundingClientRect();
-    const actionsBox = actions.getBoundingClientRect();
-    const controlsBox = controls.getBoundingClientRect();
-    return {
-      present: true,
-      controlsNearTop: controlsBox.top <= postBox.top + 48,
-      controlsNearRight: Math.abs(controlsBox.right - postBox.right) < 24,
-      controlsAboveActions: controlsBox.bottom < actionsBox.top + 8,
-    };
-  });
-  expect(authorControls.present).toBe(true);
-  expect(authorControls.controlsNearTop).toBe(true);
-  expect(authorControls.controlsNearRight).toBe(true);
-  expect(authorControls.controlsAboveActions).toBe(true);
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await openAuthorPost(page);
+    const geo = await readPostChromeGeometry(page);
+    expect(geo.present, `${viewport.name} admin present`).toBe(true);
+    expect(geo.hasControls, `${viewport.name} has controls`).toBe(true);
+    expect(geo.hasUsername, `${viewport.name} has username`).toBe(true);
+    expect(geo.headerMenuDeltaY, `${viewport.name} HEADER_MENU_ALIGNMENT`).toBeLessThanOrEqual(4);
+    expect(geo.controlsNearRight, `${viewport.name} controls right`).toBe(true);
+    expect(geo.COMMENT_POST_VOTE_OWNER, `${viewport.name} admin vote owner`).toBe("POST_ACTIONS");
+    expect(geo.ALTERNATE_POST_VOTE_UI, `${viewport.name} admin alt ui`).toBe(false);
+  }
 
   // Resume peer voter for upvote color assertions.
+  await page.setViewportSize({ width: 1024, height: 768 });
   await login(page, seed.newToken);
   await openAuthorPost(page);
 
-  // Synthetic has-votes (not mine) proves lime without a second harness voter.
+  // Synthetic has-votes (not mine): white thumb, lime count.
   const limeProbe = await page.evaluate(() => {
     const votes =
+      document.querySelector(".Post-actions .CommentPost-votes") ||
       document.querySelector(".CommentPost-votes") ||
       document.querySelector(".Post-votes");
     if (!votes) return null;
@@ -529,7 +596,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
       countColor: count ? getComputedStyle(count).color : null,
     };
   });
-  expect(limeProbe.thumbColor).toMatch(LIME);
+  expect(limeProbe.thumbColor).toMatch(WHITE);
   expect(limeProbe.countColor).toMatch(LIME);
 
   const voteResponses = [];
@@ -600,17 +667,158 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
     expect(user.id).not.toBe(String(seed.newUserId));
   }
 
-  for (const viewport of [
-    { width: 1024, height: 768 },
-    { width: 390, height: 844 },
-    { width: 360, height: 800 },
-  ]) {
-    await page.setViewportSize(viewport);
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await login(page, seed.newToken);
     await page.goto(discussionUrl, { waitUntil: "networkidle" });
     await expect(upvoteButton(page)).toBeVisible();
     await expect(downvoteButton(page)).toHaveCount(0);
     await expect(page.locator(".PostStream")).toBeVisible();
+  }
+
+  errors.assertClean();
+});
+
+test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ page }) => {
+  test.skip(!seed.votingEnabled, "FoF voting not seeded in this harness run");
+  test.skip(!seed.replyBPostId, "reply B not seeded");
+  const errors = attachErrorCollectors(page);
+  const discussionUrl = `/d/${seed.discussionId}-${seed.discussionSlug}`;
+  const LIME = /rgb\(\s*132,\s*204,\s*22\s*\)|#84cc16/i;
+  const PINK = /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i;
+
+  async function readSummary(token) {
+    if (token) {
+      await login(page, token);
+    } else {
+      await page.context().clearCookies();
+    }
+    const res = await page.request.get(`/api/discussions/${seed.discussionId}`);
+    expect(res.ok()).toBeTruthy();
+    const body = await res.json();
+    const attrs = body.data.attributes || {};
+    return {
+      total: attrs.flatRateDiscussionUpvotes,
+      mine: attrs.flatRateDiscussionViewerUpvoted,
+      votePostId: attrs.flatRateDiscussionViewerVotePostId,
+      canUpvote: attrs.flatRateDiscussionCanUpvote,
+      fofVotes: attrs.votes,
+      included: body.included || [],
+    };
+  }
+
+  async function votePost(token, postId, up) {
+    await login(page, token);
+    await page.goto(discussionUrl, { waitUntil: "networkidle" });
+    const status = await page.evaluate(
+      async ({ postId, up }) => {
+        const post = app.store.getById("posts", String(postId));
+        if (!post) return { ok: false, reason: "missing-post" };
+        await post.save([!!up, false, "vote"]);
+        return { ok: true };
+      },
+      { postId, up },
+    );
+    expect(status.ok).toBe(true);
+  }
+
+  let summary = await readSummary(seed.newToken);
+  expect(summary.total).toBe(0);
+  expect(summary.mine).toBe(false);
+  expect(summary.canUpvote).toBe(true);
+  expect(summary.votePostId).toBeNull();
+
+  await login(page, seed.newToken);
+  await page.goto(discussionUrl, { waitUntil: "networkidle" });
+  const header = page.locator(".FlatRateDiscussionVote");
+  await expect(header).toBeVisible();
+  await expect(header).toHaveClass(/FlatRateDiscussionVote--available/);
+  const headerColor = await header.evaluate((el) => getComputedStyle(el).color);
+  expect(headerColor).toMatch(LIME);
+
+  await header.click();
+  await expect.poll(async () => {
+    const next = await readSummary(seed.newToken);
+    return next.mine && next.total === 1;
+  }).toBe(true);
+  summary = await readSummary(seed.newToken);
+  expect(Number(summary.votePostId)).toBe(seed.authorPostId);
+  expect(summary.canUpvote).toBe(false);
+  await page.goto(discussionUrl, { waitUntil: "networkidle" });
+  await expect(page.locator(".FlatRateDiscussionVote")).toHaveClass(
+    /FlatRateDiscussionVote--mine/,
+  );
+  const pink = await page
+    .locator(".FlatRateDiscussionVote")
+    .evaluate((el) => getComputedStyle(el).color);
+  expect(pink).toMatch(PINK);
+
+  await votePost(seed.newToken, seed.mentionPostId, true);
+  summary = await readSummary(seed.newToken);
+  expect(summary.total).toBe(1);
+  expect(summary.mine).toBe(true);
+  expect(Number(summary.votePostId)).toBe(seed.mentionPostId);
+
+  await votePost(seed.newToken, seed.replyBPostId, true);
+  summary = await readSummary(seed.newToken);
+  expect(summary.total).toBe(1);
+  expect(summary.mine).toBe(true);
+  expect(Number(summary.votePostId)).toBe(seed.replyBPostId);
+
+  await votePost(seed.sentinelToken, seed.mentionPostId, true);
+  const asNew = await readSummary(seed.newToken);
+  const asSentinel = await readSummary(seed.sentinelToken);
+  expect(asNew.total).toBe(2);
+  expect(asSentinel.total).toBe(2);
+  expect(asSentinel.mine).toBe(true);
+  expect(Number(asSentinel.votePostId)).toBe(seed.mentionPostId);
+  expect(asNew.total).not.toBe(asNew.fofVotes);
+
+  await votePost(seed.newToken, seed.replyBPostId, false);
+  summary = await readSummary(seed.newToken);
+  expect(summary.total).toBe(1);
+  expect(summary.mine).toBe(false);
+  expect(summary.canUpvote).toBe(true);
+  expect(summary.votePostId).toBeNull();
+
+  const guest = await readSummary(null);
+  expect(typeof guest.total).toBe("number");
+  expect(guest.mine).toBe(false);
+  expect(guest.canUpvote).toBe(false);
+  expect(guest.votePostId).toBeNull();
+  for (const row of guest.included) {
+    if (row.type === "users") {
+      expect(row.id).not.toBe(String(seed.newUserId));
+      expect(row.id).not.toBe(String(seed.sentinelUserId));
+    }
+  }
+
+  for (const viewport of [
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await login(page, seed.sentinelToken);
+    await page.goto(discussionUrl, { waitUntil: "networkidle" });
+    const geo = await page.evaluate(() => {
+      const btn = document.querySelector(".FlatRateDiscussionVote");
+      const icon = btn?.querySelector(".icon");
+      const count = btn?.querySelector(".FlatRateDiscussionVote-count");
+      if (!btn || !icon || !count) return { present: false };
+      const ib = icon.getBoundingClientRect();
+      const cb = count.getBoundingClientRect();
+      const bb = btn.getBoundingClientRect();
+      return {
+        present: true,
+        inline:
+          cb.left >= ib.right - 2 &&
+          Math.abs(ib.top + ib.height / 2 - (cb.top + cb.height / 2)) <= 4,
+        nowrap: bb.height < 48,
+      };
+    });
+    expect(geo.present).toBe(true);
+    expect(geo.inline).toBe(true);
+    expect(geo.nowrap).toBe(true);
   }
 
   errors.assertClean();

@@ -276,9 +276,8 @@
   display: none !important;
 }
 
-// FoF DOM is [upvote][count]; keep thumb left, count right.
-.CommentPost-votes,
-.Post-votes.alternateLayout,
+// Discussion-list FoF alternate chrome may still use a vertical box; keep
+// those rows horizontal when present. CommentPost action votes are below.
 .DiscussionListItem-votes.alternateLayout {
   display: inline-flex !important;
   flex-direction: row;
@@ -286,10 +285,11 @@
   gap: 0.35em;
 }
 
-// Post action bar:
-//   ⋯ controls -> top-right corner of the post
-//   Reply      -> centered
-//   thumbs     -> right-justified on the action row
+// Post action bar (CommentPost):
+//   ⋯ controls -> right side of username/time header row (same vertical center)
+//   Reply + thumbs/count share ONE action row
+//   Reply -> centered on that row
+//   thumbs/count -> right-justified, one inline horizontal unit (👍 1)
 .CommentPost {
   // Core already sets position:relative; keep explicit so absolute controls
   // resolve against the post even if theme CSS changes.
@@ -315,7 +315,8 @@
       min-height: 2rem;
 
       > li {
-        display: block;
+        display: flex;
+        align-items: center;
         margin-left: 0 !important;
         margin-right: 0 !important;
         vertical-align: middle;
@@ -332,12 +333,61 @@
       }
 
       // Core appends controls after actionItems without an item-* class.
+      // Absolute against .CommentPost (Post-actions is position:static).
+      // Flarum 1.8.19: 20px post padding; phone avatar is 32px in-flow;
+      // tablet+ avatar is out-of-flow so the username line is text-sized.
       > li:has(> .Post-controls) {
         position: absolute;
-        top: 0.35rem;
         right: 0;
         z-index: 3;
         grid-column: unset;
+        // Phone: center of 32px avatar/username row at ~36px from post top;
+        // ~36px icon button => top ≈ 18px.
+        top: 18px;
+
+        @media @tablet-up {
+          // Username ~14px / ~20px line; center at ~30px; button center match.
+          top: 12px;
+        }
+      }
+    }
+
+    // FoF DOM is [upvote][count]; keep one horizontal unit in the action row.
+    // Neutralize alternate-layout absolute box rules if they leak onto actions.
+    .CommentPost-votes {
+      position: static !important;
+      left: auto !important;
+      right: auto !important;
+      top: auto !important;
+      bottom: auto !important;
+      display: inline-flex !important;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.35em;
+      width: auto !important;
+      height: auto !important;
+      line-height: 1;
+      white-space: nowrap;
+
+      .Post-upvote,
+      .Post-vote {
+        margin: 0;
+        vertical-align: middle;
+      }
+
+      .Post-points,
+      .Post-voteCount {
+        position: static !important;
+        margin: 0;
+        padding: 0;
+        width: auto !important;
+        height: auto !important;
+        line-height: 1;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
       }
     }
   }
@@ -345,7 +395,7 @@
 
 // Vote chrome states (classes set by plain-voting.js from FoF model state):
 //   zero upvotes  -> white thumb/count
-//   has upvotes   -> lime thumb/count
+//   has upvotes   -> white thumb, lime count
 //   viewer voted -> pink thumb/count
 @flatrate-vote-zero: #ffffff;
 @flatrate-vote-has: #84cc16;
@@ -369,12 +419,15 @@
 .FlatRateVotes--hasVotes:not(.FlatRateVotes--mine) {
   .Post-upvote,
   .Post-upvote .Button-icon,
-  .Post-points,
   .Post-voteButton--up,
   .Post-voteButton--up .Button-icon,
-  .Post-voteCount,
   .DiscussionListItem-voteButton--up,
-  .DiscussionListItem-voteButton--up .Button-icon,
+  .DiscussionListItem-voteButton--up .Button-icon {
+    color: @flatrate-vote-zero !important;
+  }
+
+  .Post-points,
+  .Post-voteCount,
   .DiscussionListItem-voteCount {
     color: @flatrate-vote-has !important;
   }
@@ -402,6 +455,59 @@
   .Post-voteButton--up:hover .Button-icon,
   .Post-voteButton--up:focus-visible .Button-icon {
     color: @flatrate-vote-mine !important;
+  }
+}
+
+// Discussion-level aggregate opposite Following (SubscriptionMenu).
+// Inactive = lime; active (viewer has any ballot in discussion) = pink.
+.DiscussionPage-nav > ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  > .item-flatRateDiscussionVote {
+    margin-right: auto;
+  }
+}
+
+.FlatRateDiscussionVote {
+  display: inline-flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35em;
+  white-space: nowrap;
+  line-height: 1;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-weight: 700;
+
+  .icon {
+    margin: 0;
+  }
+
+  .FlatRateDiscussionVote-count {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+  }
+
+  &.FlatRateDiscussionVote--available,
+  &.FlatRateDiscussionVote--available .icon,
+  &.FlatRateDiscussionVote--available .FlatRateDiscussionVote-count {
+    color: @flatrate-vote-has !important;
+  }
+
+  &.FlatRateDiscussionVote--mine,
+  &.FlatRateDiscussionVote--mine .icon,
+  &.FlatRateDiscussionVote--mine .FlatRateDiscussionVote-count {
+    color: @flatrate-vote-mine !important;
+  }
+
+  &:disabled {
+    opacity: 1;
+    cursor: default;
   }
 }
 

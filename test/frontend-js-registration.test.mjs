@@ -296,19 +296,44 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
     plainVoting,
     /app\.data\['fof-gamification\.iconName'\] = 'thumbs'/,
   );
+  assert.match(
+    plainVoting,
+    /app\.data\['fof-gamification\.altPostVotingUi'\] = '0'/,
+  );
+  assert.match(
+    plainVoting,
+    /flatrate-wiki-plain-voting-settings[\s\S]*?,\s*100\s*\)/,
+  );
   assert.doesNotMatch(plainVoting, /thumbs-down/);
   assert.doesNotMatch(plainVoting, /upVotesOnly'\] = '0'/);
+  assert.doesNotMatch(plainVoting, /altPostVotingUi'\] = '1'/);
   assert.match(plainVoting, /FlatRateVotes--zero/);
   assert.match(plainVoting, /FlatRateVotes--hasVotes/);
   assert.match(plainVoting, /FlatRateVotes--mine/);
+  assert.match(plainVoting, /FlatRateDiscussionVote/);
+  assert.match(plainVoting, /flatRateDiscussionVote/);
+  assert.match(plainVoting, /sidebarItems/);
 
   const forumLess = text("resources/less/forum.less");
   assert.match(forumLess, /@flatrate-vote-zero:\s*#ffffff/);
   assert.match(forumLess, /@flatrate-vote-has:\s*#84cc16/);
   assert.match(forumLess, /@flatrate-vote-mine:\s*#c72d5d/);
   assert.match(forumLess, /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)/);
+  assert.match(
+    forumLess,
+    /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-upvote[\s\S]*?@flatrate-vote-zero/,
+  );
+  assert.match(
+    forumLess,
+    /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-points[\s\S]*?@flatrate-vote-has/,
+  );
   assert.match(forumLess, /grid-template-columns:\s*1fr auto 1fr/);
   assert.match(forumLess, /li:has\(>\s*\.Post-controls\)/);
+  assert.match(
+    forumLess,
+    /\.Post-actions\s*\{[\s\S]*?\.CommentPost-votes\s*\{[\s\S]*?flex-direction:\s*row/,
+  );
+  assert.match(forumLess, /flex-direction:\s*row/);
   assert.doesNotMatch(forumLess, /@flatrate-reply-plus/);
   assert.doesNotMatch(forumLess, /content:\s*'\\f067'/);
 

@@ -9,12 +9,29 @@
     return;
   }
 
+  // FoF Gamification reads layout flags from app.data at initializer time via
+  // !!parseInt(...). Normalize before FoF (priority 0) so CommentPost keeps
+  // votes in actionItems instead of registering the header alternate widget.
+  // useAlternateLayout is intentionally NOT forced here: it also drives
+  // discussion-list chrome; CommentPost ownership only requires altPostVotingUi=0.
+  app.initializers.add(
+    'flatrate-wiki-plain-voting-settings',
+    function () {
+      if (app.data && typeof app.data === 'object') {
+        app.data['fof-gamification.upVotesOnly'] = '1';
+        app.data['fof-gamification.iconName'] = 'thumbs';
+        app.data['fof-gamification.altPostVotingUi'] = '0';
+      }
+    },
+    100
+  );
+
   app.initializers.add('flatrate-wiki-plain-voting', function () {
-    // FlatRate presents a single thumbs-up action. FoF remains the canonical
-    // vote provider; these frontend attributes only constrain its chrome.
+    // Re-assert after boot for render-time FoF setting() reads.
     if (app.data && typeof app.data === 'object') {
       app.data['fof-gamification.upVotesOnly'] = '1';
       app.data['fof-gamification.iconName'] = 'thumbs';
+      app.data['fof-gamification.altPostVotingUi'] = '0';
     }
 
     function coreExport(id) {
@@ -59,6 +76,15 @@
       } catch (e) {
         return false;
       }
+    }
+
+    function refreshDiscussionSummary(discussion) {
+      if (!discussion || typeof discussion.id !== 'function') {
+        return Promise.resolve(null);
+      }
+      return app.store.find('discussions', discussion.id()).catch(function () {
+        return null;
+      });
     }
 
     // Suppress FoF Gamification product surfaces (V1). Safe no-ops when absent.
@@ -145,6 +171,33 @@
       }
     } catch (e) {}
 
+    // After any FoF post vote mutation, reload discussion aggregate attributes.
+    try {
+      var PostModel = unwrap(coreExport('common/models/Post'));
+      if (
+        PostModel &&
+        PostModel.prototype &&
+        typeof PostModel.prototype.save === 'function' &&
+        typeof override === 'function'
+      ) {
+        override(PostModel.prototype, 'save', function (original, data, options) {
+          var result = original.call(this, data, options);
+          var post = this;
+          var isVote = Array.isArray(data) && data[2] === 'vote';
+          if (!isVote || !votingEnabled()) {
+            return result;
+          }
+          return Promise.resolve(result).then(function (saved) {
+            var discussion =
+              typeof post.discussion === 'function' ? post.discussion() : null;
+            return refreshDiscussionSummary(discussion).then(function () {
+              return saved;
+            });
+          });
+        });
+      }
+    } catch (e) {}
+
     function decorateVoteChrome(root, model) {
       if (!root || !root.querySelector) {
         return;
@@ -203,6 +256,126 @@
       bindVoteChrome(DiscussionListItem, function (cmp) {
         return cmp.attrs && cmp.attrs.discussion;
       });
+    } catch (e) {}
+
+    // Discussion-level aggregate opposite Following (SubscriptionMenu).
+    try {
+      var DiscussionPage = unwrap(coreExport('forum/components/DiscussionPage'));
+      var Component = unwrap(coreExport('common/Component'));
+      if (
+        DiscussionPage &&
+        DiscussionPage.prototype &&
+        DiscussionPage.prototype.sidebarItems &&
+        Component
+      ) {
+        var FlatRateDiscussionVote = Component.extend({
+          oninit: function (vnode) {
+            Component.prototype.oninit.call(this, vnode);
+            this.loading = false;
+          },
+          view: function () {
+            var discussion = this.attrs.discussion;
+            if (!discussion) {
+              return null;
+            }
+            var count = Number(discussion.attribute('flatRateDiscussionUpvotes')) || 0;
+            var mine = !!discussion.attribute('flatRateDiscussionViewerUpvoted');
+            var canUpvote = !!discussion.attribute('flatRateDiscussionCanUpvote');
+            var className =
+              'FlatRateDiscussionVote Button Button--link' +
+              (mine
+                ? ' FlatRateDiscussionVote--mine'
+                : ' FlatRateDiscussionVote--available');
+            var self = this;
+            return m(
+              'button',
+              {
+                className: className,
+                type: 'button',
+                disabled: this.loading || mine || !canUpvote,
+                title: mine
+                  ? 'You already endorsed this discussion'
+                  : canUpvote
+                    ? 'Upvote this discussion'
+                    : 'Discussion upvotes',
+                onclick: function (e) {
+                  e.preventDefault();
+                  if (self.loading || mine || !canUpvote) {
+                    return;
+                  }
+                  self.upvoteFirstPost(discussion);
+                },
+              },
+              [
+                m('i', { className: 'icon fas fa-thumbs-up', 'aria-hidden': 'true' }),
+                m('span', { className: 'FlatRateDiscussionVote-count' }, String(count)),
+              ]
+            );
+          },
+          upvoteFirstPost: function (discussion) {
+            var self = this;
+            var firstPost =
+              typeof discussion.firstPost === 'function'
+                ? discussion.firstPost()
+                : null;
+            if (!firstPost || typeof firstPost.save !== 'function') {
+              var firstId =
+                discussion.attribute('firstPostId') ||
+                (discussion.data &&
+                  discussion.data.relationships &&
+                  discussion.data.relationships.firstPost &&
+                  discussion.data.relationships.firstPost.data &&
+                  discussion.data.relationships.firstPost.data.id);
+              if (firstId) {
+                firstPost = app.store.getById('posts', firstId);
+              }
+            }
+            if (!firstPost || typeof firstPost.save !== 'function') {
+              return;
+            }
+            this.loading = true;
+            var prevCount = Number(discussion.attribute('flatRateDiscussionUpvotes')) || 0;
+            discussion.pushAttributes({
+              flatRateDiscussionUpvotes: prevCount + 1,
+              flatRateDiscussionViewerUpvoted: true,
+              flatRateDiscussionCanUpvote: false,
+              flatRateDiscussionViewerVotePostId: Number(firstPost.id()),
+            });
+            firstPost
+              .save([true, false, 'vote'])
+              .then(function () {
+                return refreshDiscussionSummary(discussion);
+              })
+              .catch(function () {
+                discussion.pushAttributes({
+                  flatRateDiscussionUpvotes: prevCount,
+                  flatRateDiscussionViewerUpvoted: false,
+                  flatRateDiscussionCanUpvote: true,
+                  flatRateDiscussionViewerVotePostId: null,
+                });
+              })
+              .then(function () {
+                self.loading = false;
+                m.redraw();
+              });
+          },
+        });
+
+        extend(DiscussionPage.prototype, 'sidebarItems', function (items) {
+          if (!votingEnabled()) {
+            return;
+          }
+          var discussion = this.discussion;
+          if (!discussion || !items || typeof items.add !== 'function') {
+            return;
+          }
+          items.add(
+            'flatRateDiscussionVote',
+            FlatRateDiscussionVote.component({ discussion: discussion }),
+            85
+          );
+        });
+      }
     } catch (e) {}
   });
 

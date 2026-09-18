@@ -164,9 +164,16 @@ str_contains($pv, 'module.exports')
     ? pass('plain-voting.js webpack CJS export')
     : fail('plain-voting.js missing module.exports');
 (str_contains($pv, "app.data['fof-gamification.upVotesOnly'] = '1'")
-    && str_contains($pv, "app.data['fof-gamification.iconName'] = 'thumbs'"))
+    && str_contains($pv, "app.data['fof-gamification.iconName'] = 'thumbs'")
+    && str_contains($pv, "app.data['fof-gamification.altPostVotingUi'] = '0'")
+    && str_contains($pv, "flatrate-wiki-plain-voting-settings")
+    && preg_match('/flatrate-wiki-plain-voting-settings[\s\S]*?,\s*100\s*\)/', $pv))
     ? pass('UPVOTE_ONLY_THUMBS_UP_PRESENTATION')
     : fail('upvote-only thumbs-up presentation missing');
+(str_contains($pv, "altPostVotingUi'] = '0'")
+    && ! str_contains($pv, "altPostVotingUi'] = '1'"))
+    ? pass('ALT_POST_VOTE_UI_EXPECTED=0')
+    : fail('altPostVotingUi must normalize to 0 before FoF boot');
 $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
 (str_contains($forumLess, '.Post-downvote')
     && str_contains($forumLess, '.Post-voteButton--down')
@@ -185,26 +192,38 @@ $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
     && str_contains($forumLess, '.FlatRateVotes--hasVotes:not(.FlatRateVotes--mine)')
     && str_contains($forumLess, '@flatrate-vote-has: #84cc16')
     && str_contains($forumLess, '.FlatRateVotes--mine')
-    && str_contains($forumLess, '@flatrate-vote-mine: #c72d5d'))
+    && str_contains($forumLess, '@flatrate-vote-mine: #c72d5d')
+    && preg_match(
+        '/\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-points[\s\S]*?@flatrate-vote-has/',
+        $forumLess
+    )
+    && preg_match(
+        '/\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-upvote[\s\S]*?@flatrate-vote-zero/',
+        $forumLess
+    ))
     ? pass('VOTE_CHROME_THREE_STATE_COLORS')
-    : fail('three-state vote colors missing (white / lime / pink)');
+    : fail('three-state vote colors missing (white thumb / lime count / pink mine)');
 (str_contains($forumLess, 'flex-direction: row')
     && ! str_contains($forumLess, 'flex-direction: row-reverse')
     && str_contains($forumLess, '.CommentPost-votes'))
     ? pass('UPVOTE_COUNT_RIGHT_OF_THUMB')
     : fail('count-right-of-thumb layout missing');
 (str_contains($forumLess, 'li:has(> .Post-controls)')
-    && str_contains($forumLess, 'top: 0.35rem')
     && str_contains($forumLess, 'right: 0')
+    && str_contains($forumLess, 'top: 18px')
+    && str_contains($forumLess, 'top: 12px')
     && str_contains($forumLess, 'grid-template-columns: 1fr auto 1fr')
     && str_contains($forumLess, '.item-reply')
     && str_contains($forumLess, 'grid-column: 2')
     && str_contains($forumLess, '.item-votes')
     && str_contains($forumLess, 'justify-self: end')
+    && (bool) preg_match('/\.Post-actions\s*\{[\s\S]*?\.CommentPost-votes\s*\{[\s\S]*?flex-direction:\s*row/', $forumLess)
+    && str_contains($forumLess, 'white-space: nowrap')
+    && ! str_contains($forumLess, 'top: 0.35rem')
     && ! str_contains($forumLess, '@flatrate-reply-plus')
     && ! str_contains($forumLess, "content: '\\f067'"))
     ? pass('POST_ACTION_BAR_PLUS_CONTROLS_LAYOUT')
-    : fail('post action bar layout missing (controls top-right, Reply centered, thumb right)');
+    : fail('post action bar layout missing (username-row controls, single action row, inline thumb/count)');
 (! str_contains($pv, 'thumbs-down')
     && ! str_contains($pv, "iconName'] = 'arrow'")
     && ! str_contains($pv, "upVotesOnly'] = '0'"))

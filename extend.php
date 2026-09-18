@@ -8,6 +8,7 @@ use FlatRate\SupabaseOAuth\Voting\GlobalVotingPolicy;
 use FlatRate\SupabaseOAuth\Voting\PostVotePolicy;
 use FlatRate\SupabaseOAuth\Voting\VotingReadinessController;
 use FlatRate\SupabaseOAuth\Voting\VotingServiceProvider;
+use Flarum\Api\Serializer\BasicDiscussionSerializer;
 use Flarum\Api\Serializer\BasicUserSerializer;
 use Flarum\Api\Serializer\ForumSerializer;
 use Flarum\Api\Serializer\PostSerializer;
@@ -136,6 +137,10 @@ return [
 
     (new Extend\ApiSerializer(ForumSerializer::class))
         ->attributes(Api\SerializeFlatRateVotingEnabled::class),
+
+    // GROWTH-001UI: whole-discussion upvote aggregate (not FoF first-post votes).
+    (new Extend\ApiSerializer(BasicDiscussionSerializer::class))
+        ->attributes(Api\SerializeDiscussionVoteSummary::class),
 
     (new Extend\Settings())
         ->default('flatrate-activity.emit_enabled', false)

@@ -107,4 +107,57 @@ open voting -> then fix privacy
 
 ## UI
 
-`js/dist/plain-voting.js` suppresses ordinary-user FoF points/ranks/Votes tab/hot/votes sorts/rankings nav, and hides vote controls while the FlatRate gate is closed. When the gate is open, FlatRate forces FoF's upvote-only presentation with a thumbs-up icon. The downvote control is hidden defensively in CSS. Vote chrome is three-state: white at zero upvotes, lime `#84cc16` when upvotes exist, and brand pink `#c72d5d` when the viewer has upvoted. Classes `FlatRateVotes--zero` / `--hasVotes` / `--mine` are applied from `plain-voting.js`. Comment post actions place the ⋯ menu at the post top-right, keep Reply as centered text, and right-justify the thumbs control. The file must retain `module.exports = {}` (Flarum 1.8 webpack CJS entry).
+`js/dist/plain-voting.js` suppresses ordinary-user FoF points/ranks/Votes tab/hot/votes sorts/rankings nav, and hides vote controls while the FlatRate gate is closed. When the gate is open, FlatRate forces FoF's upvote-only presentation with a thumbs-up icon. The downvote control is hidden defensively in CSS. Vote chrome is three-state: white thumb/count at zero upvotes; white thumb with lime `#84cc16` count when upvotes exist; brand pink `#c72d5d` thumb and count when the viewer has upvoted. Classes `FlatRateVotes--zero` / `--hasVotes` / `--mine` are applied from `plain-voting.js`.
+
+### CommentPost presentation contract
+
+```text
+POST_HEADER_CONTROLS_ALIGNMENT=USERNAME_ROW
+POST_CONTROLS_HORIZONTAL_POSITION=RIGHT
+POST_ACTION_ROW=SINGLE_ROW
+REPLY_ACTION_POSITION=CENTER
+UPVOTE_ACTION_POSITION=RIGHT
+UPVOTE_ICON_COUNT_LAYOUT=INLINE_HORIZONTAL
+UPVOTE_COUNT_POSITION=RIGHT_OF_ICON
+POST_VOTE_DOM_OWNER=POST_ACTIONS
+```
+
+Reply and thumbs/count share one action row. Reply is centered. Thumbs/count are right-justified. Thumb and count are one inline horizontal unit (`👍 1`), never a stacked vertical provider box. The `⋯` controls sit on the right side of the username/time header row (same vertical center), not merely “somewhere near the top of the post.”
+
+### Provider layout parity
+
+FoF Gamification 1.6.12 registers the header-style vote widget when `fof-gamification.altPostVotingUi` is truthy (`!!parseInt(app.data[...])` at FoF initializer time). FlatRate normalizes `fof-gamification.altPostVotingUi = '0'` in a **priority-100** initializer so it runs before FoF and CommentPost keeps votes in `actionItems` (`.Post-actions .item-votes`), not `.Post-header .item-votes .Post-votes`.
+
+`fof-gamification.useAlternateLayout` also affects discussion-list alternate chrome. FlatRate does **not** force that flag from the frontend; harness seeds `0` for presentation parity. Production must keep `altPostVotingUi=0` for this CommentPost contract — treat drift as runtime configuration drift, not a CSS-only fix.
+
+### Discussion aggregate upvote header
+
+```text
+POST_UPVOTE=
+  which specific contribution receives the member's ballot
+DISCUSSION_UPVOTE_TOTAL=
+  count of positive post_votes across ALL visible comment posts
+  in the discussion (not FoF discussion.votes / first-post-only)
+DISCUSSION_HEADER_ACTIVE=
+  viewer currently has a positive ballot somewhere in the discussion
+ONE_EFFECTIVE_POSITIVE_BALLOT_PER_MEMBER_PER_DISCUSSION=true
+CANONICAL_STORAGE=FOF_POST_VOTES
+NEW_VOTE_TABLE=false
+```
+
+DiscussionPage sidebar renders `FlatRateDiscussionVote` opposite Following:
+
+- inactive (no viewer ballot): lime `#84cc16` thumb+count; clickable → upvotes opening post
+- active (viewer ballot anywhere): pink `#c72d5d`; not clickable (remove from the voted post)
+- voting a different reply **moves** the ballot (zeros the prior positive row) so aggregate stays stable
+
+API attributes on `BasicDiscussionSerializer` (no voter identities):
+
+- `flatRateDiscussionUpvotes`
+- `flatRateDiscussionViewerUpvoted`
+- `flatRateDiscussionViewerVotePostId`
+- `flatRateDiscussionCanUpvote`
+
+FoF legacy `discussion.votes` remains a provider implementation detail and is **not** FlatRate's whole-discussion total.
+
+The file must retain `module.exports = {}` (Flarum 1.8 webpack CJS entry).
