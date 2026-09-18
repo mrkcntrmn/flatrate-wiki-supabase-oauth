@@ -276,15 +276,33 @@
   display: none !important;
 }
 
+// FoF DOM is [upvote][count]; FlatRate presents count then thumb.
+.CommentPost-votes,
+.Post-votes.alternateLayout,
+.DiscussionListItem-votes.alternateLayout {
+  display: inline-flex !important;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 0.35em;
+}
+
 .CommentPost-votes .Post-upvote.Post-vote--active,
-.Post-votes .Post-voteButton--up[data-active='true'] {
+.CommentPost-votes .Post-upvote.Post-vote--active .Button-icon,
+.Post-votes .Post-voteButton--up[data-active='true'],
+.Post-votes .Post-voteButton--up[data-active='true'] .Button-icon,
+.DiscussionListItem-voteButton--up[data-active='true'],
+.DiscussionListItem-voteButton--up[data-active='true'] .Button-icon {
   color: #84cc16 !important;
 }
 
 .CommentPost-votes .Post-upvote.Post-vote--active:hover,
 .CommentPost-votes .Post-upvote.Post-vote--active:focus-visible,
+.CommentPost-votes .Post-upvote.Post-vote--active:hover .Button-icon,
+.CommentPost-votes .Post-upvote.Post-vote--active:focus-visible .Button-icon,
 .Post-votes .Post-voteButton--up[data-active='true']:hover,
-.Post-votes .Post-voteButton--up[data-active='true']:focus-visible {
+.Post-votes .Post-voteButton--up[data-active='true']:focus-visible,
+.Post-votes .Post-voteButton--up[data-active='true']:hover .Button-icon,
+.Post-votes .Post-voteButton--up[data-active='true']:focus-visible .Button-icon {
   color: #84cc16 !important;
 }
 

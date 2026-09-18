@@ -393,6 +393,22 @@ test("GROWTH-001UI upvote-only thumb presentation and lime active state", async 
   expect(state.present).toBe(true);
   expect(state.active).toBe(false);
 
+  const countLeftOfThumb = await page.evaluate(() => {
+    const votes =
+      document.querySelector(".CommentPost-votes") ||
+      document.querySelector(".Post-votes");
+    if (!votes) return false;
+    const count =
+      votes.querySelector(".Post-points") ||
+      votes.querySelector(".Post-voteCount");
+    const thumb =
+      votes.querySelector(".Post-upvote") ||
+      votes.querySelector(".Post-voteButton--up");
+    if (!count || !thumb) return false;
+    return count.getBoundingClientRect().left < thumb.getBoundingClientRect().left;
+  });
+  expect(countLeftOfThumb).toBe(true);
+
   const voteResponses = [];
   page.on("response", (response) => {
     if (response.request().method() === "POST" || response.request().method() === "PATCH") {

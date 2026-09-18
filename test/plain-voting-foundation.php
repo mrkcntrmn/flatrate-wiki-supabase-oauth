@@ -175,9 +175,14 @@ $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
     ? pass('DOWNVOTE_CONTROL_HIDDEN')
     : fail('downvote-control fallback missing');
 (str_contains($forumLess, ".Post-voteButton--up[data-active='true']")
-    && str_contains($forumLess, 'color: #84cc16 !important'))
+    && str_contains($forumLess, 'color: #84cc16 !important')
+    && str_contains($forumLess, '.Button-icon'))
     ? pass('ACTIVE_UPVOTE_LIME_GREEN')
     : fail('active upvote lime style missing');
+(str_contains($forumLess, 'flex-direction: row-reverse')
+    && str_contains($forumLess, '.CommentPost-votes'))
+    ? pass('UPVOTE_COUNT_LEFT_OF_THUMB')
+    : fail('count-left-of-thumb layout missing');
 (! str_contains($pv, 'thumbs-down')
     && ! str_contains($pv, "iconName'] = 'arrow'")
     && ! str_contains($pv, "upVotesOnly'] = '0'"))
