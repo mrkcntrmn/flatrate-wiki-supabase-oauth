@@ -285,6 +285,20 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   assert.match(dashboard, /flatRateOwnerDashboard/);
   assert.match(dashboard, /module\.exports = \{\}/);
 
+  const plainVoting = text("js/dist/plain-voting.js");
+  assert.match(plainVoting, /flatrate-wiki-plain-voting/);
+  assert.match(plainVoting, /module\.exports = \{\}/);
+  assert.match(
+    plainVoting,
+    /app\.data\['fof-gamification\.upVotesOnly'\] = '1'/,
+  );
+  assert.match(
+    plainVoting,
+    /app\.data\['fof-gamification\.iconName'\] = 'thumbs'/,
+  );
+  assert.doesNotMatch(plainVoting, /thumbs-down/);
+  assert.doesNotMatch(plainVoting, /upVotesOnly'\] = '0'/);
+
   for (const rel of EXPECTED_JS) {
     assert.ok(existsSync(join(ROOT, rel)), `missing ${rel}`);
   }
@@ -292,6 +306,7 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   console.error("NAV_CONTRACT_SOURCE_MARKER=PASS");
   console.error("DESKTOP_NAV_SOURCE_MARKER=PASS");
   console.error("MOBILE_NAV_SOURCE_MARKER=PASS");
+  console.error("UPVOTE_ONLY_THUMBS_UP_PRESENTATION=PASS");
 });
 
 test("legacy desktop IndexPage renderer is gated only while dedicated nav is disabled", () => {

@@ -68,7 +68,23 @@ if (!$admin) {
 
 $db->table('group_permission')->insertOrIgnore([
     ['group_id' => 3, 'permission' => 'user.editOwnNickname'],
+    ['group_id' => 3, 'permission' => 'discussion.votePosts'],
+    ['group_id' => 3, 'permission' => 'discussion.canSeeVotes'],
+    // Guests may see vote counts; voter identity stays permission-gated.
+    ['group_id' => 2, 'permission' => 'discussion.canSeeVotes'],
 ]);
+
+/** @var \Flarum\Settings\SettingsRepositoryInterface $settings */
+$settings = $container->make(\Flarum\Settings\SettingsRepositoryInterface::class);
+$settings->set('flatrate-voting.enabled', '1');
+$settings->set('fof-gamification.upVotesOnly', '1');
+$settings->set('fof-gamification.iconName', 'thumbs');
+$settings->set('fof-gamification.allowSelfVotes', '0');
+$settings->set('fof-gamification.autoUpvotePosts', '0');
+$settings->set('fof-gamification.rateLimit', '0');
+$settings->set('fof-gamification.firstPostOnly', '0');
+$settings->set('fof-gamification.useAlternateLayout', '0');
+$settings->set('fof-gamification.altPostVotingUi', '0');
 
 $grandId = upsertUser($db, $schema, [
     'username' => 'tech_a1b2c3d4',
@@ -259,8 +275,10 @@ $seed = [
     'sentinelToken' => rememberToken($db, $schema, $sentinelId, $now),
     'discussionId' => $discussionId,
     'discussionSlug' => 'harness-discussion',
+    'authorPostId' => $postId,
     'mentionPostId' => $mentionPostId,
     'cookieName' => 'flarum_remember',
+    'votingEnabled' => true,
 ];
 
 if ($schema->hasTable('discussion_tag')) {

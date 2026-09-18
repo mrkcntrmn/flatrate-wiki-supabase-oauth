@@ -170,6 +170,7 @@ str_contains($pv, 'module.exports')
 $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
 (str_contains($forumLess, '.Post-downvote')
     && str_contains($forumLess, '.Post-voteButton--down')
+    && str_contains($forumLess, 'DiscussionListItem-voteButton--down')
     && str_contains($forumLess, 'display: none !important'))
     ? pass('DOWNVOTE_CONTROL_HIDDEN')
     : fail('downvote-control fallback missing');
@@ -177,6 +178,42 @@ $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
     && str_contains($forumLess, 'color: #84cc16 !important'))
     ? pass('ACTIVE_UPVOTE_LIME_GREEN')
     : fail('active upvote lime style missing');
+(! str_contains($pv, 'thumbs-down')
+    && ! str_contains($pv, "iconName'] = 'arrow'")
+    && ! str_contains($pv, "upVotesOnly'] = '0'"))
+    ? pass('NO_THUMBS_DOWN_PRESENTATION')
+    : fail('thumbs-down / downvote presentation leaked into plain-voting.js');
+$migrations = glob($root.'/migrations/*.php') ?: [];
+$voteMigrationHit = false;
+foreach ($migrations as $migration) {
+    $src = (string) file_get_contents($migration);
+    if (preg_match('/post_votes|drop.*votes|delete.*votes/i', $src)
+        && preg_match('/Schema::(drop|table)|DB::(delete|statement)/i', $src)) {
+        // Allow Activity/state companion tables; block post_votes destructive mutations.
+        if (str_contains($src, 'post_votes')
+            && preg_match('/drop|delete\s+from\s+[`\']?post_votes/i', $src)) {
+            $voteMigrationHit = true;
+            fail('NO_DATABASE_MIGRATION violated by '.basename($migration));
+        }
+    }
+}
+if (! $voteMigrationHit) {
+    pass('NO_DATABASE_MIGRATION');
+}
+$activitySrc = is_file($root.'/src/Activity/EmitVoteActivity.php')
+    ? (string) file_get_contents($root.'/src/Activity/EmitVoteActivity.php')
+    : '';
+(str_contains($activitySrc, 'vote_transition')
+    && str_contains($activitySrc, 'from_value')
+    && str_contains($activitySrc, 'to_value')
+    && ! str_contains($activitySrc, 'thumb_up')
+    && ! str_contains($activitySrc, 'helpful_click'))
+    ? pass('NO_ACTIVITY_EVENT_REMOVAL')
+    : fail('Activity vote_transition contract incomplete or replaced');
+(is_file($root.'/src/Voting/VoterIdentityRelationshipGuard.php')
+    && str_contains((string) file_get_contents($root.'/src/Voting/VoterIdentityRelationshipGuard.php'), 'canSeeVoters'))
+    ? pass('NO_VOTER_PRIVACY_RELAXATION')
+    : fail('voter privacy guard missing');
 is_file($root.'/docs/growth-001b-plain-vote-foundation.md')
     ? pass('docs present')
     : fail('docs missing');

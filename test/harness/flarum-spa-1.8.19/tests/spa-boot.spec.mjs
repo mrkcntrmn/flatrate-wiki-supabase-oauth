@@ -339,3 +339,138 @@ test("owner dashboard chrome is server-authorized and compatibility routes remai
   await expect(page.locator(".FlatRateMemberDisplay")).toBeVisible();
   errors.assertClean();
 });
+
+async function openAuthorPost(page) {
+  await page.goto(`/d/${seed.discussionId}-${seed.discussionSlug}`, { waitUntil: "networkidle" });
+  await expect(page.locator(".DiscussionPage")).toBeVisible();
+  await expect(page.locator(".PostStream")).toBeVisible();
+}
+
+function upvoteButton(page) {
+  return page.locator(".CommentPost-votes .Post-upvote, .Post-votes .Post-voteButton--up").first();
+}
+
+function downvoteButton(page) {
+  return page.locator(
+    ".CommentPost-votes .Post-downvote, .Post-votes .Post-voteButton--down, .DiscussionListItem-voteButton--down",
+  );
+}
+
+async function readUpvoteState(page) {
+  return page.evaluate(() => {
+    const btn =
+      document.querySelector(".CommentPost-votes .Post-upvote") ||
+      document.querySelector(".Post-votes .Post-voteButton--up");
+    if (!btn) {
+      return { present: false };
+    }
+    const style = getComputedStyle(btn);
+    const active =
+      btn.classList.contains("Post-vote--active") || btn.getAttribute("data-active") === "true";
+    const ariaPressed = btn.getAttribute("aria-pressed");
+    return {
+      present: true,
+      active,
+      ariaPressed,
+      color: style.color,
+      display: style.display,
+    };
+  });
+}
+
+test("GROWTH-001UI upvote-only thumb presentation and lime active state", async ({ page }) => {
+  test.skip(!seed.votingEnabled, "FoF voting not seeded in this harness run");
+  const errors = attachErrorCollectors(page);
+  const discussionUrl = `/d/${seed.discussionId}-${seed.discussionSlug}`;
+
+  // Peer voter (not the author) exercises the visible upvote control.
+  await login(page, seed.newToken);
+  await openAuthorPost(page);
+
+  await expect(upvoteButton(page)).toBeVisible();
+  await expect(downvoteButton(page)).toHaveCount(0);
+  let state = await readUpvoteState(page);
+  expect(state.present).toBe(true);
+  expect(state.active).toBe(false);
+
+  const voteResponses = [];
+  page.on("response", (response) => {
+    if (response.request().method() === "POST" || response.request().method() === "PATCH") {
+      if (response.url().includes("/api/posts/")) {
+        voteResponses.push(response.status());
+      }
+    }
+  });
+
+  await upvoteButton(page).click();
+  await expect.poll(async () => {
+    const next = await readUpvoteState(page);
+    return next.active;
+  }).toBe(true);
+  state = await readUpvoteState(page);
+  expect(state.color).toMatch(/rgb\(\s*132,\s*204,\s*22\s*\)|#84cc16/i);
+  // FoF exposes selected state via class/data-active (no native aria-pressed).
+  expect(state.active).toBe(true);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(upvoteButton(page)).toBeVisible();
+  state = await readUpvoteState(page);
+  expect(state.active).toBe(true);
+  expect(state.color).toMatch(/rgb\(\s*132,\s*204,\s*22\s*\)|#84cc16/i);
+
+  await upvoteButton(page).click();
+  await expect.poll(async () => {
+    const next = await readUpvoteState(page);
+    return next.active;
+  }).toBe(false);
+  state = await readUpvoteState(page);
+  expect(state.active).toBe(false);
+
+  await page.reload({ waitUntil: "networkidle" });
+  state = await readUpvoteState(page);
+  expect(state.active).toBe(false);
+  await expect(downvoteButton(page)).toHaveCount(0);
+
+  // Self-vote on own post must not stick.
+  await login(page, seed.grandfatheredToken);
+  await page.goto(discussionUrl, { waitUntil: "networkidle" });
+  await upvoteButton(page).click();
+  await expect
+    .poll(async () => {
+      const next = await readUpvoteState(page);
+      return next.active;
+    }, { timeout: 3000 })
+    .toBe(false);
+
+  // Guest cannot mutate; voter includes stay private.
+  await page.context().clearCookies();
+  await page.goto(discussionUrl, { waitUntil: "networkidle" });
+  await expect(downvoteButton(page)).toHaveCount(0);
+  const guestInclude = await page.request.get(
+    `/api/posts/${seed.authorPostId}?include=upvotes,downvotes`,
+  );
+  expect(guestInclude.ok()).toBeTruthy();
+  const guestBody = await guestInclude.json();
+  expect(guestBody.data.relationships?.upvotes?.data || []).toEqual([]);
+  expect(guestBody.data.relationships?.downvotes?.data || []).toEqual([]);
+  const includedUsers = (guestBody.included || []).filter((row) => row.type === "users");
+  // Ordinary guest must not receive voter identity via upvotes/downvotes includes.
+  for (const user of includedUsers) {
+    expect(user.id).not.toBe(String(seed.newUserId));
+  }
+
+  for (const viewport of [
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+    { width: 360, height: 800 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await login(page, seed.newToken);
+    await page.goto(discussionUrl, { waitUntil: "networkidle" });
+    await expect(upvoteButton(page)).toBeVisible();
+    await expect(downvoteButton(page)).toHaveCount(0);
+    await expect(page.locator(".PostStream")).toBeVisible();
+  }
+
+  errors.assertClean();
+});
