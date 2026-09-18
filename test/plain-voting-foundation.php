@@ -193,6 +193,18 @@ $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
     && str_contains($forumLess, '.CommentPost-votes'))
     ? pass('UPVOTE_COUNT_RIGHT_OF_THUMB')
     : fail('count-right-of-thumb layout missing');
+(str_contains($forumLess, 'li:has(> .Post-controls)')
+    && str_contains($forumLess, 'top: 0.35rem')
+    && str_contains($forumLess, 'right: 0')
+    && str_contains($forumLess, 'grid-template-columns: 1fr auto 1fr')
+    && str_contains($forumLess, '.item-reply')
+    && str_contains($forumLess, 'grid-column: 2')
+    && str_contains($forumLess, '.item-votes')
+    && str_contains($forumLess, 'justify-self: end')
+    && str_contains($forumLess, '@flatrate-reply-plus: #c72d5d')
+    && str_contains($forumLess, "content: '\\f067'"))
+    ? pass('POST_ACTION_BAR_PLUS_CONTROLS_LAYOUT')
+    : fail('post action bar layout missing (controls top-right, pink plus, thumb right)');
 (! str_contains($pv, 'thumbs-down')
     && ! str_contains($pv, "iconName'] = 'arrow'")
     && ! str_contains($pv, "upVotesOnly'] = '0'"))

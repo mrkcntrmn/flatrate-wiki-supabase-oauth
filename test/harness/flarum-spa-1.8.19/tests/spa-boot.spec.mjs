@@ -431,6 +431,45 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(chrome.countRight).toBe(true);
   expect(chrome.thumbColor).toMatch(WHITE);
 
+  const actionLayout = await page.evaluate(() => {
+    const post = document.querySelector("article.Post.CommentPost");
+    const actions = post?.querySelector(".Post-actions");
+    const reply = actions?.querySelector(".item-reply");
+    const votes = actions?.querySelector(".item-votes");
+    const controlsLi = [...(actions?.querySelectorAll(":scope > ul > li") || [])].find((li) =>
+      li.querySelector(":scope > .Post-controls"),
+    );
+    if (!post || !actions || !reply || !votes || !controlsLi) {
+      return { present: false };
+    }
+    const postBox = post.getBoundingClientRect();
+    const replyBox = reply.getBoundingClientRect();
+    const votesBox = votes.getBoundingClientRect();
+    const controlsBox = controlsLi.getBoundingClientRect();
+    const actionsBox = actions.getBoundingClientRect();
+    const replyCenter = replyBox.left + replyBox.width / 2;
+    const postCenter = postBox.left + postBox.width / 2;
+    const replyColor = getComputedStyle(reply.querySelector(".Button") || reply).color;
+    return {
+      present: true,
+      controlsNearTop: controlsBox.top <= postBox.top + 48,
+      controlsNearRight: Math.abs(controlsBox.right - postBox.right) < 24,
+      controlsAboveActions: controlsBox.bottom < actionsBox.top + 8,
+      replyCentered: Math.abs(replyCenter - postCenter) < postBox.width * 0.12,
+      votesRightOfReply: votesBox.left > replyBox.right - 4,
+      votesNearRight: Math.abs(votesBox.right - actionsBox.right) < 24,
+      replyPink: /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i.test(replyColor),
+    };
+  });
+  expect(actionLayout.present).toBe(true);
+  expect(actionLayout.controlsNearTop).toBe(true);
+  expect(actionLayout.controlsNearRight).toBe(true);
+  expect(actionLayout.controlsAboveActions).toBe(true);
+  expect(actionLayout.replyCentered).toBe(true);
+  expect(actionLayout.votesRightOfReply).toBe(true);
+  expect(actionLayout.votesNearRight).toBe(true);
+  expect(actionLayout.replyPink).toBe(true);
+
   // Synthetic has-votes (not mine) proves lime without a second harness voter.
   const limeProbe = await page.evaluate(() => {
     const votes =
