@@ -43,11 +43,9 @@ final class DiscussionVoteSummary
         if ($actor && ! $actor->isGuest()) {
             $viewerVotePostId = $this->viewerPositiveVotePostId($discussionId, (int) $actor->id);
             $viewerUpvoted = $viewerVotePostId !== null;
-            // Clickability is "no ballot yet"; first-post mutation policy still
+            // Clickability is "no ballot yet". First-post mutation policy still
             // runs on the vote API (self-vote / gate / FoF permissions).
-            $canUpvote = ! $viewerUpvoted
-                && (int) $discussion->first_post_id > 0
-                && (int) $actor->id !== (int) $discussion->user_id;
+            $canUpvote = ! $viewerUpvoted;
         }
 
         return [

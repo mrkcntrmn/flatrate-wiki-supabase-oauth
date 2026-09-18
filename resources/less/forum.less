@@ -343,11 +343,20 @@
       flex-direction: row !important;
       flex-wrap: nowrap !important;
       align-items: center !important;
-      justify-content: flex-end;
       width: 100%;
-      position: relative;
+      // Static so ⋯ absolute-positions against .CommentPost (not this row).
+      position: static !important;
       min-height: 2rem;
       gap: 0;
+
+      // Equal side spacers keep Reply geometrically centered while votes sit right.
+      &::before {
+        content: '';
+        flex: 1 1 0;
+        order: 1;
+        min-width: 0;
+        pointer-events: none;
+      }
 
       > li {
         display: flex !important;
@@ -358,17 +367,17 @@
         vertical-align: middle;
       }
 
-      // Center Reply on the action row without taking flex space from votes.
       > .item-reply {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1;
+        order: 2;
+        flex: 0 0 auto;
+        justify-content: center;
       }
 
       > .item-votes {
-        margin-left: auto !important;
+        order: 3;
+        flex: 1 1 0;
         justify-content: flex-end;
+        min-width: 0;
       }
 
       // Core appends controls after actionItems without an item-* class.
@@ -376,6 +385,7 @@
         position: absolute;
         right: 0;
         z-index: 3;
+        order: 4;
         // Phone: center of 32px avatar/username row ≈ 18px top.
         top: 18px;
 
