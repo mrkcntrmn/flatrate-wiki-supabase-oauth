@@ -1,14 +1,36 @@
 #!/usr/bin/env bash
 # FORUM-MEMBER-DASHBOARD-001H.0B — create/update narrow Request Header Transform Rule.
-# Requires: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ZONE_ID (flatrate.wiki zone).
+# Requires: CLOUDFLARE_API_TOKEN
+# Optional: CLOUDFLARE_ZONE_ID (otherwise resolves zone named flatrate.wiki)
 # Does NOT enable Managed Transform "Add visitor location headers".
 set -euo pipefail
 
-: "${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN}"
-: "${CLOUDFLARE_ZONE_ID:?set CLOUDFLARE_ZONE_ID}"
+: "${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN to a real Cloudflare API token (not a placeholder)}"
+
+if [[ "${CLOUDFLARE_API_TOKEN}" == *"…"* ]] || [[ "${CLOUDFLARE_API_TOKEN}" == *"..."* ]]; then
+  echo "CLOUDFLARE_API_TOKEN looks like a placeholder. Export the real token first." >&2
+  exit 1
+fi
 
 API="https://api.cloudflare.com/client/v4"
 AUTH=( -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H "Content-Type: application/json" )
+
+if [[ -z "${CLOUDFLARE_ZONE_ID:-}" ]] || [[ "${CLOUDFLARE_ZONE_ID}" == *"…"* ]] || [[ "${CLOUDFLARE_ZONE_ID}" == *"..."* ]]; then
+  echo "Resolving CLOUDFLARE_ZONE_ID for flatrate.wiki…"
+  ZONES=$(curl -fsS "${AUTH[@]}" "${API}/zones?name=flatrate.wiki")
+  export ZONES
+  CLOUDFLARE_ZONE_ID=$(python3 - <<'PY'
+import json, os
+data = json.loads(os.environ["ZONES"])
+result = data.get("result") or []
+if not result:
+    raise SystemExit("no zone named flatrate.wiki visible to this token")
+print(result[0]["id"])
+PY
+)
+  export CLOUDFLARE_ZONE_ID
+  echo "CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}"
+fi
 
 NEW_RULE_JSON='{
   "ref": "flatrate_forum_presence_coarse_region",
