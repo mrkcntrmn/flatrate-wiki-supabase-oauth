@@ -690,14 +690,22 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   async function readSummary(token) {
     if (token) {
       await login(page, token);
-      // Remember-cookie must hit a document request before API auth binds.
-      await page.goto("/", { waitUntil: "domcontentloaded" });
     } else {
       await page.context().clearCookies();
     }
-    const res = await page.request.get(`/api/discussions/${seed.discussionId}`);
-    expect(res.ok()).toBeTruthy();
-    const body = await res.json();
+    // Use the browser document session (remember-cookie → PHP session) rather
+    // than page.request, which can stay guest-scoped in this harness.
+    await page.goto(discussionUrl, { waitUntil: "networkidle" });
+    const body = await page.evaluate(async (discussionId) => {
+      const res = await fetch(`/api/discussions/${discussionId}`, {
+        credentials: "same-origin",
+        headers: { Accept: "application/vnd.api+json" },
+      });
+      if (!res.ok) {
+        throw new Error(`discussion summary HTTP ${res.status}`);
+      }
+      return res.json();
+    }, seed.discussionId);
     const attrs = body.data.attributes || {};
     return {
       total: attrs.flatRateDiscussionUpvotes,
