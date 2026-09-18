@@ -690,6 +690,8 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   async function readSummary(token) {
     if (token) {
       await login(page, token);
+      // Remember-cookie must hit a document request before API auth binds.
+      await page.goto("/", { waitUntil: "domcontentloaded" });
     } else {
       await page.context().clearCookies();
     }
