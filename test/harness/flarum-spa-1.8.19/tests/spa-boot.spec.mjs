@@ -431,16 +431,12 @@ test("GROWTH-001UI upvote-only thumb presentation and lime active state", async 
   expect(state.active).toBe(false);
   await expect(downvoteButton(page)).toHaveCount(0);
 
-  // Self-vote on own post must not stick.
+  // Self-vote on own post must remain denied (FoF disables the control).
   await login(page, seed.grandfatheredToken);
   await page.goto(discussionUrl, { waitUntil: "networkidle" });
-  await upvoteButton(page).click();
-  await expect
-    .poll(async () => {
-      const next = await readUpvoteState(page);
-      return next.active;
-    }, { timeout: 3000 })
-    .toBe(false);
+  await expect(upvoteButton(page)).toBeDisabled();
+  const selfState = await readUpvoteState(page);
+  expect(selfState.active).toBe(false);
 
   // Guest cannot mutate; voter includes stay private.
   await page.context().clearCookies();
