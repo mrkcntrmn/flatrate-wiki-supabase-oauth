@@ -286,24 +286,65 @@
   gap: 0.35em;
 }
 
-.CommentPost-votes .Post-upvote.Post-vote--active,
-.CommentPost-votes .Post-upvote.Post-vote--active .Button-icon,
-.Post-votes .Post-voteButton--up[data-active='true'],
-.Post-votes .Post-voteButton--up[data-active='true'] .Button-icon,
-.DiscussionListItem-voteButton--up[data-active='true'],
-.DiscussionListItem-voteButton--up[data-active='true'] .Button-icon {
-  color: #84cc16 !important;
+// Vote chrome states (classes set by plain-voting.js from FoF model state):
+//   zero upvotes  -> white thumb/count
+//   has upvotes   -> lime thumb/count
+//   viewer voted -> pink thumb/count
+@flatrate-vote-zero: #ffffff;
+@flatrate-vote-has: #84cc16;
+@flatrate-vote-mine: #c72d5d;
+
+.FlatRateVotes--zero {
+  .Post-upvote,
+  .Post-upvote .Button-icon,
+  .Post-points,
+  .Post-voteButton--up,
+  .Post-voteButton--up .Button-icon,
+  .Post-voteCount,
+  .DiscussionListItem-voteButton--up,
+  .DiscussionListItem-voteButton--up .Button-icon,
+  .DiscussionListItem-voteCount {
+    color: @flatrate-vote-zero !important;
+  }
 }
 
-.CommentPost-votes .Post-upvote.Post-vote--active:hover,
-.CommentPost-votes .Post-upvote.Post-vote--active:focus-visible,
-.CommentPost-votes .Post-upvote.Post-vote--active:hover .Button-icon,
-.CommentPost-votes .Post-upvote.Post-vote--active:focus-visible .Button-icon,
-.Post-votes .Post-voteButton--up[data-active='true']:hover,
-.Post-votes .Post-voteButton--up[data-active='true']:focus-visible,
-.Post-votes .Post-voteButton--up[data-active='true']:hover .Button-icon,
-.Post-votes .Post-voteButton--up[data-active='true']:focus-visible .Button-icon {
-  color: #84cc16 !important;
+.FlatRateVotes--hasVotes:not(.FlatRateVotes--mine) {
+  .Post-upvote,
+  .Post-upvote .Button-icon,
+  .Post-points,
+  .Post-voteButton--up,
+  .Post-voteButton--up .Button-icon,
+  .Post-voteCount,
+  .DiscussionListItem-voteButton--up,
+  .DiscussionListItem-voteButton--up .Button-icon,
+  .DiscussionListItem-voteCount {
+    color: @flatrate-vote-has !important;
+  }
+}
+
+.FlatRateVotes--mine {
+  .Post-upvote,
+  .Post-upvote .Button-icon,
+  .Post-points,
+  .Post-voteButton--up,
+  .Post-voteButton--up .Button-icon,
+  .Post-voteCount,
+  .DiscussionListItem-voteButton--up,
+  .DiscussionListItem-voteButton--up .Button-icon,
+  .DiscussionListItem-voteCount {
+    color: @flatrate-vote-mine !important;
+  }
+
+  .Post-upvote:hover,
+  .Post-upvote:focus-visible,
+  .Post-upvote:hover .Button-icon,
+  .Post-upvote:focus-visible .Button-icon,
+  .Post-voteButton--up:hover,
+  .Post-voteButton--up:focus-visible,
+  .Post-voteButton--up:hover .Button-icon,
+  .Post-voteButton--up:focus-visible .Button-icon {
+    color: @flatrate-vote-mine !important;
+  }
 }
 
 .FlatRateMemberDisplay {

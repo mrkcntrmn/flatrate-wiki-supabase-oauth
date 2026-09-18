@@ -378,10 +378,44 @@ async function readUpvoteState(page) {
   });
 }
 
-test("GROWTH-001UI upvote-only thumb presentation and lime active state", async ({ page }) => {
+test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   test.skip(!seed.votingEnabled, "FoF voting not seeded in this harness run");
   const errors = attachErrorCollectors(page);
   const discussionUrl = `/d/${seed.discussionId}-${seed.discussionSlug}`;
+  const WHITE = /rgb\(\s*255,\s*255,\s*255\s*\)|#ffffff/i;
+  const LIME = /rgb\(\s*132,\s*204,\s*22\s*\)|#84cc16/i;
+  const PINK = /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i;
+
+  async function readVoteChrome(page) {
+    return page.evaluate(() => {
+      const votes =
+        document.querySelector(".CommentPost-votes") ||
+        document.querySelector(".Post-votes");
+      const btn =
+        votes?.querySelector(".Post-upvote") ||
+        votes?.querySelector(".Post-voteButton--up");
+      const count =
+        votes?.querySelector(".Post-points") ||
+        votes?.querySelector(".Post-voteCount");
+      if (!votes || !btn) {
+        return { present: false };
+      }
+      return {
+        present: true,
+        zero: votes.classList.contains("FlatRateVotes--zero"),
+        hasVotes: votes.classList.contains("FlatRateVotes--hasVotes"),
+        mine: votes.classList.contains("FlatRateVotes--mine"),
+        active:
+          btn.classList.contains("Post-vote--active") ||
+          btn.getAttribute("data-active") === "true",
+        thumbColor: getComputedStyle(btn).color,
+        countColor: count ? getComputedStyle(count).color : null,
+        countLeft:
+          count &&
+          count.getBoundingClientRect().left < btn.getBoundingClientRect().left,
+      };
+    });
+  }
 
   // Peer voter (not the author) exercises the visible upvote control.
   await login(page, seed.newToken);
@@ -389,25 +423,35 @@ test("GROWTH-001UI upvote-only thumb presentation and lime active state", async 
 
   await expect(upvoteButton(page)).toBeVisible();
   await expect(downvoteButton(page)).toHaveCount(0);
-  let state = await readUpvoteState(page);
-  expect(state.present).toBe(true);
-  expect(state.active).toBe(false);
+  let chrome = await readVoteChrome(page);
+  expect(chrome.present).toBe(true);
+  expect(chrome.active).toBe(false);
+  expect(chrome.zero).toBe(true);
+  expect(chrome.mine).toBe(false);
+  expect(chrome.countLeft).toBe(true);
+  expect(chrome.thumbColor).toMatch(WHITE);
 
-  const countLeftOfThumb = await page.evaluate(() => {
+  // Synthetic has-votes (not mine) proves lime without a second harness voter.
+  const limeProbe = await page.evaluate(() => {
     const votes =
       document.querySelector(".CommentPost-votes") ||
       document.querySelector(".Post-votes");
-    if (!votes) return false;
+    if (!votes) return null;
+    votes.classList.remove("FlatRateVotes--zero", "FlatRateVotes--mine");
+    votes.classList.add("FlatRateVotes--hasVotes");
+    const btn =
+      votes.querySelector(".Post-upvote") ||
+      votes.querySelector(".Post-voteButton--up");
     const count =
       votes.querySelector(".Post-points") ||
       votes.querySelector(".Post-voteCount");
-    const thumb =
-      votes.querySelector(".Post-upvote") ||
-      votes.querySelector(".Post-voteButton--up");
-    if (!count || !thumb) return false;
-    return count.getBoundingClientRect().left < thumb.getBoundingClientRect().left;
+    return {
+      thumbColor: btn ? getComputedStyle(btn).color : null,
+      countColor: count ? getComputedStyle(count).color : null,
+    };
   });
-  expect(countLeftOfThumb).toBe(true);
+  expect(limeProbe.thumbColor).toMatch(LIME);
+  expect(limeProbe.countColor).toMatch(LIME);
 
   const voteResponses = [];
   page.on("response", (response) => {
@@ -420,31 +464,37 @@ test("GROWTH-001UI upvote-only thumb presentation and lime active state", async 
 
   await upvoteButton(page).click();
   await expect.poll(async () => {
-    const next = await readUpvoteState(page);
-    return next.active;
+    const next = await readVoteChrome(page);
+    return next.mine && next.active;
   }).toBe(true);
-  state = await readUpvoteState(page);
-  expect(state.color).toMatch(/rgb\(\s*132,\s*204,\s*22\s*\)|#84cc16/i);
+  chrome = await readVoteChrome(page);
+  expect(chrome.thumbColor).toMatch(PINK);
+  expect(chrome.countColor).toMatch(PINK);
   // FoF exposes selected state via class/data-active (no native aria-pressed).
-  expect(state.active).toBe(true);
+  expect(chrome.active).toBe(true);
 
   await page.reload({ waitUntil: "networkidle" });
   await expect(upvoteButton(page)).toBeVisible();
-  state = await readUpvoteState(page);
-  expect(state.active).toBe(true);
-  expect(state.color).toMatch(/rgb\(\s*132,\s*204,\s*22\s*\)|#84cc16/i);
+  chrome = await readVoteChrome(page);
+  expect(chrome.active).toBe(true);
+  expect(chrome.mine).toBe(true);
+  expect(chrome.thumbColor).toMatch(PINK);
+  expect(chrome.countColor).toMatch(PINK);
 
   await upvoteButton(page).click();
   await expect.poll(async () => {
-    const next = await readUpvoteState(page);
-    return next.active;
-  }).toBe(false);
-  state = await readUpvoteState(page);
-  expect(state.active).toBe(false);
+    const next = await readVoteChrome(page);
+    return next.active === false && next.mine === false;
+  }).toBe(true);
+  chrome = await readVoteChrome(page);
+  expect(chrome.active).toBe(false);
+  expect(chrome.zero).toBe(true);
+  expect(chrome.thumbColor).toMatch(WHITE);
 
   await page.reload({ waitUntil: "networkidle" });
-  state = await readUpvoteState(page);
-  expect(state.active).toBe(false);
+  chrome = await readVoteChrome(page);
+  expect(chrome.active).toBe(false);
+  expect(chrome.zero).toBe(true);
   await expect(downvoteButton(page)).toHaveCount(0);
 
   // Self-vote on own post must remain denied (FoF disables the control).

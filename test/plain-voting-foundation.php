@@ -174,11 +174,20 @@ $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
     && str_contains($forumLess, 'display: none !important'))
     ? pass('DOWNVOTE_CONTROL_HIDDEN')
     : fail('downvote-control fallback missing');
-(str_contains($forumLess, ".Post-voteButton--up[data-active='true']")
-    && str_contains($forumLess, 'color: #84cc16 !important')
-    && str_contains($forumLess, '.Button-icon'))
-    ? pass('ACTIVE_UPVOTE_LIME_GREEN')
-    : fail('active upvote lime style missing');
+(str_contains($pv, 'FlatRateVotes--zero')
+    && str_contains($pv, 'FlatRateVotes--hasVotes')
+    && str_contains($pv, 'FlatRateVotes--mine')
+    && str_contains($pv, 'decorateVoteChrome'))
+    ? pass('VOTE_CHROME_STATE_CLASSES')
+    : fail('vote chrome state class decoration missing');
+(str_contains($forumLess, '.FlatRateVotes--zero')
+    && str_contains($forumLess, '@flatrate-vote-zero: #ffffff')
+    && str_contains($forumLess, '.FlatRateVotes--hasVotes:not(.FlatRateVotes--mine)')
+    && str_contains($forumLess, '@flatrate-vote-has: #84cc16')
+    && str_contains($forumLess, '.FlatRateVotes--mine')
+    && str_contains($forumLess, '@flatrate-vote-mine: #c72d5d'))
+    ? pass('VOTE_CHROME_THREE_STATE_COLORS')
+    : fail('three-state vote colors missing (white / lime / pink)');
 (str_contains($forumLess, 'flex-direction: row-reverse')
     && str_contains($forumLess, '.CommentPost-votes'))
     ? pass('UPVOTE_COUNT_LEFT_OF_THUMB')

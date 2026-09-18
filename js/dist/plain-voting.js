@@ -144,6 +144,66 @@
         });
       }
     } catch (e) {}
+
+    function decorateVoteChrome(root, model) {
+      if (!root || !root.querySelector) {
+        return;
+      }
+      var votesEl =
+        root.querySelector('.CommentPost-votes') ||
+        root.querySelector('.Post-votes') ||
+        root.querySelector('.DiscussionListItem-votes');
+      if (!votesEl) {
+        return;
+      }
+      var count = 0;
+      var mine = false;
+      try {
+        if (model && typeof model.votes === 'function') {
+          count = Number(model.votes()) || 0;
+        }
+        if (model && typeof model.hasUpvoted === 'function') {
+          mine = !!model.hasUpvoted();
+        }
+      } catch (err) {}
+      votesEl.classList.toggle('FlatRateVotes--zero', count <= 0);
+      votesEl.classList.toggle('FlatRateVotes--hasVotes', count > 0);
+      votesEl.classList.toggle('FlatRateVotes--mine', mine);
+    }
+
+    function bindVoteChrome(Component, modelFrom) {
+      if (!Component || !Component.prototype) {
+        return;
+      }
+      ['oncreate', 'onupdate'].forEach(function (hook) {
+        extend(Component.prototype, hook, function () {
+          if (!votingEnabled()) {
+            return;
+          }
+          var model = null;
+          try {
+            model = modelFrom(this);
+          } catch (err) {
+            model = null;
+          }
+          decorateVoteChrome(this.element, model);
+        });
+      });
+    }
+
+    try {
+      var CommentPostVotes = unwrap(coreExport('forum/components/CommentPost'));
+      bindVoteChrome(CommentPostVotes, function (cmp) {
+        return cmp.attrs && cmp.attrs.post;
+      });
+    } catch (e) {}
+
+    try {
+      var DiscussionListItem = unwrap(coreExport('forum/components/DiscussionListItem'));
+      bindVoteChrome(DiscussionListItem, function (cmp) {
+        return cmp.attrs && cmp.attrs.discussion;
+      });
+    } catch (e) {}
   });
 
   if (typeof module !== 'undefined') {

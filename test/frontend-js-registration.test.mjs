@@ -298,6 +298,15 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   );
   assert.doesNotMatch(plainVoting, /thumbs-down/);
   assert.doesNotMatch(plainVoting, /upVotesOnly'\] = '0'/);
+  assert.match(plainVoting, /FlatRateVotes--zero/);
+  assert.match(plainVoting, /FlatRateVotes--hasVotes/);
+  assert.match(plainVoting, /FlatRateVotes--mine/);
+
+  const forumLess = text("resources/less/forum.less");
+  assert.match(forumLess, /@flatrate-vote-zero:\s*#ffffff/);
+  assert.match(forumLess, /@flatrate-vote-has:\s*#84cc16/);
+  assert.match(forumLess, /@flatrate-vote-mine:\s*#c72d5d/);
+  assert.match(forumLess, /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)/);
 
   for (const rel of EXPECTED_JS) {
     assert.ok(existsSync(join(ROOT, rel)), `missing ${rel}`);
