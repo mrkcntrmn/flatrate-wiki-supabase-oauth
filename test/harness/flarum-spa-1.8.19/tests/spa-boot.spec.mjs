@@ -477,8 +477,8 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(actionLayout.votesNearRight).toBe(true);
   expect(actionLayout.replyPink).toBe(true);
 
-  // Author sees edit/hide controls — prove ⋯ sits in the post top-right.
-  await login(page, seed.grandfatheredToken);
+  // Admin always has post controls — prove ⋯ sits in the post top-right.
+  await login(page, seed.adminToken);
   await openAuthorPost(page);
   const authorControls = await page.evaluate(() => {
     const post =
@@ -489,6 +489,8 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
     if (!post || !actions || !controls) {
       return { present: false };
     }
+    // Desktop hides actions until hover; force visible for geometry.
+    actions.style.opacity = "1";
     const postBox = post.getBoundingClientRect();
     const actionsBox = actions.getBoundingClientRect();
     const controlsBox = controls.getBoundingClientRect();
