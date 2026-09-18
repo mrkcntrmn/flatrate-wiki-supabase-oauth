@@ -270,28 +270,72 @@
       ) {
         var discussionHeaderLoading = Object.create(null);
 
-        function upvoteDiscussionFirstPost(discussion) {
-          var discId = discussion.id();
-          var firstPost =
-            typeof discussion.firstPost === 'function'
-              ? discussion.firstPost()
-              : null;
-          if (!firstPost || typeof firstPost.save !== 'function') {
-            var firstId =
+        function resolveFirstPost(discussion) {
+          var discId = String(discussion.id());
+          try {
+            if (typeof discussion.firstPost === 'function') {
+              var related = discussion.firstPost();
+              if (related && typeof related.save === 'function') {
+                return related;
+              }
+            }
+          } catch (e) {}
+
+          var firstId = null;
+          try {
+            firstId =
               discussion.attribute('firstPostId') ||
-              (discussion.data &&
+              discussion.attribute('first_post_id');
+          } catch (e) {}
+          if (!firstId) {
+            try {
+              var rel =
+                discussion.data &&
                 discussion.data.relationships &&
                 discussion.data.relationships.firstPost &&
-                discussion.data.relationships.firstPost.data &&
-                discussion.data.relationships.firstPost.data.id);
-            if (firstId) {
-              firstPost = app.store.getById('posts', firstId);
+                discussion.data.relationships.firstPost.data;
+              if (rel && !Array.isArray(rel) && rel.id) {
+                firstId = rel.id;
+              }
+            } catch (e) {}
+          }
+          if (firstId) {
+            var byId = app.store.getById('posts', String(firstId));
+            if (byId && typeof byId.save === 'function') {
+              return byId;
             }
           }
-          if (!firstPost || typeof firstPost.save !== 'function') {
+
+          try {
+            var posts = app.store.all('posts') || [];
+            for (var i = 0; i < posts.length; i++) {
+              var post = posts[i];
+              if (!post || typeof post.number !== 'function') {
+                continue;
+              }
+              var parent =
+                typeof post.discussion === 'function' ? post.discussion() : null;
+              if (
+                parent &&
+                String(parent.id()) === discId &&
+                Number(post.number()) === 1 &&
+                typeof post.save === 'function'
+              ) {
+                return post;
+              }
+            }
+          } catch (e) {}
+          return null;
+        }
+
+        function upvoteDiscussionFirstPost(discussion) {
+          var discId = discussion.id();
+          var firstPost = resolveFirstPost(discussion);
+          if (!firstPost) {
             return;
           }
           discussionHeaderLoading[discId] = true;
+          m.redraw();
           var prevCount = Number(discussion.attribute('flatRateDiscussionUpvotes')) || 0;
           discussion.pushAttributes({
             flatRateDiscussionUpvotes: prevCount + 1,
@@ -351,7 +395,12 @@
                     : 'Discussion upvotes',
                 onclick: function (e) {
                   e.preventDefault();
-                  if (loading || mine || !canUpvote) {
+                  e.stopPropagation();
+                  if (
+                    discussionHeaderLoading[discId] ||
+                    !!discussion.attribute('flatRateDiscussionViewerUpvoted') ||
+                    !discussion.attribute('flatRateDiscussionCanUpvote')
+                  ) {
                     return;
                   }
                   upvoteDiscussionFirstPost(discussion);

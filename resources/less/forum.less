@@ -277,8 +277,6 @@
 }
 
 // FoF DOM is [upvote][count]; keep thumb left, count right on one row.
-// Top-level selectors (not only nested) — CI proved nested-only missed
-// FoF's default CommentPost-votes flow and produced ACTION_ROW ΔY≈26.
 .CommentPost-votes,
 .Post-votes.alternateLayout,
 .DiscussionListItem-votes.alternateLayout {
@@ -289,11 +287,12 @@
   bottom: auto !important;
   display: inline-flex !important;
   flex-direction: row !important;
-  align-items: center;
+  align-items: center !important;
   justify-content: flex-start;
   gap: 0.35em;
   width: auto !important;
   height: auto !important;
+  max-height: none !important;
   line-height: 1;
   white-space: nowrap;
 
@@ -310,7 +309,7 @@
   .DiscussionListItem-voteCount {
     position: static !important;
     margin: 0 !important;
-    padding: 0;
+    padding: 0 !important;
     width: auto !important;
     height: auto !important;
     line-height: 1;
@@ -322,13 +321,9 @@
 }
 
 // Post action bar (CommentPost):
-//   ⋯ controls -> right side of username/time header row (same vertical center)
-//   Reply + thumbs/count share ONE action row
-//   Reply -> centered on that row
-//   thumbs/count -> right-justified, one inline horizontal unit (👍 1)
+//   ⋯ controls -> right side of username/time header row
+//   Reply centered; thumbs right; ONE horizontal action row
 .CommentPost {
-  // Core already sets position:relative; keep explicit so absolute controls
-  // resolve against the post even if theme CSS changes.
   position: relative;
 
   .Post-header {
@@ -338,50 +333,53 @@
   .Post-actions {
     float: none !important;
     position: static !important;
-    width: 100%;
+    width: 100% !important;
     clear: both;
     margin-top: 0.5rem;
+    text-align: left !important;
 
     > ul {
-      display: grid !important;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      justify-content: flex-end;
       width: 100%;
-      position: static;
+      position: relative;
       min-height: 2rem;
+      gap: 0;
 
       > li {
-        display: block;
+        display: flex !important;
+        align-items: center !important;
+        float: none !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
         vertical-align: middle;
       }
 
+      // Center Reply on the action row without taking flex space from votes.
       > .item-reply {
-        grid-column: 2;
-        justify-self: center;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1;
       }
 
       > .item-votes {
-        grid-column: 3;
-        justify-self: end;
+        margin-left: auto !important;
+        justify-content: flex-end;
       }
 
       // Core appends controls after actionItems without an item-* class.
-      // Absolute against .CommentPost (Post-actions is position:static).
-      // Flarum 1.8.19: 20px post padding; phone avatar is 32px in-flow;
-      // tablet+ avatar is out-of-flow so the username line is text-sized.
       > li:has(> .Post-controls) {
         position: absolute;
         right: 0;
         z-index: 3;
-        grid-column: unset;
-        // Phone: center of 32px avatar/username row at ~36px from post top;
-        // ~36px icon button => top ≈ 18px.
+        // Phone: center of 32px avatar/username row ≈ 18px top.
         top: 18px;
 
         @media @tablet-up {
-          // Username ~14px / ~20px line; center at ~30px; button center match.
           top: 12px;
         }
       }
@@ -391,7 +389,7 @@
     .CommentPost-votes {
       display: inline-flex !important;
       flex-direction: row !important;
-      align-items: center;
+      align-items: center !important;
     }
   }
 }
