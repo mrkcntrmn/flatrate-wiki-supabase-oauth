@@ -288,10 +288,8 @@
 
 // Post action bar:
 //   ⋯ controls -> top-right corner of the post
-//   Reply      -> centered pink plus
+//   Reply      -> centered
 //   thumbs     -> right-justified on the action row
-@flatrate-reply-plus: #c72d5d;
-
 .CommentPost {
   // Core already sets position:relative; keep explicit so absolute controls
   // resolve against the post even if theme CSS changes.
@@ -340,31 +338,6 @@
         right: 0;
         z-index: 3;
         grid-column: unset;
-      }
-    }
-
-    .item-reply .Button {
-      color: @flatrate-reply-plus !important;
-      font-size: 0 !important;
-      line-height: 1;
-      padding: 0.4em 0.55em;
-      min-width: 2rem;
-      text-decoration: none !important;
-      box-shadow: none;
-
-      &::before {
-        content: '\f067';
-        font-family: 'Font Awesome 5 Free', 'Font Awesome 6 Free', FontAwesome;
-        font-weight: 900;
-        font-size: 1.25rem;
-        line-height: 1;
-        speak: never;
-      }
-
-      &:hover,
-      &:focus-visible {
-        color: @flatrate-reply-plus !important;
-        opacity: 0.85;
       }
     }
   }

@@ -454,14 +454,14 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
     const replyCenter = replyBox.left + replyBox.width / 2;
     const postCenter = postBox.left + postBox.width / 2;
     const replyBtn = reply.querySelector(".Button") || reply;
-    const replyColor = getComputedStyle(replyBtn).color;
+    const replyText = (replyBtn.textContent || "").trim();
     const out = {
       present: true,
       hasControls: !!controls,
       replyCentered: Math.abs(replyCenter - postCenter) < postBox.width * 0.12,
       votesRightOfReply: votesBox.left > replyBox.right - 4,
       votesNearRight: Math.abs(votesBox.right - actionsBox.right) < 24,
-      replyPink: /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i.test(replyColor),
+      replyLabel: /reply/i.test(replyText),
     };
     if (controls) {
       const controlsBox = controls.getBoundingClientRect();
@@ -475,7 +475,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(actionLayout.replyCentered).toBe(true);
   expect(actionLayout.votesRightOfReply).toBe(true);
   expect(actionLayout.votesNearRight).toBe(true);
-  expect(actionLayout.replyPink).toBe(true);
+  expect(actionLayout.replyLabel).toBe(true);
 
   // Admin always has post controls — prove ⋯ sits in the post top-right.
   await login(page, seed.adminToken);

@@ -201,10 +201,10 @@ $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
     && str_contains($forumLess, 'grid-column: 2')
     && str_contains($forumLess, '.item-votes')
     && str_contains($forumLess, 'justify-self: end')
-    && str_contains($forumLess, '@flatrate-reply-plus: #c72d5d')
-    && str_contains($forumLess, "content: '\\f067'"))
+    && ! str_contains($forumLess, '@flatrate-reply-plus')
+    && ! str_contains($forumLess, "content: '\\f067'"))
     ? pass('POST_ACTION_BAR_PLUS_CONTROLS_LAYOUT')
-    : fail('post action bar layout missing (controls top-right, pink plus, thumb right)');
+    : fail('post action bar layout missing (controls top-right, Reply centered, thumb right)');
 (! str_contains($pv, 'thumbs-down')
     && ! str_contains($pv, "iconName'] = 'arrow'")
     && ! str_contains($pv, "upVotesOnly'] = '0'"))
