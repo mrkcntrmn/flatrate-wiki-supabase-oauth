@@ -276,13 +276,49 @@
   display: none !important;
 }
 
-// Discussion-list FoF alternate chrome may still use a vertical box; keep
-// those rows horizontal when present. CommentPost action votes are below.
+// FoF DOM is [upvote][count]; keep thumb left, count right on one row.
+// Top-level selectors (not only nested) — CI proved nested-only missed
+// FoF's default CommentPost-votes flow and produced ACTION_ROW ΔY≈26.
+.CommentPost-votes,
+.Post-votes.alternateLayout,
 .DiscussionListItem-votes.alternateLayout {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
   display: inline-flex !important;
-  flex-direction: row;
+  flex-direction: row !important;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.35em;
+  width: auto !important;
+  height: auto !important;
+  line-height: 1;
+  white-space: nowrap;
+
+  .Post-upvote,
+  .Post-vote,
+  .Post-voteButton--up,
+  .Post-voteButton--down {
+    margin: 0 !important;
+    vertical-align: middle;
+  }
+
+  .Post-points,
+  .Post-voteCount,
+  .DiscussionListItem-voteCount {
+    position: static !important;
+    margin: 0 !important;
+    padding: 0;
+    width: auto !important;
+    height: auto !important;
+    line-height: 1;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+  }
 }
 
 // Post action bar (CommentPost):
@@ -315,8 +351,7 @@
       min-height: 2rem;
 
       > li {
-        display: flex;
-        align-items: center;
+        display: block;
         margin-left: 0 !important;
         margin-right: 0 !important;
         vertical-align: middle;
@@ -352,43 +387,11 @@
       }
     }
 
-    // FoF DOM is [upvote][count]; keep one horizontal unit in the action row.
-    // Neutralize alternate-layout absolute box rules if they leak onto actions.
+    // Nested reaffirmation for structural gates + Post-actions specificity.
     .CommentPost-votes {
-      position: static !important;
-      left: auto !important;
-      right: auto !important;
-      top: auto !important;
-      bottom: auto !important;
       display: inline-flex !important;
-      flex-direction: row;
+      flex-direction: row !important;
       align-items: center;
-      justify-content: flex-start;
-      gap: 0.35em;
-      width: auto !important;
-      height: auto !important;
-      line-height: 1;
-      white-space: nowrap;
-
-      .Post-upvote,
-      .Post-vote {
-        margin: 0;
-        vertical-align: middle;
-      }
-
-      .Post-points,
-      .Post-voteCount {
-        position: static !important;
-        margin: 0;
-        padding: 0;
-        width: auto !important;
-        height: auto !important;
-        line-height: 1;
-        bottom: auto !important;
-        left: auto !important;
-        right: auto !important;
-        top: auto !important;
-      }
     }
   }
 }

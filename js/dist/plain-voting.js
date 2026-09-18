@@ -259,107 +259,111 @@
     } catch (e) {}
 
     // Discussion-level aggregate opposite Following (SubscriptionMenu).
+    // Flarum 1.8 Component has no .extend() — subclass via prototype chain.
     try {
       var DiscussionPage = unwrap(coreExport('forum/components/DiscussionPage'));
       var Component = unwrap(coreExport('common/Component'));
       if (
         DiscussionPage &&
         DiscussionPage.prototype &&
-        DiscussionPage.prototype.sidebarItems &&
+        typeof DiscussionPage.prototype.sidebarItems === 'function' &&
         Component
       ) {
-        var FlatRateDiscussionVote = Component.extend({
-          oninit: function (vnode) {
-            Component.prototype.oninit.call(this, vnode);
-            this.loading = false;
-          },
-          view: function () {
-            var discussion = this.attrs.discussion;
-            if (!discussion) {
-              return null;
-            }
-            var count = Number(discussion.attribute('flatRateDiscussionUpvotes')) || 0;
-            var mine = !!discussion.attribute('flatRateDiscussionViewerUpvoted');
-            var canUpvote = !!discussion.attribute('flatRateDiscussionCanUpvote');
-            var className =
-              'FlatRateDiscussionVote Button Button--link' +
-              (mine
-                ? ' FlatRateDiscussionVote--mine'
-                : ' FlatRateDiscussionVote--available');
-            var self = this;
-            return m(
-              'button',
-              {
-                className: className,
-                type: 'button',
-                disabled: this.loading || mine || !canUpvote,
-                title: mine
-                  ? 'You already endorsed this discussion'
-                  : canUpvote
-                    ? 'Upvote this discussion'
-                    : 'Discussion upvotes',
-                onclick: function (e) {
-                  e.preventDefault();
-                  if (self.loading || mine || !canUpvote) {
-                    return;
-                  }
-                  self.upvoteFirstPost(discussion);
-                },
+        var FlatRateDiscussionVote = function () {
+          Component.apply(this, arguments);
+        };
+        FlatRateDiscussionVote.prototype = Object.create(Component.prototype);
+        FlatRateDiscussionVote.prototype.constructor = FlatRateDiscussionVote;
+        FlatRateDiscussionVote.prototype.oninit = function (vnode) {
+          Component.prototype.oninit.call(this, vnode);
+          this.loading = false;
+        };
+        FlatRateDiscussionVote.prototype.view = function () {
+          var discussion = this.attrs.discussion;
+          if (!discussion) {
+            return null;
+          }
+          var count = Number(discussion.attribute('flatRateDiscussionUpvotes')) || 0;
+          var mine = !!discussion.attribute('flatRateDiscussionViewerUpvoted');
+          var canUpvote = !!discussion.attribute('flatRateDiscussionCanUpvote');
+          var className =
+            'FlatRateDiscussionVote Button Button--link' +
+            (mine
+              ? ' FlatRateDiscussionVote--mine'
+              : ' FlatRateDiscussionVote--available');
+          var self = this;
+          return m(
+            'button',
+            {
+              className: className,
+              type: 'button',
+              disabled: this.loading || mine || !canUpvote,
+              title: mine
+                ? 'You already endorsed this discussion'
+                : canUpvote
+                  ? 'Upvote this discussion'
+                  : 'Discussion upvotes',
+              onclick: function (e) {
+                e.preventDefault();
+                if (self.loading || mine || !canUpvote) {
+                  return;
+                }
+                self.upvoteFirstPost(discussion);
               },
-              [
-                m('i', { className: 'icon fas fa-thumbs-up', 'aria-hidden': 'true' }),
-                m('span', { className: 'FlatRateDiscussionVote-count' }, String(count)),
-              ]
-            );
-          },
-          upvoteFirstPost: function (discussion) {
-            var self = this;
-            var firstPost =
-              typeof discussion.firstPost === 'function'
-                ? discussion.firstPost()
-                : null;
-            if (!firstPost || typeof firstPost.save !== 'function') {
-              var firstId =
-                discussion.attribute('firstPostId') ||
-                (discussion.data &&
-                  discussion.data.relationships &&
-                  discussion.data.relationships.firstPost &&
-                  discussion.data.relationships.firstPost.data &&
-                  discussion.data.relationships.firstPost.data.id);
-              if (firstId) {
-                firstPost = app.store.getById('posts', firstId);
-              }
+            },
+            [
+              m('i', { className: 'icon fas fa-thumbs-up', 'aria-hidden': 'true' }),
+              m('span', { className: 'FlatRateDiscussionVote-count' }, String(count)),
+            ]
+          );
+        };
+        FlatRateDiscussionVote.prototype.upvoteFirstPost = function (discussion) {
+          var self = this;
+          var firstPost =
+            typeof discussion.firstPost === 'function'
+              ? discussion.firstPost()
+              : null;
+          if (!firstPost || typeof firstPost.save !== 'function') {
+            var firstId =
+              discussion.attribute('firstPostId') ||
+              (discussion.data &&
+                discussion.data.relationships &&
+                discussion.data.relationships.firstPost &&
+                discussion.data.relationships.firstPost.data &&
+                discussion.data.relationships.firstPost.data.id);
+            if (firstId) {
+              firstPost = app.store.getById('posts', firstId);
             }
-            if (!firstPost || typeof firstPost.save !== 'function') {
-              return;
-            }
-            this.loading = true;
-            var prevCount = Number(discussion.attribute('flatRateDiscussionUpvotes')) || 0;
-            discussion.pushAttributes({
-              flatRateDiscussionUpvotes: prevCount + 1,
-              flatRateDiscussionViewerUpvoted: true,
-              flatRateDiscussionCanUpvote: false,
-              flatRateDiscussionViewerVotePostId: Number(firstPost.id()),
-            });
-            firstPost
-              .save([true, false, 'vote'])
-              .then(function () {
-                return refreshDiscussionSummary(discussion);
-              })
-              .catch(function () {
-                discussion.pushAttributes({
-                  flatRateDiscussionUpvotes: prevCount,
-                  flatRateDiscussionViewerUpvoted: false,
-                  flatRateDiscussionCanUpvote: true,
-                  flatRateDiscussionViewerVotePostId: null,
-                });
-              })
-              .then(function () {
-                self.loading = false;
-                m.redraw();
+          }
+          if (!firstPost || typeof firstPost.save !== 'function') {
+            return;
+          }
+          this.loading = true;
+          var prevCount = Number(discussion.attribute('flatRateDiscussionUpvotes')) || 0;
+          discussion.pushAttributes({
+            flatRateDiscussionUpvotes: prevCount + 1,
+            flatRateDiscussionViewerUpvoted: true,
+            flatRateDiscussionCanUpvote: false,
+            flatRateDiscussionViewerVotePostId: Number(firstPost.id()),
+          });
+          firstPost
+            .save([true, false, 'vote'])
+            .then(function () {
+              return refreshDiscussionSummary(discussion);
+            })
+            .catch(function () {
+              discussion.pushAttributes({
+                flatRateDiscussionUpvotes: prevCount,
+                flatRateDiscussionViewerUpvoted: false,
+                flatRateDiscussionCanUpvote: true,
+                flatRateDiscussionViewerVotePostId: null,
               });
-          },
-        });
+            })
+            .then(function () {
+              self.loading = false;
+              m.redraw();
+            });
+        };
 
         extend(DiscussionPage.prototype, 'sidebarItems', function (items) {
           if (!votingEnabled()) {
@@ -371,7 +375,7 @@
           }
           items.add(
             'flatRateDiscussionVote',
-            FlatRateDiscussionVote.component({ discussion: discussion }),
+            m(FlatRateDiscussionVote, { discussion: discussion }),
             85
           );
         });
