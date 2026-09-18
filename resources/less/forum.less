@@ -268,6 +268,25 @@
   }
 }
 
+// FlatRate uses one familiar reputation action: thumbs up. Keep the CSS
+// fallback in case FoF settings arrive after the frontend initializer.
+.CommentPost-votes .Post-downvote,
+.Post-votes .Post-voteButton--down {
+  display: none !important;
+}
+
+.CommentPost-votes .Post-upvote.Post-vote--active,
+.Post-votes .Post-voteButton--up[data-active='true'] {
+  color: #84cc16 !important;
+}
+
+.CommentPost-votes .Post-upvote.Post-vote--active:hover,
+.CommentPost-votes .Post-upvote.Post-vote--active:focus-visible,
+.Post-votes .Post-voteButton--up[data-active='true']:hover,
+.Post-votes .Post-voteButton--up[data-active='true']:focus-visible {
+  color: #84cc16 !important;
+}
+
 .FlatRateMemberDisplay {
   margin: 24px 0;
   padding: 16px 0;

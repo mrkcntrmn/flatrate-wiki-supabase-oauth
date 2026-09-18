@@ -10,6 +10,13 @@
   }
 
   app.initializers.add('flatrate-wiki-plain-voting', function () {
+    // FlatRate presents a single thumbs-up action. FoF remains the canonical
+    // vote provider; these frontend attributes only constrain its chrome.
+    if (app.data && typeof app.data === 'object') {
+      app.data['fof-gamification.upVotesOnly'] = '1';
+      app.data['fof-gamification.iconName'] = 'thumbs';
+    }
+
     function coreExport(id) {
       if (
         typeof flarum !== 'undefined' &&

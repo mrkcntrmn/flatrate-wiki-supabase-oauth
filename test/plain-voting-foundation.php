@@ -69,6 +69,9 @@ str_contains($extend, "->default('fof-gamification.autoUpvotePosts', false)")
 str_contains($extend, "->default('fof-gamification.rateLimit', true)")
     ? pass('rateLimit default true')
     : fail('rateLimit default missing');
+str_contains($extend, "->default('fof-gamification.upVotesOnly', true)")
+    ? pass('upVotesOnly default true')
+    : fail('upVotesOnly default must be true');
 // FoF setting defaults must be Conditional::whenExtensionDisabled so they do
 // not collide with FoF's immutable Settings::default() when the provider boots.
 (str_contains($extend, "whenExtensionDisabled('fof-gamification'")
@@ -160,6 +163,20 @@ $pv = (string) file_get_contents($root.'/js/dist/plain-voting.js');
 str_contains($pv, 'module.exports')
     ? pass('plain-voting.js webpack CJS export')
     : fail('plain-voting.js missing module.exports');
+(str_contains($pv, "app.data['fof-gamification.upVotesOnly'] = '1'")
+    && str_contains($pv, "app.data['fof-gamification.iconName'] = 'thumbs'"))
+    ? pass('UPVOTE_ONLY_THUMBS_UP_PRESENTATION')
+    : fail('upvote-only thumbs-up presentation missing');
+$forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
+(str_contains($forumLess, '.Post-downvote')
+    && str_contains($forumLess, '.Post-voteButton--down')
+    && str_contains($forumLess, 'display: none !important'))
+    ? pass('DOWNVOTE_CONTROL_HIDDEN')
+    : fail('downvote-control fallback missing');
+(str_contains($forumLess, ".Post-voteButton--up[data-active='true']")
+    && str_contains($forumLess, 'color: #84cc16 !important'))
+    ? pass('ACTIVE_UPVOTE_LIME_GREEN')
+    : fail('active upvote lime style missing');
 is_file($root.'/docs/growth-001b-plain-vote-foundation.md')
     ? pass('docs present')
     : fail('docs missing');
