@@ -116,7 +116,9 @@ return [
     (new Extend\Routes('api'))
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
         ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class)
-        ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class),
+        ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class)
+        // H.0B probe-only; H.1 replaces body with real presence touch (no geography echo).
+        ->post('/flatrate/community-presence/touch', 'flatrate.community-presence.touch', Api\CommunityPresenceTouchProbeController::class),
 
     (new Extend\Routes('forum'))
         ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),

@@ -51,6 +51,9 @@ jobs:
       - name: Run owner dashboard DTO gates
         run: php test/owner-dashboard-dto.php
 
+      - name: Run community presence touch probe gates
+        run: php test/community-presence-touch-probe.php
+
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 
