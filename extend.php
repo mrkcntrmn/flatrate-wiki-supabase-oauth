@@ -8,6 +8,7 @@ use FlatRate\SupabaseOAuth\Voting\GlobalVotingPolicy;
 use FlatRate\SupabaseOAuth\Voting\PostVotePolicy;
 use FlatRate\SupabaseOAuth\Voting\VotingReadinessController;
 use FlatRate\SupabaseOAuth\Voting\VotingServiceProvider;
+use Flarum\Api\Serializer\BasicUserSerializer;
 use Flarum\Api\Serializer\ForumSerializer;
 use Flarum\Api\Serializer\PostSerializer;
 use Flarum\Api\Serializer\UserSerializer;
@@ -128,6 +129,11 @@ return [
     (new Extend\ApiSerializer(UserSerializer::class))
         ->attributes(Api\SerializeMemberProfile::class),
 
+    // Guest-only public identity projection (avatar + displayName defense-in-depth).
+    // Registered on BasicUserSerializer so post/like/mention includes are covered.
+    (new Extend\ApiSerializer(BasicUserSerializer::class))
+        ->attributes(Api\SerializeGuestPublicIdentity::class),
+
     (new Extend\ApiSerializer(ForumSerializer::class))
         ->attributes(Api\SerializeFlatRateVotingEnabled::class),
 
@@ -176,8 +182,10 @@ return [
         ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),
 
     (new Extend\Middleware('forum'))
+        ->add(Middleware\ViewerIdentityContextMiddleware::class)
         ->add(Middleware\RequireFlatRateIdentity::class),
 
     (new Extend\Middleware('api'))
+        ->add(Middleware\ViewerIdentityContextMiddleware::class)
         ->add(Middleware\RequireFlatRateIdentity::class),
 ];

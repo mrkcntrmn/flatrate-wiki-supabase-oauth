@@ -121,6 +121,32 @@ $db->table('flatrate_member_profiles')->updateOrInsert(
     ])
 );
 
+$sentinelId = upsertUser($db, $schema, [
+    'username' => 'tech_a84f19c2',
+    'email' => 'sentinel-wizard@example.com',
+    'is_email_confirmed' => 1,
+    'password' => password_hash('HarnessPass1', PASSWORD_BCRYPT),
+    'nickname' => 'VeryUniqueWizardLeakSentinel',
+    'joined_at' => $now,
+    'last_seen_at' => $now,
+    'discussion_count' => 0,
+    'comment_count' => 0,
+    'avatar_url' => 'https://example.invalid/custom-avatar-sentinel.png',
+]);
+$db->table('group_user')->insertOrIgnore(['user_id' => $sentinelId, 'group_id' => 3]);
+$db->table('flatrate_member_profiles')->updateOrInsert(
+    ['user_id' => $sentinelId],
+    filterRow($schema, 'flatrate_member_profiles', [
+        'user_id' => $sentinelId,
+        'member_number' => $sentinelId,
+        'display_mode' => 'custom',
+        'custom_nickname' => 'VeryUniqueWizardLeakSentinel',
+        'custom_nickname_origin' => 'user',
+        'assigned_at' => $now,
+        'updated_at' => $now,
+    ])
+);
+
 $tag = $db->table('tags')->where('slug', 'job-breakdown')->first();
 $tagId = $tag
     ? (int) $tag->id
@@ -179,23 +205,39 @@ $postId = $post
         'is_private' => 0,
     ]));
 
+$postContent = '<r>Hello <USERMENTION displayname="VeryUniqueWizardLeakSentinel" id="'.$sentinelId.'">@"VeryUniqueWizardLeakSentinel"#'.$sentinelId.'</USERMENTION> please advise.</r>';
+
+$mentionPost = $db->table('posts')->where('discussion_id', $discussionId)->where('number', 2)->first();
+$mentionPostId = $mentionPost
+    ? (int) $mentionPost->id
+    : (int) $db->table('posts')->insertGetId(filterRow($schema, 'posts', [
+        'discussion_id' => $discussionId,
+        'number' => 2,
+        'created_at' => $now,
+        'user_id' => $grandId,
+        'type' => 'comment',
+        'content' => $postContent,
+        'edited_at' => null,
+        'hidden_at' => null,
+        'ip_address' => '127.0.0.1',
+        'is_private' => 0,
+    ]));
+if ($mentionPost) {
+    $db->table('posts')->where('id', $mentionPostId)->update(['content' => $postContent]);
+}
+
 $db->table('discussions')->where('id', $discussionId)->update(filterRow($schema, 'discussions', [
     'first_post_id' => $postId,
-    'last_post_id' => $postId,
+    'last_post_id' => $mentionPostId,
+    'last_post_number' => 2,
+    'comment_count' => 2,
+    'last_posted_user_id' => $grandId,
 ]));
-if ($schema->hasTable('discussion_tag')) {
-    $db->table('discussion_tag')->insertOrIgnore([
-        'discussion_id' => $discussionId,
-        'tag_id' => $tagId,
+if ($schema->hasTable('post_mentions_user')) {
+    $db->table('post_mentions_user')->insertOrIgnore([
+        'post_id' => $mentionPostId,
+        'mentions_user_id' => $sentinelId,
     ]);
-}
-if ($schema->hasTable('discussion_user')) {
-    $db->table('discussion_user')->insertOrIgnore(filterRow($schema, 'discussion_user', [
-        'user_id' => $grandId,
-        'discussion_id' => $discussionId,
-        'last_read_at' => $now,
-        'last_read_post_number' => 1,
-    ]));
 }
 
 $seed = [
@@ -210,10 +252,31 @@ $seed = [
     'newUsername' => 'tech_b2c3d4e5',
     'newNickname' => 'tech_#'.$newId,
     'newToken' => rememberToken($db, $schema, $newId, $now),
+    'sentinelUserId' => $sentinelId,
+    'sentinelUsername' => 'tech_a84f19c2',
+    'sentinelNickname' => 'VeryUniqueWizardLeakSentinel',
+    'sentinelMemberNickname' => 'tech_#'.$sentinelId,
+    'sentinelToken' => rememberToken($db, $schema, $sentinelId, $now),
     'discussionId' => $discussionId,
     'discussionSlug' => 'harness-discussion',
+    'mentionPostId' => $mentionPostId,
     'cookieName' => 'flarum_remember',
 ];
+
+if ($schema->hasTable('discussion_tag')) {
+    $db->table('discussion_tag')->insertOrIgnore([
+        'discussion_id' => $discussionId,
+        'tag_id' => $tagId,
+    ]);
+}
+if ($schema->hasTable('discussion_user')) {
+    $db->table('discussion_user')->insertOrIgnore(filterRow($schema, 'discussion_user', [
+        'user_id' => $grandId,
+        'discussion_id' => $discussionId,
+        'last_read_at' => $now,
+        'last_read_post_number' => 2,
+    ]));
+}
 
 file_put_contents($outFile, json_encode($seed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
 fwrite(STDOUT, "FLARUM_SPA_SEED=PASS\n");
