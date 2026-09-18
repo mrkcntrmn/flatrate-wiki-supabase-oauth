@@ -410,9 +410,9 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
           btn.getAttribute("data-active") === "true",
         thumbColor: getComputedStyle(btn).color,
         countColor: count ? getComputedStyle(count).color : null,
-        countLeft:
+        countRight:
           count &&
-          count.getBoundingClientRect().left < btn.getBoundingClientRect().left,
+          count.getBoundingClientRect().left > btn.getBoundingClientRect().left,
       };
     });
   }
@@ -428,7 +428,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(chrome.active).toBe(false);
   expect(chrome.zero).toBe(true);
   expect(chrome.mine).toBe(false);
-  expect(chrome.countLeft).toBe(true);
+  expect(chrome.countRight).toBe(true);
   expect(chrome.thumbColor).toMatch(WHITE);
 
   // Synthetic has-votes (not mine) proves lime without a second harness voter.

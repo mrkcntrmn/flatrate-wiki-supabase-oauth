@@ -276,12 +276,12 @@
   display: none !important;
 }
 
-// FoF DOM is [upvote][count]; FlatRate presents count then thumb.
+// FoF DOM is [upvote][count]; keep thumb left, count right.
 .CommentPost-votes,
 .Post-votes.alternateLayout,
 .DiscussionListItem-votes.alternateLayout {
   display: inline-flex !important;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: center;
   gap: 0.35em;
 }

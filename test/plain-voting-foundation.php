@@ -188,10 +188,11 @@ $forumLess = (string) file_get_contents($root.'/resources/less/forum.less');
     && str_contains($forumLess, '@flatrate-vote-mine: #c72d5d'))
     ? pass('VOTE_CHROME_THREE_STATE_COLORS')
     : fail('three-state vote colors missing (white / lime / pink)');
-(str_contains($forumLess, 'flex-direction: row-reverse')
+(str_contains($forumLess, 'flex-direction: row')
+    && ! str_contains($forumLess, 'flex-direction: row-reverse')
     && str_contains($forumLess, '.CommentPost-votes'))
-    ? pass('UPVOTE_COUNT_LEFT_OF_THUMB')
-    : fail('count-left-of-thumb layout missing');
+    ? pass('UPVOTE_COUNT_RIGHT_OF_THUMB')
+    : fail('count-right-of-thumb layout missing');
 (! str_contains($pv, 'thumbs-down')
     && ! str_contains($pv, "iconName'] = 'arrow'")
     && ! str_contains($pv, "upVotesOnly'] = '0'"))
