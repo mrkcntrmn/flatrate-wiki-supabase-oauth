@@ -107,4 +107,4 @@ open voting -> then fix privacy
 
 ## UI
 
-`js/dist/plain-voting.js` suppresses ordinary-user FoF points/ranks/Votes tab/hot/votes sorts/rankings nav, and hides vote controls while the FlatRate gate is closed. Must retain `module.exports = {}` (Flarum 1.8 webpack CJS entry).
+`js/dist/plain-voting.js` suppresses ordinary-user FoF points/ranks/Votes tab/hot/votes sorts/rankings nav, and hides vote controls while the FlatRate gate is closed. When the gate is open, FlatRate forces FoF's upvote-only presentation with a thumbs-up icon. The downvote control is hidden defensively in CSS, and a selected upvote uses lime `#84cc16`. The file must retain `module.exports = {}` (Flarum 1.8 webpack CJS entry).

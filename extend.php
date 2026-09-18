@@ -155,7 +155,7 @@ return [
                 ->default('fof-gamification.autoUpvotePosts', false)
                 ->default('fof-gamification.rateLimit', true)
                 ->default('fof-gamification.firstPostOnly', false)
-                ->default('fof-gamification.upVotesOnly', false)
+                ->default('fof-gamification.upVotesOnly', true)
                 ->default('fof-gamification.allowSelfVotes', false),
         ]),
 
