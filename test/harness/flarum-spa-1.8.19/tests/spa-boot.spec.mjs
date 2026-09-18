@@ -432,43 +432,81 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(chrome.thumbColor).toMatch(WHITE);
 
   const actionLayout = await page.evaluate(() => {
-    const post = document.querySelector("article.Post.CommentPost");
+    const post =
+      document.querySelector(".PostStream article.Post.CommentPost") ||
+      document.querySelector("article.Post.CommentPost");
     const actions = post?.querySelector(".Post-actions");
     const reply = actions?.querySelector(".item-reply");
     const votes = actions?.querySelector(".item-votes");
-    const controlsLi = [...(actions?.querySelectorAll(":scope > ul > li") || [])].find((li) =>
-      li.querySelector(":scope > .Post-controls"),
-    );
-    if (!post || !actions || !reply || !votes || !controlsLi) {
-      return { present: false };
+    const controls = actions?.querySelector(".Post-controls");
+    if (!post || !actions || !reply || !votes) {
+      return {
+        present: false,
+        hasReply: !!reply,
+        hasVotes: !!votes,
+        hasControls: !!controls,
+      };
     }
     const postBox = post.getBoundingClientRect();
     const replyBox = reply.getBoundingClientRect();
     const votesBox = votes.getBoundingClientRect();
-    const controlsBox = controlsLi.getBoundingClientRect();
     const actionsBox = actions.getBoundingClientRect();
     const replyCenter = replyBox.left + replyBox.width / 2;
     const postCenter = postBox.left + postBox.width / 2;
-    const replyColor = getComputedStyle(reply.querySelector(".Button") || reply).color;
-    return {
+    const replyBtn = reply.querySelector(".Button") || reply;
+    const replyColor = getComputedStyle(replyBtn).color;
+    const out = {
       present: true,
-      controlsNearTop: controlsBox.top <= postBox.top + 48,
-      controlsNearRight: Math.abs(controlsBox.right - postBox.right) < 24,
-      controlsAboveActions: controlsBox.bottom < actionsBox.top + 8,
+      hasControls: !!controls,
       replyCentered: Math.abs(replyCenter - postCenter) < postBox.width * 0.12,
       votesRightOfReply: votesBox.left > replyBox.right - 4,
       votesNearRight: Math.abs(votesBox.right - actionsBox.right) < 24,
       replyPink: /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i.test(replyColor),
     };
+    if (controls) {
+      const controlsBox = controls.getBoundingClientRect();
+      out.controlsNearTop = controlsBox.top <= postBox.top + 48;
+      out.controlsNearRight = Math.abs(controlsBox.right - postBox.right) < 24;
+      out.controlsAboveActions = controlsBox.bottom < actionsBox.top + 8;
+    }
+    return out;
   });
   expect(actionLayout.present).toBe(true);
-  expect(actionLayout.controlsNearTop).toBe(true);
-  expect(actionLayout.controlsNearRight).toBe(true);
-  expect(actionLayout.controlsAboveActions).toBe(true);
   expect(actionLayout.replyCentered).toBe(true);
   expect(actionLayout.votesRightOfReply).toBe(true);
   expect(actionLayout.votesNearRight).toBe(true);
   expect(actionLayout.replyPink).toBe(true);
+
+  // Author sees edit/hide controls — prove ⋯ sits in the post top-right.
+  await login(page, seed.grandfatheredToken);
+  await openAuthorPost(page);
+  const authorControls = await page.evaluate(() => {
+    const post =
+      document.querySelector(".PostStream article.Post.CommentPost") ||
+      document.querySelector("article.Post.CommentPost");
+    const actions = post?.querySelector(".Post-actions");
+    const controls = actions?.querySelector(".Post-controls");
+    if (!post || !actions || !controls) {
+      return { present: false };
+    }
+    const postBox = post.getBoundingClientRect();
+    const actionsBox = actions.getBoundingClientRect();
+    const controlsBox = controls.getBoundingClientRect();
+    return {
+      present: true,
+      controlsNearTop: controlsBox.top <= postBox.top + 48,
+      controlsNearRight: Math.abs(controlsBox.right - postBox.right) < 24,
+      controlsAboveActions: controlsBox.bottom < actionsBox.top + 8,
+    };
+  });
+  expect(authorControls.present).toBe(true);
+  expect(authorControls.controlsNearTop).toBe(true);
+  expect(authorControls.controlsNearRight).toBe(true);
+  expect(authorControls.controlsAboveActions).toBe(true);
+
+  // Resume peer voter for upvote color assertions.
+  await login(page, seed.newToken);
+  await openAuthorPost(page);
 
   // Synthetic has-votes (not mine) proves lime without a second harness voter.
   const limeProbe = await page.evaluate(() => {
