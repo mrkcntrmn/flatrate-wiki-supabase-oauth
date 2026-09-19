@@ -563,7 +563,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
     expect(geo.replyLabel, `${viewport.name} reply label`).toBe(true);
     expect(geo.hasReplied, `${viewport.name} replied footer present`).toBe(true);
     expect(geo.repliedLabel, `${viewport.name} replied label`).toBe(true);
-    expect(geo.repliedVoteDeltaY, `${viewport.name} REPLIED_VOTE_INLINE`).toBeLessThanOrEqual(4);
+    expect(geo.repliedVoteDeltaY, `${viewport.name} REPLIED_VOTE_INLINE ${JSON.stringify(geo)}`).toBeLessThanOrEqual(4);
     expect(geo.repliedLeftOfVotes, `${viewport.name} replied left of votes`).toBe(true);
     expect(geo.countLeftOfThumb, `${viewport.name} count left of thumb`).toBe(true);
     expect(geo.thumbCountDeltaY, `${viewport.name} THUMB_COUNT_INLINE`).toBeLessThanOrEqual(3);
