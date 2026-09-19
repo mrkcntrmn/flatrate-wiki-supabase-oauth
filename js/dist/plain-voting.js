@@ -457,6 +457,65 @@
     } catch (e) {}
   });
 
+  // Run after default-priority extension initializers so Flarum Mentions has
+  // already registered its footerItems extender. This second capture callback
+  // executes after Mentions adds the "replies" item; the actionItems extender
+  // above then re-homes the captured VNode into row 1 of the action grid.
+  app.initializers.add(
+    'flatrate-wiki-replied-action-layout',
+    function () {
+      function lateCoreExport(id) {
+        if (
+          typeof flarum !== 'undefined' &&
+          flarum.reg &&
+          typeof flarum.reg.get === 'function'
+        ) {
+          var registered = flarum.reg.get('core', id);
+          if (registered) {
+            return registered;
+          }
+        }
+        var compat =
+          typeof flarum !== 'undefined' && flarum.core && flarum.core.compat
+            ? flarum.core.compat
+            : null;
+        return compat && compat[id] ? compat[id] : null;
+      }
+
+      function lateUnwrap(mod) {
+        return mod && (mod.default || mod);
+      }
+
+      var lateExtendModule = lateCoreExport('common/extend');
+      var lateExtend =
+        lateExtendModule && typeof lateExtendModule.extend === 'function'
+          ? lateExtendModule.extend
+          : null;
+      var LateCommentPost = lateUnwrap(lateCoreExport('forum/components/CommentPost'));
+
+      if (
+        typeof lateExtend === 'function' &&
+        LateCommentPost &&
+        LateCommentPost.prototype &&
+        LateCommentPost.prototype.footerItems
+      ) {
+        lateExtend(LateCommentPost.prototype, 'footerItems', function (items) {
+          if (
+            items &&
+            typeof items.has === 'function' &&
+            typeof items.get === 'function' &&
+            typeof items.remove === 'function' &&
+            items.has('replies')
+          ) {
+            this.flatRateRepliedAction = items.get('replies');
+            items.remove('replies');
+          }
+        });
+      }
+    },
+    -100
+  );
+
   if (typeof module !== 'undefined') {
     module.exports = {};
   }
