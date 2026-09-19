@@ -327,12 +327,15 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
     forumLess,
     /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-points[\s\S]*?@flatrate-vote-has/,
   );
-  assert.match(forumLess, /display:\s*flex\s*!important/);
-  assert.match(forumLess, /flex-wrap:\s*nowrap/);
+  assert.match(forumLess, /display:\s*grid\s*!important/);
+  assert.match(forumLess, /grid-template-rows:\s*minmax\(2rem, auto\)\s+minmax\(2rem, auto\)/);
   assert.match(forumLess, /li:has\(>\s*\.Post-controls\)/);
-  assert.match(forumLess, /\.item-reply/);
-  assert.match(forumLess, /&::before|::before/);
-  assert.match(forumLess, /\.item-votes[\s\S]*?justify-content:\s*flex-end/);
+  assert.match(forumLess, /\.item-reply[\s\S]*?grid-row:\s*2/);
+  assert.match(forumLess, /\.item-votes[\s\S]*?grid-row:\s*1[\s\S]*?justify-content:\s*flex-end/);
+  assert.match(forumLess, /\.Post-footer[\s\S]*?\.item-replies/);
+  assert.match(forumLess, /\.Post-mentionedBy-summary/);
+  assert.match(forumLess, /\.Post-points,[\s\S]*?order:\s*1/);
+  assert.match(forumLess, /\.Post-upvote,[\s\S]*?order:\s*2/);
   assert.match(
     forumLess,
     /\.Post-actions\s*\{[\s\S]*?\.CommentPost-votes\s*\{[\s\S]*?flex-direction:\s*row/,
