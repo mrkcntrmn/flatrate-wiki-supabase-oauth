@@ -366,6 +366,16 @@
         vertical-align: middle;
       }
 
+      > .item-flatRateReplied {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: start;
+        justify-content: flex-start;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+      }
+
       > .item-votes {
         grid-column: 3;
         grid-row: 1;
@@ -401,25 +411,10 @@
     }
   }
 
-  // Flarum Mentions owns .item-replies in Post-footer. Anchor only that item
-  // over action row 1 so other footer extensions keep their native flow.
-  .Post-footer > ul > .item-replies {
-    position: absolute !important;
-    left: 0;
-    bottom: 2rem;
-    z-index: 2;
-    display: flex !important;
-    align-items: center;
-    min-width: 0;
-    max-width: calc(100% - 5rem);
-    height: 2rem;
-    margin: 0 !important;
-    overflow: hidden;
-  }
-
-  .Post-mentionedBy-summary {
+  .item-flatRateReplied .Post-mentionedBy-summary {
     display: inline-flex;
     align-items: center;
+    min-width: 0;
     max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
