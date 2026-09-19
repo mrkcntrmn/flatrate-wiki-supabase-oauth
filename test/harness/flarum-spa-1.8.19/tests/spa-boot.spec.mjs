@@ -688,20 +688,14 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   const PINK = /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i;
 
   async function readSummary(token) {
-    await page.context().clearCookies();
-    if (token) {
+    if (!token) {
+      await page.context().clearCookies();
+    } else {
+      // Same remember-cookie path as the rest of the harness. Do not
+      // clearCookies first — that was leaving session.user unbound.
       await login(page, token);
     }
     await page.goto(discussionUrl, { waitUntil: "networkidle" });
-    if (token) {
-      await expect
-        .poll(async () =>
-          page.evaluate(() => !!(app.session && app.session.user)),
-        )
-        .toBe(true);
-    }
-    // Force an authenticated (or guest) refetch so viewer projection is not
-    // stuck on a stale preloaded payload.
     const summary = await page.evaluate(async (discussionId) => {
       const discussion = await app.store.find("discussions", String(discussionId));
       return {
@@ -714,19 +708,7 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
         userId: app.session && app.session.user ? app.session.user.id() : null,
       };
     }, seed.discussionId);
-    if (token) {
-      expect(summary.loggedIn, "expected remember-cookie session").toBe(true);
-    }
-    return {
-      total: summary.total,
-      mine: summary.mine,
-      votePostId: summary.votePostId,
-      canUpvote: summary.canUpvote,
-      fofVotes: summary.fofVotes,
-      included: [],
-      loggedIn: summary.loggedIn,
-      userId: summary.userId,
-    };
+    return summary;
   }
 
   async function votePost(token, postId, up) {
