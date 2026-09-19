@@ -16,14 +16,22 @@ final class SerializeMemberProfile
             return [];
         }
 
+        $actor = $serializer->getActor();
+
+        // Fail closed for absent serializer actor and for unauthenticated guests.
+        // Open-web / crawler viewers must not receive Member # or tech_#N attrs.
+        // Authenticated strangers and owners keep current Community behavior.
+        if (! $actor || $actor->isGuest()) {
+            return [];
+        }
+
         $memberNumber = (int) $user->id;
         $exposed = [
             'flatRateMemberNumber' => $memberNumber,
             'flatRateMemberNickname' => MemberIdentity::nickname($memberNumber),
         ];
 
-        $actor = $serializer->getActor();
-        if (! $actor || (int) $actor->id !== $memberNumber) {
+        if ((int) $actor->id !== $memberNumber) {
             return $exposed;
         }
 

@@ -68,7 +68,27 @@ if (!$admin) {
 
 $db->table('group_permission')->insertOrIgnore([
     ['group_id' => 3, 'permission' => 'user.editOwnNickname'],
+    ['group_id' => 3, 'permission' => 'discussion.votePosts'],
+    ['group_id' => 3, 'permission' => 'discussion.canSeeVotes'],
+    // Guests may see vote counts; voter identity stays permission-gated.
+    ['group_id' => 2, 'permission' => 'discussion.canSeeVotes'],
 ]);
+
+/** @var \Flarum\Settings\SettingsRepositoryInterface $settings */
+$settings = $container->make(\Flarum\Settings\SettingsRepositoryInterface::class);
+$settings->set('flatrate-voting.enabled', '1');
+$settings->set('fof-gamification.upVotesOnly', '1');
+$settings->set('fof-gamification.iconName', 'thumbs');
+$settings->set('fof-gamification.allowSelfVotes', '0');
+$settings->set('fof-gamification.autoUpvotePosts', '0');
+$settings->set('fof-gamification.rateLimit', '0');
+$settings->set('fof-gamification.firstPostOnly', '0');
+// Presentation parity with production-facing plain-voting.js:
+// altPostVotingUi=0 is required so CommentPost votes stay in actionItems.
+// useAlternateLayout=0 is harness-only (also affects discussion-list chrome);
+// production-facing JS does not force it.
+$settings->set('fof-gamification.useAlternateLayout', '0');
+$settings->set('fof-gamification.altPostVotingUi', '0');
 
 $grandId = upsertUser($db, $schema, [
     'username' => 'tech_a1b2c3d4',
@@ -116,6 +136,32 @@ $db->table('flatrate_member_profiles')->updateOrInsert(
         'display_mode' => 'member_number',
         'custom_nickname' => null,
         'custom_nickname_origin' => null,
+        'assigned_at' => $now,
+        'updated_at' => $now,
+    ])
+);
+
+$sentinelId = upsertUser($db, $schema, [
+    'username' => 'tech_a84f19c2',
+    'email' => 'sentinel-wizard@example.com',
+    'is_email_confirmed' => 1,
+    'password' => password_hash('HarnessPass1', PASSWORD_BCRYPT),
+    'nickname' => 'VeryUniqueWizardLeakSentinel',
+    'joined_at' => $now,
+    'last_seen_at' => $now,
+    'discussion_count' => 0,
+    'comment_count' => 0,
+    'avatar_url' => 'https://example.invalid/custom-avatar-sentinel.png',
+]);
+$db->table('group_user')->insertOrIgnore(['user_id' => $sentinelId, 'group_id' => 3]);
+$db->table('flatrate_member_profiles')->updateOrInsert(
+    ['user_id' => $sentinelId],
+    filterRow($schema, 'flatrate_member_profiles', [
+        'user_id' => $sentinelId,
+        'member_number' => $sentinelId,
+        'display_mode' => 'custom',
+        'custom_nickname' => 'VeryUniqueWizardLeakSentinel',
+        'custom_nickname_origin' => 'user',
         'assigned_at' => $now,
         'updated_at' => $now,
     ])
@@ -179,23 +225,55 @@ $postId = $post
         'is_private' => 0,
     ]));
 
+$postContent = '<r>Hello <USERMENTION displayname="VeryUniqueWizardLeakSentinel" id="'.$sentinelId.'">@"VeryUniqueWizardLeakSentinel"#'.$sentinelId.'</USERMENTION> please advise.</r>';
+
+$mentionPost = $db->table('posts')->where('discussion_id', $discussionId)->where('number', 2)->first();
+$mentionPostId = $mentionPost
+    ? (int) $mentionPost->id
+    : (int) $db->table('posts')->insertGetId(filterRow($schema, 'posts', [
+        'discussion_id' => $discussionId,
+        'number' => 2,
+        'created_at' => $now,
+        'user_id' => $grandId,
+        'type' => 'comment',
+        'content' => $postContent,
+        'edited_at' => null,
+        'hidden_at' => null,
+        'ip_address' => '127.0.0.1',
+        'is_private' => 0,
+    ]));
+if ($mentionPost) {
+    $db->table('posts')->where('id', $mentionPostId)->update(['content' => $postContent]);
+}
+
+$replyB = $db->table('posts')->where('discussion_id', $discussionId)->where('number', 3)->first();
+$replyBId = $replyB
+    ? (int) $replyB->id
+    : (int) $db->table('posts')->insertGetId(filterRow($schema, 'posts', [
+        'discussion_id' => $discussionId,
+        'number' => 3,
+        'created_at' => $now,
+        'user_id' => $grandId,
+        'type' => 'comment',
+        'content' => '<t><p>Harness reply B for discussion aggregate ballot moves.</p></t>',
+        'edited_at' => null,
+        'hidden_at' => null,
+        'ip_address' => '127.0.0.1',
+        'is_private' => 0,
+    ]));
+
 $db->table('discussions')->where('id', $discussionId)->update(filterRow($schema, 'discussions', [
     'first_post_id' => $postId,
-    'last_post_id' => $postId,
+    'last_post_id' => $replyBId,
+    'last_post_number' => 3,
+    'comment_count' => 3,
+    'last_posted_user_id' => $grandId,
 ]));
-if ($schema->hasTable('discussion_tag')) {
-    $db->table('discussion_tag')->insertOrIgnore([
-        'discussion_id' => $discussionId,
-        'tag_id' => $tagId,
+if ($schema->hasTable('post_mentions_user')) {
+    $db->table('post_mentions_user')->insertOrIgnore([
+        'post_id' => $mentionPostId,
+        'mentions_user_id' => $sentinelId,
     ]);
-}
-if ($schema->hasTable('discussion_user')) {
-    $db->table('discussion_user')->insertOrIgnore(filterRow($schema, 'discussion_user', [
-        'user_id' => $grandId,
-        'discussion_id' => $discussionId,
-        'last_read_at' => $now,
-        'last_read_post_number' => 1,
-    ]));
 }
 
 $seed = [
@@ -210,10 +288,34 @@ $seed = [
     'newUsername' => 'tech_b2c3d4e5',
     'newNickname' => 'tech_#'.$newId,
     'newToken' => rememberToken($db, $schema, $newId, $now),
+    'sentinelUserId' => $sentinelId,
+    'sentinelUsername' => 'tech_a84f19c2',
+    'sentinelNickname' => 'VeryUniqueWizardLeakSentinel',
+    'sentinelMemberNickname' => 'tech_#'.$sentinelId,
+    'sentinelToken' => rememberToken($db, $schema, $sentinelId, $now),
     'discussionId' => $discussionId,
     'discussionSlug' => 'harness-discussion',
+    'authorPostId' => $postId,
+    'mentionPostId' => $mentionPostId,
+    'replyBPostId' => $replyBId,
     'cookieName' => 'flarum_remember',
+    'votingEnabled' => true,
 ];
+
+if ($schema->hasTable('discussion_tag')) {
+    $db->table('discussion_tag')->insertOrIgnore([
+        'discussion_id' => $discussionId,
+        'tag_id' => $tagId,
+    ]);
+}
+if ($schema->hasTable('discussion_user')) {
+    $db->table('discussion_user')->insertOrIgnore(filterRow($schema, 'discussion_user', [
+        'user_id' => $grandId,
+        'discussion_id' => $discussionId,
+        'last_read_at' => $now,
+        'last_read_post_number' => 3,
+    ]));
+}
 
 file_put_contents($outFile, json_encode($seed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
 fwrite(STDOUT, "FLARUM_SPA_SEED=PASS\n");

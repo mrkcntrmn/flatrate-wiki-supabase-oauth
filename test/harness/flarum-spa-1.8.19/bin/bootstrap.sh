@@ -34,7 +34,8 @@ composer require --no-interaction --prefer-dist \
   flarum/core:1.8.19 \
   flarum/nicknames:1.8.3 \
   flarum/tags:1.8.8 \
-  fof/oauth:1.7.4
+  fof/oauth:1.7.4 \
+  fof/gamification:1.6.12
 
 composer config repositories.flatrate "{\"type\":\"path\",\"url\":\"$EXTENSION_ROOT\",\"options\":{\"symlink\":true}}"
 composer require --no-interaction --prefer-dist flatrate/wiki-supabase-oauth:@dev
@@ -44,7 +45,9 @@ php flarum cache:clear
 php flarum migrate
 php flarum extension:enable flarum-nicknames
 php flarum extension:enable flarum-tags
+php flarum extension:enable flarum-mentions
 php flarum extension:enable fof-oauth
+php flarum extension:enable fof-gamification
 php flarum extension:enable flatrate-wiki-supabase-oauth
 php flarum migrate
 php flarum cache:clear
@@ -58,3 +61,4 @@ printf '%s\n' "$FLARUM_DIR" > "$WORK_DIR/flarum-dir.txt"
 echo "FLARUM_SPA_BOOTSTRAP=PASS"
 echo "FLARUM_DIR=$FLARUM_DIR"
 echo "FLARUM_CORE_VERSION_TESTED=1.8.19"
+echo "FOF_GAMIFICATION_VERSION=1.6.12"

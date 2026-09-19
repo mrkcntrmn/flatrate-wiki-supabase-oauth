@@ -24,6 +24,12 @@ core:
     header:
       profile_button: My Profile
 
+flarum-mentions:
+  forum:
+    post:
+      mentioned_by_self_text: "{users} replied"
+      mentioned_by_text: "{users} replied"
+
 flatrate-dashboard:
   forum:
     member_number: "Member #{number}"

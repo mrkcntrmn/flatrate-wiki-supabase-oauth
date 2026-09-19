@@ -48,11 +48,26 @@ jobs:
       - name: Run member display policy gates
         run: php test/member-display-policy.php
 
+      - name: Run guest identity projection gates
+        run: php test/guest-identity-projection.php
+
       - name: Run owner dashboard DTO gates
         run: php test/owner-dashboard-dto.php
 
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
+
+      - name: Run GROWTH-001B plain voting foundation gates
+        run: php test/plain-voting-foundation.php
+
+      - name: Run GROWTH-001B1 fail-closed hardening gates
+        run: php test/plain-voting-fail-closed.php
+
+      - name: Run GROWTH-001UI discussion aggregate upvote gates
+        run: php test/plain-voting-discussion-aggregate.php
+
+      - name: Run GROWTH-001UI one-ballot MariaDB runtime gates
+        run: php test/plain-voting-one-ballot-runtime.php
 
       - name: Run desktop navigation handoff gates
         run: php test/forum-desktop-navigation-handoff.php
@@ -72,6 +87,9 @@ jobs:
 
       - name: Run REP-001F.A1 R2 activity behavior gates
         run: php test/activity-r2-behavior.php
+
+      - name: Run external Activity drain endpoint gates
+        run: php test/activity-external-drain-endpoint.php
 
       - name: Install FORUM-SUB-001 disposable runtime harness
         working-directory: test/harness/forum-sub001-runtime
@@ -193,3 +211,10 @@ jobs:
       - name: Run Flarum 1.8.19 browser boot gates
         working-directory: test/harness/flarum-spa-1.8.19
         run: npx playwright test
+
+      - name: Run guest identity in-process qualification
+        run: |
+          FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
+          php test/harness/flarum-spa-1.8.19/bin/qualify-guest-identity.php \
+            "$FLARUM_DIR" \
+            test/harness/flarum-spa-1.8.19/.work/seed.json

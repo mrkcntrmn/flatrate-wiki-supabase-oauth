@@ -7,6 +7,24 @@
 
 `Migration::createTable()` routes `$schema->create($name, ...)` so the active connection prefix is applied. Do not reintroduce raw `CREATE TABLE` / `REFERENCES users (id)` DDL.
 
+## PRODUCT-ACTIVITY-001 Activity outbox prefix rule
+
+Flarum extension migrations must use prefix-aware schema APIs.
+
+Raw `CREATE TABLE` with a logical Flarum table name is prohibited.
+
+Raw `information_schema` inspection must resolve the active physical table
+name through `getTablePrefix()`.
+
+Regression case: historical Activity migrations
+`2026_09_10_000000_create_activity_emitter_tables.php` and
+`2026_09_10_120000_activity_outbox_terminal_at.php` used literal unprefixed
+DDL while runtime `OutboxStore` uses the prefix-aware query builder. On
+hosts with `prefix=flarum_` (PikaPods / crazy-max default), the migration
+ledger can report applied while `flarum_flatrate_activity_outbox` is missing.
+Forward repair: `2026_09_16_000000_repair_activity_table_prefix.php`.
+Harness: `test/activity-outbox-mariadb-migration.php`.
+
 # FORUM-SUB-001 pinned upstream fixtures
 
 Exact APIs depended on for GM/CDJR family notification inheritance.

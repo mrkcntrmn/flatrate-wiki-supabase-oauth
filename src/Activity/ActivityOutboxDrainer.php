@@ -8,7 +8,7 @@ use Psr\Log\LoggerInterface;
  * Bounded automatic outbox consumer for at-least-once delivery.
  * Each attempt uses ActivityClient (fresh HMAC timestamp/nonce/signature).
  */
-final class ActivityOutboxDrainer
+class ActivityOutboxDrainer
 {
     public const DEFAULT_BATCH_SIZE = 25;
 

@@ -179,6 +179,9 @@ test("forum UI keeps branded fallback SSO and removes local credential controls"
   assert.match(css, /\.item-changePassword/);
   assert.match(css, /\.item-changeEmail/);
   assert.match(locale, /Continue with FlatRate\.wiki/);
+  assert.match(locale, /mentioned_by_text:\s*"\{users\} replied"/);
+  assert.match(locale, /mentioned_by_self_text:\s*"\{users\} replied"/);
+  assert.doesNotMatch(locale, /replied to this/);
 });
 
 test("operator docs describe seamless ticket bridge and OAuth rollback path", async () => {

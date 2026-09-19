@@ -26,6 +26,7 @@ const EXPECTED_JS = [
   "js/dist/mobile-brand-drawer.js",
   "js/dist/member-display.js",
   "js/dist/member-dashboard.js",
+  "js/dist/plain-voting.js",
 ];
 
 function resolveFlarumFrontendSource() {
@@ -147,19 +148,20 @@ test("Flarum 1.8.19 Frontend::js is a scalar overwrite; css appends", () => {
   console.error("FLARUM_FRONTEND_CSS_METHOD_APPENDS=true");
 });
 
-test("companion registers five forum JS paths via separate Frontend extenders", () => {
+test("companion registers six forum JS paths via separate Frontend extenders", () => {
   const extendPhp = withoutWhenExtensionDisabled(text("extend.php"));
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum" && r.jsPaths.length > 0,
   );
+  const expected = EXPECTED_JS;
 
-  assert.equal(forum.length, 5, "expected five forum Frontend JS extenders");
+  assert.equal(forum.length, 6, "expected six forum Frontend JS extenders");
 
   const registered = forum.map((r) => r.jsPaths.join(","));
   assert.deepEqual(
     registered,
-    EXPECTED_JS,
-    `REGISTERED_FORUM_JS_PATHS=${EXPECTED_JS.join(",")}`,
+    expected,
+    `REGISTERED_FORUM_JS_PATHS=${expected.join(",")}`,
   );
 
   for (const ext of forum) {
@@ -171,7 +173,7 @@ test("companion registers five forum JS paths via separate Frontend extenders", 
   }
 
   const allJs = forum.flatMap((r) => r.jsPaths);
-  for (const path of EXPECTED_JS) {
+  for (const path of expected) {
     assert.equal(
       allJs.filter((p) => p === path).length,
       1,
@@ -179,13 +181,18 @@ test("companion registers five forum JS paths via separate Frontend extenders", 
     );
   }
 
-  const nav = allJs.indexOf(EXPECTED_JS[0]);
-  const forumJs = allJs.indexOf(EXPECTED_JS[1]);
-  const drawer = allJs.indexOf(EXPECTED_JS[2]);
-  const member = allJs.indexOf(EXPECTED_JS[3]);
-  const dashboard = allJs.indexOf(EXPECTED_JS[4]);
+  const nav = allJs.indexOf(expected[0]);
+  const forumJs = allJs.indexOf(expected[1]);
+  const drawer = allJs.indexOf(expected[2]);
+  const member = allJs.indexOf(expected[3]);
+  const dashboard = allJs.indexOf(expected[4]);
+  const plainVoting = allJs.indexOf(expected[5]);
   assert.ok(
-    nav < forumJs && forumJs < drawer && drawer < member && member < dashboard,
+    nav < forumJs &&
+      forumJs < drawer &&
+      drawer < member &&
+      member < dashboard &&
+      dashboard < plainVoting,
     "FRONTEND_JS_ORDER_GATE=PASS",
   );
 
@@ -278,6 +285,62 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   assert.match(dashboard, /flatRateOwnerDashboard/);
   assert.match(dashboard, /module\.exports = \{\}/);
 
+  const plainVoting = text("js/dist/plain-voting.js");
+  assert.match(plainVoting, /flatrate-wiki-plain-voting/);
+  assert.match(plainVoting, /module\.exports = \{\}/);
+  assert.match(
+    plainVoting,
+    /app\.data\['fof-gamification\.upVotesOnly'\] = '1'/,
+  );
+  assert.match(
+    plainVoting,
+    /app\.data\['fof-gamification\.iconName'\] = 'thumbs'/,
+  );
+  assert.match(
+    plainVoting,
+    /app\.data\['fof-gamification\.altPostVotingUi'\] = '0'/,
+  );
+  assert.match(
+    plainVoting,
+    /flatrate-wiki-plain-voting-settings[\s\S]*?,\s*100\s*\)/,
+  );
+  assert.doesNotMatch(plainVoting, /thumbs-down/);
+  assert.doesNotMatch(plainVoting, /upVotesOnly'\] = '0'/);
+  assert.doesNotMatch(plainVoting, /altPostVotingUi'\] = '1'/);
+  assert.match(plainVoting, /FlatRateVotes--zero/);
+  assert.match(plainVoting, /FlatRateVotes--hasVotes/);
+  assert.match(plainVoting, /FlatRateVotes--mine/);
+  assert.match(plainVoting, /FlatRateDiscussionVote/);
+  assert.match(plainVoting, /flatRateDiscussionVote/);
+  assert.match(plainVoting, /sidebarItems/);
+
+  const forumLess = text("resources/less/forum.less");
+  assert.match(forumLess, /@flatrate-vote-zero:\s*#ffffff/);
+  assert.match(forumLess, /@flatrate-vote-has:\s*#84cc16/);
+  assert.match(forumLess, /@flatrate-vote-mine:\s*#c72d5d/);
+  assert.match(forumLess, /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)/);
+  assert.match(
+    forumLess,
+    /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-upvote[\s\S]*?@flatrate-vote-zero/,
+  );
+  assert.match(
+    forumLess,
+    /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-points[\s\S]*?@flatrate-vote-has/,
+  );
+  assert.match(forumLess, /display:\s*flex\s*!important/);
+  assert.match(forumLess, /flex-wrap:\s*nowrap/);
+  assert.match(forumLess, /li:has\(>\s*\.Post-controls\)/);
+  assert.match(forumLess, /\.item-reply/);
+  assert.match(forumLess, /&::before|::before/);
+  assert.match(forumLess, /\.item-votes[\s\S]*?justify-content:\s*flex-end/);
+  assert.match(
+    forumLess,
+    /\.Post-actions\s*\{[\s\S]*?\.CommentPost-votes\s*\{[\s\S]*?flex-direction:\s*row/,
+  );
+  assert.match(forumLess, /flex-direction:\s*row/);
+  assert.doesNotMatch(forumLess, /@flatrate-reply-plus/);
+  assert.doesNotMatch(forumLess, /content:\s*'\\f067'/);
+
   for (const rel of EXPECTED_JS) {
     assert.ok(existsSync(join(ROOT, rel)), `missing ${rel}`);
   }
@@ -285,6 +348,7 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   console.error("NAV_CONTRACT_SOURCE_MARKER=PASS");
   console.error("DESKTOP_NAV_SOURCE_MARKER=PASS");
   console.error("MOBILE_NAV_SOURCE_MARKER=PASS");
+  console.error("UPVOTE_ONLY_THUMBS_UP_PRESENTATION=PASS");
 });
 
 test("legacy desktop IndexPage renderer is gated only while dedicated nav is disabled", () => {
