@@ -275,6 +275,13 @@ if ($schema->hasTable('post_mentions_user')) {
         'mentions_user_id' => $sentinelId,
     ]);
 }
+if ($schema->hasTable('post_mentions_post')) {
+    $db->table('post_mentions_post')->insertOrIgnore(filterRow($schema, 'post_mentions_post', [
+        'post_id' => $mentionPostId,
+        'mentions_post_id' => $postId,
+        'created_at' => $now,
+    ]));
+}
 
 $seed = [
     'adminUserId' => (int) $admin->id,
