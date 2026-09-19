@@ -324,36 +324,23 @@
 }
 
 // Post footer/actions (CommentPost):
-//   ⋯ controls -> right side of username/time header row
+//   controls -> right side of username/time header row
 //   Row 1 -> replied indicator left | vote count + thumb right
 //   Row 2 -> Reply centered beneath the inline row
 .CommentPost:not(.editing):not(.Post--hidden) {
   position: relative;
 
   .Post-main {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  }
-
-  .Post-header,
-  .Post-body {
-    grid-column: 1 / -1;
+    position: relative;
   }
 
   .Post-header {
-    grid-row: 1;
     padding-right: 2.75rem;
-  }
-
-  .Post-body {
-    grid-row: 2;
   }
 
   .Post-actions {
     float: none !important;
     position: static !important;
-    grid-column: 1 / -1;
-    grid-row: 3;
     width: 100% !important;
     clear: both;
     margin-top: 0.5rem;
@@ -365,7 +352,6 @@
       grid-template-rows: minmax(2rem, auto) minmax(2rem, auto);
       align-items: center !important;
       width: 100%;
-      // Static so ⋯ absolute-positions against .CommentPost (not this row).
       position: static !important;
       min-height: 4rem;
       row-gap: 0.1rem;
@@ -396,12 +382,10 @@
         min-width: 0;
       }
 
-      // Core appends controls after actionItems without an item-* class.
       > li:has(> .Post-controls) {
         position: absolute;
         right: 0;
         z-index: 3;
-        // Phone: center of 32px avatar/username row ≈ 18px top.
         top: 18px;
 
         @media @tablet-up {
@@ -410,7 +394,6 @@
       }
     }
 
-    // Nested reaffirmation for structural gates + Post-actions specificity.
     .CommentPost-votes {
       display: inline-flex !important;
       flex-direction: row !important;
@@ -418,38 +401,29 @@
     }
   }
 
-  // Flarum Mentions owns .item-replies in Post-footer. Overlay that footer on
-  // row 1 of the two-row actions grid so "X replied" shares the vote baseline.
-  .Post-footer {
-    display: block;
-    grid-column: 1;
-    grid-row: 3;
-    align-self: start;
-    min-width: 0;
-    height: auto;
-    margin: 0;
-    padding: 0;
+  // Flarum Mentions owns .item-replies in Post-footer. Anchor only that item
+  // over action row 1 so other footer extensions keep their native flow.
+  .Post-footer > ul > .item-replies {
+    position: absolute !important;
+    left: 0;
+    bottom: 2rem;
     z-index: 2;
-    line-height: 2rem;
+    display: flex !important;
+    align-items: center;
+    min-width: 0;
+    max-width: calc(100% - 5rem);
+    height: 2rem;
+    margin: 0 !important;
+    overflow: hidden;
+  }
 
-    > ul > .item-replies {
-      min-width: 0;
-      margin: 0;
-    }
-
-    .Post-mentionedBy-summary {
-      display: inline-flex;
-      align-items: center;
-      min-height: 2rem;
-      max-width: 100%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    &:empty {
-      display: none !important;
-    }
+  .Post-mentionedBy-summary {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
