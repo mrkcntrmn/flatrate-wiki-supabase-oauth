@@ -455,7 +455,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
       const count =
         votesBox?.querySelector(".Post-points") ||
         votesBox?.querySelector(".Post-voteCount");
-      const replied = post.querySelector(".Post-footer .item-replies");
+      const replied = actions?.querySelector(".item-flatRateReplied");
       const controls =
         actions?.querySelector(".Post-controls .Dropdown-toggle") ||
         actions?.querySelector(".Post-controls");
@@ -477,6 +477,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
         hasControls: !!controls,
         hasUsername: !!username,
         hasReplied: !!replied,
+        REPLIED_DOM_OWNER: replied ? "POST_ACTIONS" : "MISSING",
       };
 
       if (username && controls) {
@@ -561,7 +562,8 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
     expect(geo.votesNearRight, `${viewport.name} votes near right`).toBe(true);
     expect(geo.replyBelowVotes, `${viewport.name} REPLY_BELOW_INLINE_ROW`).toBe(true);
     expect(geo.replyLabel, `${viewport.name} reply label`).toBe(true);
-    expect(geo.hasReplied, `${viewport.name} replied footer present`).toBe(true);
+    expect(geo.hasReplied, `${viewport.name} replied action present`).toBe(true);
+    expect(geo.REPLIED_DOM_OWNER, `${viewport.name} replied owner`).toBe("POST_ACTIONS");
     expect(geo.repliedLabel, `${viewport.name} replied label`).toBe(true);
     expect(geo.repliedVoteDeltaY, `${viewport.name} REPLIED_VOTE_INLINE ${JSON.stringify(geo)}`).toBeLessThanOrEqual(4);
     expect(geo.repliedLeftOfVotes, `${viewport.name} replied left of votes`).toBe(true);
