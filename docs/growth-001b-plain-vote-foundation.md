@@ -114,15 +114,17 @@ open voting -> then fix privacy
 ```text
 POST_HEADER_CONTROLS_ALIGNMENT=USERNAME_ROW
 POST_CONTROLS_HORIZONTAL_POSITION=RIGHT
-POST_ACTION_ROW=SINGLE_ROW
-REPLY_ACTION_POSITION=CENTER
+POST_ACTION_ROW_1=REPLIED_LEFT__VOTE_RIGHT
+POST_ACTION_ROW_2=REPLY_CENTERED
+REPLY_ACTION_POSITION=CENTER_BELOW_INLINE_ROW
+REPLIED_INDICATOR_POSITION=LEFT_INLINE_WITH_VOTE
 UPVOTE_ACTION_POSITION=RIGHT
 UPVOTE_ICON_COUNT_LAYOUT=INLINE_HORIZONTAL
-UPVOTE_COUNT_POSITION=RIGHT_OF_ICON
+UPVOTE_COUNT_POSITION=LEFT_OF_ICON
 POST_VOTE_DOM_OWNER=POST_ACTIONS
 ```
 
-Reply and thumbs/count share one action row. Reply is centered. Thumbs/count are right-justified. Thumb and count are one inline horizontal unit (`👍 1`), never a stacked vertical provider box. The `⋯` controls sit on the right side of the username/time header row (same vertical center), not merely “somewhere near the top of the post.”
+The first footer row keeps the Mentions `replied` indicator on the left and the vote control on the right. `Reply` is geometrically centered on its own row beneath them. Count and thumb are one inline horizontal unit (`1 👍`), never a stacked vertical provider box. The `⋯` controls sit on the right side of the username/time header row (same vertical center), not merely “somewhere near the top of the post.”
 
 ### Provider layout parity
 
@@ -147,8 +149,8 @@ NEW_VOTE_TABLE=false
 
 DiscussionPage sidebar renders `FlatRateDiscussionVote` opposite Following:
 
-- inactive (no viewer ballot): lime `#84cc16` thumb+count; clickable → upvotes opening post
-- active (viewer ballot anywhere): pink `#c72d5d`; not clickable (remove from the voted post)
+- inactive (no viewer ballot): lime `#84cc16` count + white thumb, rendered count-first (`1 👍`); clickable → upvotes opening post
+- active (viewer ballot anywhere): pink `#c72d5d` count + thumb immediately after click; not clickable (remove from the voted post)
 - voting a different reply **moves** the ballot (zeros the prior positive row) so aggregate stays stable
 
 API attributes on `BasicDiscussionSerializer` (no voter identities):
