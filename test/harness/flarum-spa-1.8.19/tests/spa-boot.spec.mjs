@@ -31,6 +31,11 @@ function attachErrorCollectors(page) {
 }
 
 async function login(page, token) {
+  // Always drop the prior PHP session cookie first. Flarum's RememberFromCookie
+  // deletes the previous access_token when remember != session access_token —
+  // switching users without clearCookies permanently burns seed tokens for
+  // later tests in this shared-DB harness.
+  await page.context().clearCookies();
   await page.context().addCookies([
     {
       name: seed.cookieName || "flarum_remember",
@@ -691,8 +696,6 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
     if (!token) {
       await page.context().clearCookies();
     } else {
-      // Same remember-cookie path as the rest of the harness. Do not
-      // clearCookies first — that was leaving session.user unbound.
       await login(page, token);
     }
     await page.goto(discussionUrl, { waitUntil: "networkidle" });
@@ -708,6 +711,12 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
         userId: app.session && app.session.user ? app.session.user.id() : null,
       };
     }, seed.discussionId);
+    if (token) {
+      expect(
+        summary.loggedIn,
+        `remember-cookie session unbound (userId=${summary.userId})`,
+      ).toBe(true);
+    }
     return summary;
   }
 
