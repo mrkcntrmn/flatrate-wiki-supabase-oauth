@@ -171,6 +171,45 @@
       }
     } catch (e) {}
 
+    // Flarum Mentions renders the "X replied" summary in CommentPost footerItems.
+    // AbstractPost resolves footerItems before actionItems, so capture that VNode,
+    // remove it from the footer, and re-home it into the action grid. This keeps
+    // row 1 semantically owned by one ItemList instead of visually overlaying
+    // two independent containers.
+    try {
+      var CommentPostLayout = unwrap(coreExport('forum/components/CommentPost'));
+      if (
+        CommentPostLayout &&
+        CommentPostLayout.prototype &&
+        CommentPostLayout.prototype.footerItems &&
+        CommentPostLayout.prototype.actionItems
+      ) {
+        extend(CommentPostLayout.prototype, 'footerItems', function (items) {
+          this.flatRateRepliedAction = null;
+          if (
+            items &&
+            typeof items.has === 'function' &&
+            typeof items.get === 'function' &&
+            typeof items.remove === 'function' &&
+            items.has('replies')
+          ) {
+            this.flatRateRepliedAction = items.get('replies');
+            items.remove('replies');
+          }
+        });
+
+        extend(CommentPostLayout.prototype, 'actionItems', function (items) {
+          if (
+            this.flatRateRepliedAction &&
+            items &&
+            typeof items.add === 'function'
+          ) {
+            items.add('flatRateReplied', this.flatRateRepliedAction, 90);
+          }
+        });
+      }
+    } catch (e) {}
+
     // After any FoF post vote mutation, reload discussion aggregate attributes.
     try {
       var PostModel = unwrap(coreExport('common/models/Post'));
