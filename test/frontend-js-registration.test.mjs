@@ -332,8 +332,11 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   assert.match(forumLess, /li:has\(>\s*\.Post-controls\)/);
   assert.match(forumLess, /\.item-reply[\s\S]*?grid-row:\s*2/);
   assert.match(forumLess, /\.item-votes[\s\S]*?grid-row:\s*1[\s\S]*?justify-content:\s*flex-end/);
-  assert.match(forumLess, /\.Post-footer[\s\S]*?\.item-replies/);
-  assert.match(forumLess, /\.Post-mentionedBy-summary/);
+  assert.match(forumLess, /\.item-flatRateReplied[\s\S]*?grid-row:\s*1/);
+  assert.match(forumLess, /\.item-flatRateReplied[\s\S]*?\.Post-mentionedBy-summary/);
+  assert.match(plainVoting, /items\.has\('replies'\)/);
+  assert.match(plainVoting, /items\.remove\('replies'\)/);
+  assert.match(plainVoting, /items\.add\('flatRateReplied'/);
   assert.match(forumLess, /\.Post-points,[\s\S]*?order:\s*1/);
   assert.match(forumLess, /\.Post-upvote,[\s\S]*?order:\s*2/);
   assert.match(
