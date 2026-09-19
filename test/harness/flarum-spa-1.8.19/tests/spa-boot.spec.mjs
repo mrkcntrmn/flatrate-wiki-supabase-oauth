@@ -420,9 +420,9 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
           btn.getAttribute("data-active") === "true",
         thumbColor: getComputedStyle(btn).color,
         countColor: count ? getComputedStyle(count).color : null,
-        countRight:
+        countLeft:
           count &&
-          count.getBoundingClientRect().left > btn.getBoundingClientRect().left,
+          count.getBoundingClientRect().right <= btn.getBoundingClientRect().left + 2,
       };
     });
   }
@@ -455,6 +455,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
       const count =
         votesBox?.querySelector(".Post-points") ||
         votesBox?.querySelector(".Post-voteCount");
+      const replied = post.querySelector(".Post-footer .item-replies");
       const controls =
         actions?.querySelector(".Post-controls .Dropdown-toggle") ||
         actions?.querySelector(".Post-controls");
@@ -475,6 +476,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
         hasVotes: !!votesItem,
         hasControls: !!controls,
         hasUsername: !!username,
+        hasReplied: !!replied,
       };
 
       if (username && controls) {
@@ -494,12 +496,18 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
         const actionsBox = actions.getBoundingClientRect();
         out.replyCenterY = r.y;
         out.votesCenterY = v.y;
-        out.actionRowDeltaY = Math.abs(r.y - v.y);
         out.replyCentered = Math.abs(r.x - (postBox.left + postBox.width / 2)) < postBox.width * 0.12;
-        out.votesRightOfReply = v.box.left > r.box.right - 4;
         out.votesNearRight = Math.abs(v.box.right - actionsBox.right) < 24;
-        out.votesSameRowAsReply = Math.abs(r.y - v.y) <= 4;
+        out.replyBelowVotes = r.box.top >= v.box.bottom - 2;
         out.replyLabel = /reply/i.test((reply.textContent || "").trim());
+      }
+
+      if (replied && votesItem) {
+        const p = center(replied);
+        const v = center(votesItem);
+        out.repliedVoteDeltaY = Math.abs(p.y - v.y);
+        out.repliedLeftOfVotes = p.box.right <= v.box.left + 4;
+        out.repliedLabel = /replied/i.test((replied.textContent || "").trim());
       }
 
       if (thumb && count && votesBox) {
@@ -509,7 +517,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
         const countBox = count.getBoundingClientRect();
         const voteBox = votesBox.getBoundingClientRect();
         out.thumbCountDeltaY = Math.abs(t.y - n.y);
-        out.countRightOfThumb = countBox.left >= thumbBox.right - 2;
+        out.countLeftOfThumb = countBox.right <= thumbBox.left + 2;
         out.countNotUnderThumb = countBox.top < thumbBox.bottom - 2;
         out.voteBoxWiderThanThumb = voteBox.width > thumbBox.width + 4;
         out.voteBoxHeight = voteBox.height;
@@ -531,7 +539,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(chrome.active).toBe(false);
   expect(chrome.zero).toBe(true);
   expect(chrome.mine).toBe(false);
-  expect(chrome.countRight).toBe(true);
+  expect(chrome.countLeft).toBe(true);
   expect(chrome.thumbColor).toMatch(WHITE);
 
   const viewports = [
@@ -550,12 +558,14 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
     expect(geo.COMMENT_POST_VOTE_OWNER, `${viewport.name} vote owner`).toBe("POST_ACTIONS");
     expect(geo.ALTERNATE_POST_VOTE_UI, `${viewport.name} alt header votes`).toBe(false);
     expect(geo.replyCentered, `${viewport.name} reply centered`).toBe(true);
-    expect(geo.votesRightOfReply, `${viewport.name} votes right of reply`).toBe(true);
     expect(geo.votesNearRight, `${viewport.name} votes near right`).toBe(true);
+    expect(geo.replyBelowVotes, `${viewport.name} REPLY_BELOW_INLINE_ROW`).toBe(true);
     expect(geo.replyLabel, `${viewport.name} reply label`).toBe(true);
-    expect(geo.actionRowDeltaY, `${viewport.name} ACTION_ROW_ALIGNMENT`).toBeLessThanOrEqual(4);
-    expect(geo.votesSameRowAsReply, `${viewport.name} REPLY_VOTE_SINGLE_ROW`).toBe(true);
-    expect(geo.countRightOfThumb, `${viewport.name} count right of thumb`).toBe(true);
+    expect(geo.hasReplied, `${viewport.name} replied footer present`).toBe(true);
+    expect(geo.repliedLabel, `${viewport.name} replied label`).toBe(true);
+    expect(geo.repliedVoteDeltaY, `${viewport.name} REPLIED_VOTE_INLINE`).toBeLessThanOrEqual(4);
+    expect(geo.repliedLeftOfVotes, `${viewport.name} replied left of votes`).toBe(true);
+    expect(geo.countLeftOfThumb, `${viewport.name} count left of thumb`).toBe(true);
     expect(geo.thumbCountDeltaY, `${viewport.name} THUMB_COUNT_INLINE`).toBeLessThanOrEqual(3);
     expect(geo.countNotUnderThumb, `${viewport.name} count not under thumb`).toBe(true);
     expect(geo.voteBoxWiderThanThumb, `${viewport.name} not vertical provider box`).toBe(true);
@@ -689,6 +699,7 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   test.skip(!seed.replyBPostId, "reply B not seeded");
   const errors = attachErrorCollectors(page);
   const discussionUrl = `/d/${seed.discussionId}-${seed.discussionSlug}`;
+  const WHITE = /rgb\(\s*255,\s*255,\s*255\s*\)|#ffffff/i;
   const LIME = /rgb\(\s*132,\s*204,\s*22\s*\)|#84cc16/i;
   const PINK = /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i;
 
@@ -746,8 +757,20 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   const header = page.locator(".FlatRateDiscussionVote");
   await expect(header).toBeVisible();
   await expect(header).toHaveClass(/FlatRateDiscussionVote--available/);
-  const headerColor = await header.evaluate((el) => getComputedStyle(el).color);
-  expect(headerColor).toMatch(LIME);
+  const availableChrome = await header.evaluate((el) => {
+    const count = el.querySelector(".FlatRateDiscussionVote-count");
+    const icon = el.querySelector(".icon");
+    const cb = count?.getBoundingClientRect();
+    const ib = icon?.getBoundingClientRect();
+    return {
+      countColor: count ? getComputedStyle(count).color : null,
+      thumbColor: icon ? getComputedStyle(icon).color : null,
+      countLeftOfThumb: !!(cb && ib && cb.right <= ib.left + 2),
+    };
+  });
+  expect(availableChrome.countColor).toMatch(LIME);
+  expect(availableChrome.thumbColor).toMatch(WHITE);
+  expect(availableChrome.countLeftOfThumb).toBe(true);
 
   await header.click();
   await expect.poll(async () => {
@@ -763,8 +786,12 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   );
   const pink = await page
     .locator(".FlatRateDiscussionVote")
-    .evaluate((el) => getComputedStyle(el).color);
-  expect(pink).toMatch(PINK);
+    .evaluate((el) => ({
+      count: getComputedStyle(el.querySelector(".FlatRateDiscussionVote-count")).color,
+      thumb: getComputedStyle(el.querySelector(".icon")).color,
+    }));
+  expect(pink.count).toMatch(PINK);
+  expect(pink.thumb).toMatch(PINK);
 
   await votePost(seed.newToken, seed.mentionPostId, true);
   summary = await readSummary(seed.newToken);
@@ -829,7 +856,7 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
       return {
         present: true,
         inline:
-          cb.left >= ib.right - 2 &&
+          cb.right <= ib.left + 2 &&
           Math.abs(ib.top + ib.height / 2 - (cb.top + cb.height / 2)) <= 4,
         nowrap: bb.height < 48,
       };
