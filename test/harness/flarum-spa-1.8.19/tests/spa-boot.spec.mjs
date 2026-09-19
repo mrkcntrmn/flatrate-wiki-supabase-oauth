@@ -688,39 +688,22 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   const PINK = /rgb\(\s*199,\s*45,\s*93\s*\)|#c72d5d/i;
 
   async function readSummary(token) {
-    const base = process.env.FLARUM_BASE_URL || "http://127.0.0.1:8080";
     await page.context().clearCookies();
-    if (!token) {
-      await page.goto(discussionUrl, { waitUntil: "networkidle" });
-    } else {
-      const username =
-        token === seed.newToken
-          ? seed.newUsername
-          : token === seed.sentinelToken
-            ? seed.sentinelUsername
-            : token === seed.grandfatheredToken
-              ? seed.grandfatheredUsername
-              : null;
-      await page.goto(`${base}/`, { waitUntil: "networkidle" });
-      if (username) {
-        // Password login binds a real session; remember-cookie alone can stay guest
-        // for subsequent API/document reads in a fresh Playwright test context.
-        await page.evaluate(
-          async ({ identification, password }) => {
-            await app.session.login({ identification, password });
-          },
-          { identification: username, password: "HarnessPass1" },
-        );
-      } else {
-        await login(page, token);
-      }
-      await page.goto(discussionUrl, { waitUntil: "networkidle" });
+    if (token) {
+      await login(page, token);
     }
-    const summary = await page.evaluate((discussionId) => {
-      const discussion = app.store.getById("discussions", String(discussionId));
-      if (!discussion) {
-        return { missing: true };
-      }
+    await page.goto(discussionUrl, { waitUntil: "networkidle" });
+    if (token) {
+      await expect
+        .poll(async () =>
+          page.evaluate(() => !!(app.session && app.session.user)),
+        )
+        .toBe(true);
+    }
+    // Force an authenticated (or guest) refetch so viewer projection is not
+    // stuck on a stale preloaded payload.
+    const summary = await page.evaluate(async (discussionId) => {
+      const discussion = await app.store.find("discussions", String(discussionId));
       return {
         total: discussion.attribute("flatRateDiscussionUpvotes"),
         mine: discussion.attribute("flatRateDiscussionViewerUpvoted"),
@@ -731,7 +714,9 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
         userId: app.session && app.session.user ? app.session.user.id() : null,
       };
     }, seed.discussionId);
-    expect(summary.missing, "discussion missing from store").toBeFalsy();
+    if (token) {
+      expect(summary.loggedIn, "expected remember-cookie session").toBe(true);
+    }
     return {
       total: summary.total,
       mine: summary.mine,
