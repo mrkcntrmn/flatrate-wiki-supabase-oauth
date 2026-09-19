@@ -407,8 +407,8 @@
                 },
               },
               [
-                m('i', { className: 'icon fas fa-thumbs-up', 'aria-hidden': 'true' }),
                 m('span', { className: 'FlatRateDiscussionVote-count' }, String(count)),
+                m('i', { className: 'icon fas fa-thumbs-up', 'aria-hidden': 'true' }),
               ]
             ),
             85
