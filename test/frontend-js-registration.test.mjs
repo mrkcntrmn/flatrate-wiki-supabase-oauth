@@ -310,7 +310,9 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   assert.match(plainVoting, /FlatRateVotes--zero/);
   assert.match(plainVoting, /FlatRateVotes--hasVotes/);
   assert.match(plainVoting, /FlatRateVotes--mine/);
+  assert.match(plainVoting, /FlatRateVotes--reply/);
   assert.match(plainVoting, /FlatRateDiscussionVote/);
+  assert.doesNotMatch(plainVoting, /icon fas fa-thumbs-up/);
   assert.match(plainVoting, /flatRateDiscussionVote/);
   assert.match(plainVoting, /sidebarItems/);
 
@@ -319,6 +321,10 @@ test("IA-013 JS source markers remain present and unchanged in role", () => {
   assert.match(forumLess, /@flatrate-vote-has:\s*#84cc16/);
   assert.match(forumLess, /@flatrate-vote-mine:\s*#c72d5d/);
   assert.match(forumLess, /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)/);
+  assert.match(
+    forumLess,
+    /\.CommentPost-votes\.FlatRateVotes--zero\.FlatRateVotes--reply[\s\S]*?\.Post-voteCount[\s\S]*?display:\s*none\s*!important/,
+  );
   assert.match(
     forumLess,
     /\.FlatRateVotes--hasVotes:not\(\.FlatRateVotes--mine\)\s*\{[\s\S]*?\.Post-upvote[\s\S]*?@flatrate-vote-zero/,
