@@ -543,6 +543,24 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   expect(chrome.countLeft).toBe(true);
   expect(chrome.thumbColor).toMatch(WHITE);
 
+  const zeroReplyChrome = await page.evaluate(() => {
+    const votes = Array.from(
+      document.querySelectorAll(
+        ".CommentPost-votes.FlatRateVotes--reply.FlatRateVotes--zero",
+      ),
+    );
+    const first = votes[0] || null;
+    const count =
+      first?.querySelector(".Post-points") ||
+      first?.querySelector(".Post-voteCount");
+    return {
+      matches: votes.length,
+      countDisplay: count ? getComputedStyle(count).display : null,
+    };
+  });
+  expect(zeroReplyChrome.matches).toBeGreaterThan(0);
+  expect(zeroReplyChrome.countDisplay).toBe("none");
+
   const viewports = [
     { name: "DESKTOP_1024", width: 1024, height: 768 },
     { name: "TABLET_768", width: 768, height: 1024 },
@@ -696,7 +714,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   errors.assertClean();
 });
 
-test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ page }) => {
+test("GROWTH-001UI count-only discussion aggregate + one ballot", async ({ page }) => {
   test.skip(!seed.votingEnabled, "FoF voting not seeded in this harness run");
   test.skip(!seed.replyBPostId, "reply B not seeded");
   const errors = attachErrorCollectors(page);
@@ -761,18 +779,15 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
   await expect(header).toHaveClass(/FlatRateDiscussionVote--available/);
   const availableChrome = await header.evaluate((el) => {
     const count = el.querySelector(".FlatRateDiscussionVote-count");
-    const icon = el.querySelector(".icon");
-    const cb = count?.getBoundingClientRect();
-    const ib = icon?.getBoundingClientRect();
     return {
       countColor: count ? getComputedStyle(count).color : null,
-      thumbColor: icon ? getComputedStyle(icon).color : null,
-      countLeftOfThumb: !!(cb && ib && cb.right <= ib.left + 2),
+      countText: count ? (count.textContent || "").trim() : null,
+      iconCount: el.querySelectorAll(".icon").length,
     };
   });
   expect(availableChrome.countColor).toMatch(LIME);
-  expect(availableChrome.thumbColor).toMatch(WHITE);
-  expect(availableChrome.countLeftOfThumb).toBe(true);
+  expect(availableChrome.countText).toBe("0");
+  expect(availableChrome.iconCount).toBe(0);
 
   await header.click();
   await expect.poll(async () => {
@@ -790,10 +805,10 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
     .locator(".FlatRateDiscussionVote")
     .evaluate((el) => ({
       count: getComputedStyle(el.querySelector(".FlatRateDiscussionVote-count")).color,
-      thumb: getComputedStyle(el.querySelector(".icon")).color,
+      iconCount: el.querySelectorAll(".icon").length,
     }));
   expect(pink.count).toMatch(PINK);
-  expect(pink.thumb).toMatch(PINK);
+  expect(pink.iconCount).toBe(0);
 
   await votePost(seed.newToken, seed.mentionPostId, true);
   summary = await readSummary(seed.newToken);
@@ -849,22 +864,19 @@ test("GROWTH-001UI discussion aggregate upvote header + one ballot", async ({ pa
     await page.goto(discussionUrl, { waitUntil: "networkidle" });
     const geo = await page.evaluate(() => {
       const btn = document.querySelector(".FlatRateDiscussionVote");
-      const icon = btn?.querySelector(".icon");
       const count = btn?.querySelector(".FlatRateDiscussionVote-count");
-      if (!btn || !icon || !count) return { present: false };
-      const ib = icon.getBoundingClientRect();
-      const cb = count.getBoundingClientRect();
+      if (!btn || !count) return { present: false };
       const bb = btn.getBoundingClientRect();
       return {
         present: true,
-        inline:
-          cb.right <= ib.left + 2 &&
-          Math.abs(ib.top + ib.height / 2 - (cb.top + cb.height / 2)) <= 4,
+        iconCount: btn.querySelectorAll(".icon").length,
+        countVisible: getComputedStyle(count).display !== "none",
         nowrap: bb.height < 48,
       };
     });
     expect(geo.present).toBe(true);
-    expect(geo.inline).toBe(true);
+    expect(geo.iconCount).toBe(0);
+    expect(geo.countVisible).toBe(true);
     expect(geo.nowrap).toBe(true);
   }
 
