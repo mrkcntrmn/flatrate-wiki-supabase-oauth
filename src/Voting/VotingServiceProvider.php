@@ -48,6 +48,5 @@ final class VotingServiceProvider extends AbstractServiceProvider
             ->extend($this->container);
 
         $guard->markRegistered();
-
     }
 }
