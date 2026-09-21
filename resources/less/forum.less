@@ -423,7 +423,7 @@
 }
 
 // Vote chrome states (classes set by plain-voting.js from FoF model state):
-//   zero upvotes  -> white thumb/count
+//   zero upvotes  -> white thumb; zero count is hidden on replies
 //   has upvotes   -> white thumb, lime count
 //   viewer voted -> pink thumb/count
 @flatrate-vote-zero: #ffffff;
@@ -442,6 +442,15 @@
   .DiscussionListItem-voteButton--up .Button-icon,
   .DiscussionListItem-voteCount {
     color: @flatrate-vote-zero !important;
+  }
+}
+
+// Keep the reply action compact: a reply with no endorsements shows only the
+// actionable thumb. The first post and any nonzero reply retain their count.
+.CommentPost-votes.FlatRateVotes--zero.FlatRateVotes--reply {
+  .Post-points,
+  .Post-voteCount {
+    display: none !important;
   }
 }
 
@@ -488,7 +497,7 @@
 }
 
 // Discussion-level aggregate opposite Following (SubscriptionMenu).
-// Inactive = lime; active (viewer has any ballot in discussion) = pink.
+// Count-only presentation: inactive = lime; active (viewer has any ballot in discussion) = pink.
 .DiscussionPage-nav > ul {
   display: flex;
   flex-wrap: wrap;
@@ -505,7 +514,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.35em;
+  gap: 0;
   white-space: nowrap;
   line-height: 1;
   min-height: 36px;
@@ -518,13 +527,6 @@
     padding: 0;
     line-height: 1;
   }
-
-  .icon {
-    order: 2;
-    margin: 0;
-    color: @flatrate-vote-zero !important;
-  }
-
   &.FlatRateDiscussionVote--available {
     color: @flatrate-vote-has !important;
   }
@@ -532,13 +534,7 @@
   &.FlatRateDiscussionVote--available .FlatRateDiscussionVote-count {
     color: @flatrate-vote-has !important;
   }
-
-  &.FlatRateDiscussionVote--available .icon {
-    color: @flatrate-vote-zero !important;
-  }
-
   &.FlatRateDiscussionVote--mine,
-  &.FlatRateDiscussionVote--mine .icon,
   &.FlatRateDiscussionVote--mine .FlatRateDiscussionVote-count {
     color: @flatrate-vote-mine !important;
   }

@@ -250,6 +250,7 @@
       }
       var count = 0;
       var mine = false;
+      var isReply = false;
       try {
         if (model && typeof model.votes === 'function') {
           count = Number(model.votes()) || 0;
@@ -257,10 +258,14 @@
         if (model && typeof model.hasUpvoted === 'function') {
           mine = !!model.hasUpvoted();
         }
+        if (model && typeof model.number === 'function') {
+          isReply = Number(model.number()) > 1;
+        }
       } catch (err) {}
       votesEl.classList.toggle('FlatRateVotes--zero', count <= 0);
       votesEl.classList.toggle('FlatRateVotes--hasVotes', count > 0);
       votesEl.classList.toggle('FlatRateVotes--mine', mine);
+      votesEl.classList.toggle('FlatRateVotes--reply', isReply);
     }
 
     function bindVoteChrome(Component, modelFrom) {
@@ -445,10 +450,7 @@
                   upvoteDiscussionFirstPost(discussion);
                 },
               },
-              [
-                m('span', { className: 'FlatRateDiscussionVote-count' }, String(count)),
-                m('i', { className: 'icon fas fa-thumbs-up', 'aria-hidden': 'true' }),
-              ]
+              m('span', { className: 'FlatRateDiscussionVote-count' }, String(count))
             ),
             85
           );
