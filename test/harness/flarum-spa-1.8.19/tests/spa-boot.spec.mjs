@@ -837,6 +837,28 @@ test("GROWTH-001UI count-only discussion aggregate + multi-post ballots", async 
   expect(multiReplyMine.mention).toBe(true);
   expect(multiReplyMine.replyB).toBe(true);
 
+  const mentionVotes = page
+    .locator(".CommentPost")
+    .filter({ hasText: "please advise." })
+    .locator(".CommentPost-votes")
+    .first();
+  const replyBVotes = page
+    .locator(".CommentPost")
+    .filter({ hasText: "Harness reply B" })
+    .locator(".CommentPost-votes")
+    .first();
+  await expect(mentionVotes).toHaveClass(/FlatRateVotes--mine/);
+  await expect(replyBVotes).toHaveClass(/FlatRateVotes--mine/);
+  for (const votes of [mentionVotes, replyBVotes]) {
+    const thumbColor = await votes.evaluate((el) => {
+      const thumb =
+        el.querySelector(".Post-upvote") ||
+        el.querySelector(".Post-voteButton--up");
+      return thumb ? getComputedStyle(thumb).color : null;
+    });
+    expect(thumbColor).toMatch(PINK);
+  }
+
   await votePost(seed.sentinelToken, seed.mentionPostId, true);
   const asNew = await readSummary(seed.newToken);
   const asSentinel = await readSummary(seed.sentinelToken);
