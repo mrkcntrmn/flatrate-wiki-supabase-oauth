@@ -257,7 +257,7 @@ expect_true(
 );
 expect_true(
     str_contains($summary, "where('post_votes.value', '>', 0)")
-    && str_contains($summary, "where('posts.discussion_id', $discussionId)")
+    && str_contains($summary, "where('posts.discussion_id', \\$discussionId)")
     && str_contains($summary, "whereNull('posts.hidden_at')"),
     'discussion summary counts all visible positive post votes'
 );
