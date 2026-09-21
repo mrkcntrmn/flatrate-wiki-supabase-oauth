@@ -6,7 +6,6 @@ use Flarum\Api\Serializer\PostSerializer;
 use Flarum\Extend;
 use Flarum\Foundation\AbstractServiceProvider;
 use Flarum\Post\Post;
-use Illuminate\Contracts\Events\Dispatcher;
 
 final class VotingServiceProvider extends AbstractServiceProvider
 {
@@ -19,7 +18,6 @@ final class VotingServiceProvider extends AbstractServiceProvider
         $this->container->singleton(GlobalVotingPolicy::class);
         $this->container->singleton(VoterIdentityRelationshipGuard::class);
         $this->container->singleton(DiscussionVoteSummary::class);
-        $this->container->singleton(EnforceOneBallotPerDiscussion::class);
     }
 
     /**
@@ -29,7 +27,7 @@ final class VotingServiceProvider extends AbstractServiceProvider
      * 1) booting callbacks → ExtensionManager::extend (FoF hasMany)
      * 2) boot all service providers (this method) → FlatRate override wins
      */
-    public function boot(Dispatcher $events): void
+    public function boot(): void
     {
         /** @var VoterIdentityRelationshipGuard $guard */
         $guard = $this->container->make(VoterIdentityRelationshipGuard::class);
@@ -51,10 +49,5 @@ final class VotingServiceProvider extends AbstractServiceProvider
 
         $guard->markRegistered();
 
-        // Soft-bind FoF vote seam for one-ballot-per-discussion enforcement.
-        $eventClass = 'FoF\\Gamification\\Events\\PostWasVoted';
-        if (class_exists($eventClass)) {
-            $events->listen($eventClass, EnforceOneBallotPerDiscussion::class);
-        }
     }
 }
