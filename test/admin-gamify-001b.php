@@ -76,6 +76,9 @@ expect_true(str_contains($frontend, 'document.visibilityState'), 'poll only whil
 expect_true(str_contains($frontend, 'Last updated') || str_contains($frontend, 'last_updated'), 'FRESHNESS_VISIBLE');
 expect_true(str_contains($frontend, 'source_unavailable') || str_contains($frontend, 'Unavailable'), 'source failure UI');
 expect_true(str_contains($frontend, '/u/:username/gamification'), 'admin route path');
+expect_true(str_contains($frontend, 'BasePage.extend') || str_contains($frontend, 'Page.extend'), 'PAGE_EXTEND_COMPONENT=true');
+expect_true(! str_contains($frontend, 'Object.create(BasePage.prototype)'), 'no raw prototype Page subclass');
+
 expect_true(str_contains($locale, 'flatrate-admin-gamify'), 'locale present');
 
 $forbiddenLeakNeedles = [
