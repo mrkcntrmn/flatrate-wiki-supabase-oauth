@@ -141,8 +141,9 @@ DISCUSSION_UPVOTE_TOTAL=
   count of positive post_votes across ALL visible comment posts
   in the discussion (not FoF discussion.votes / first-post-only)
 DISCUSSION_HEADER_ACTIVE=
-  viewer currently has a positive ballot somewhere in the discussion
-ONE_EFFECTIVE_POSITIVE_BALLOT_PER_MEMBER_PER_DISCUSSION=true
+  viewer currently has at least one positive post vote in the discussion
+MULTIPLE_POSITIVE_BALLOTS_PER_MEMBER_PER_DISCUSSION=true
+ONE_POSITIVE_BALLOT_PER_MEMBER_PER_POST=true
 CANONICAL_STORAGE=FOF_POST_VOTES
 NEW_VOTE_TABLE=false
 ```
@@ -150,8 +151,10 @@ NEW_VOTE_TABLE=false
 DiscussionPage sidebar renders `FlatRateDiscussionVote` opposite Following:
 
 - inactive (no viewer ballot): lime `#84cc16` count + white thumb, rendered count-first (`1 👍`); clickable → upvotes opening post
-- active (viewer ballot anywhere): pink `#c72d5d` count + thumb immediately after click; not clickable (remove from the voted post)
-- voting a different reply **moves** the ballot (zeros the prior positive row) so aggregate stays stable
+- active (viewer has one or more post upvotes in the discussion): pink `#c72d5d` aggregate count
+- each post/reply upvote is independent: voting another reply **must not** clear earlier reply upvotes
+- every reply the viewer has upvoted remains pink until that specific reply is toggled off
+- the discussion total is the sum of all positive votes across all visible comment posts, including multiple votes from the same member on different posts
 
 API attributes on `BasicDiscussionSerializer` (no voter identities):
 

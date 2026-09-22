@@ -66,8 +66,8 @@ jobs:
       - name: Run GROWTH-001UI discussion aggregate upvote gates
         run: php test/plain-voting-discussion-aggregate.php
 
-      - name: Run GROWTH-001UI one-ballot MariaDB runtime gates
-        run: php test/plain-voting-one-ballot-runtime.php
+      - name: Run GROWTH-001UI multi-post MariaDB runtime gates
+        run: php test/plain-voting-multi-post-runtime.php
 
       - name: Run desktop navigation handoff gates
         run: php test/forum-desktop-navigation-handoff.php

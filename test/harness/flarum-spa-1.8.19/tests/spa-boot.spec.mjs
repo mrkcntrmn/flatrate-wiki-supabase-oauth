@@ -714,7 +714,7 @@ test("GROWTH-001UI upvote-only thumb three-state colors", async ({ page }) => {
   errors.assertClean();
 });
 
-test("GROWTH-001UI count-only discussion aggregate + one ballot", async ({ page }) => {
+test("GROWTH-001UI count-only discussion aggregate + multi-post ballots", async ({ page }) => {
   test.skip(!seed.votingEnabled, "FoF voting not seeded in this harness run");
   test.skip(!seed.replyBPostId, "reply B not seeded");
   const errors = attachErrorCollectors(page);
@@ -812,26 +812,77 @@ test("GROWTH-001UI count-only discussion aggregate + one ballot", async ({ page 
 
   await votePost(seed.newToken, seed.mentionPostId, true);
   summary = await readSummary(seed.newToken);
-  expect(summary.total).toBe(1);
+  expect(summary.total).toBe(2);
   expect(summary.mine).toBe(true);
-  expect(Number(summary.votePostId)).toBe(seed.mentionPostId);
+  expect(Number(summary.votePostId)).toBe(seed.authorPostId);
 
   await votePost(seed.newToken, seed.replyBPostId, true);
   summary = await readSummary(seed.newToken);
-  expect(summary.total).toBe(1);
+  expect(summary.total).toBe(3);
   expect(summary.mine).toBe(true);
-  expect(Number(summary.votePostId)).toBe(seed.replyBPostId);
+  expect(Number(summary.votePostId)).toBe(seed.authorPostId);
+
+  // The same member may endorse multiple distinct replies simultaneously.
+  // FoF exposes each post's selected state independently via hasUpvoted().
+  await login(page, seed.newToken);
+  await page.goto(discussionUrl, { waitUntil: "networkidle" });
+  const multiReplyMine = await page.evaluate(({ mentionPostId, replyBPostId }) => {
+    const mention = app.store.getById("posts", String(mentionPostId));
+    const replyB = app.store.getById("posts", String(replyBPostId));
+    return {
+      mention: !!(mention && typeof mention.hasUpvoted === "function" && mention.hasUpvoted()),
+      replyB: !!(replyB && typeof replyB.hasUpvoted === "function" && replyB.hasUpvoted()),
+    };
+  }, { mentionPostId: seed.mentionPostId, replyBPostId: seed.replyBPostId });
+  expect(multiReplyMine.mention).toBe(true);
+  expect(multiReplyMine.replyB).toBe(true);
+
+  const mentionVotes = page
+    .locator(".CommentPost")
+    .filter({ hasText: "please advise." })
+    .locator(".CommentPost-votes")
+    .first();
+  const replyBVotes = page
+    .locator(".CommentPost")
+    .filter({ hasText: "Harness reply B" })
+    .locator(".CommentPost-votes")
+    .first();
+  await expect(mentionVotes).toHaveClass(/FlatRateVotes--mine/);
+  await expect(replyBVotes).toHaveClass(/FlatRateVotes--mine/);
+  for (const votes of [mentionVotes, replyBVotes]) {
+    const thumbColor = await votes.evaluate((el) => {
+      const thumb =
+        el.querySelector(".Post-upvote") ||
+        el.querySelector(".Post-voteButton--up");
+      return thumb ? getComputedStyle(thumb).color : null;
+    });
+    expect(thumbColor).toMatch(PINK);
+  }
 
   await votePost(seed.sentinelToken, seed.mentionPostId, true);
   const asNew = await readSummary(seed.newToken);
   const asSentinel = await readSummary(seed.sentinelToken);
-  expect(asNew.total).toBe(2);
-  expect(asSentinel.total).toBe(2);
+  expect(asNew.total).toBe(4);
+  expect(asSentinel.total).toBe(4);
   expect(asSentinel.mine).toBe(true);
   expect(Number(asSentinel.votePostId)).toBe(seed.mentionPostId);
   expect(asNew.total).not.toBe(asNew.fofVotes);
 
+  // Removing one reply vote must leave this member's other post votes intact.
   await votePost(seed.newToken, seed.replyBPostId, false);
+  summary = await readSummary(seed.newToken);
+  expect(summary.total).toBe(3);
+  expect(summary.mine).toBe(true);
+  expect(summary.canUpvote).toBe(false);
+  expect(Number(summary.votePostId)).toBe(seed.authorPostId);
+
+  await votePost(seed.newToken, seed.mentionPostId, false);
+  summary = await readSummary(seed.newToken);
+  expect(summary.total).toBe(2);
+  expect(summary.mine).toBe(true);
+  expect(Number(summary.votePostId)).toBe(seed.authorPostId);
+
+  await votePost(seed.newToken, seed.authorPostId, false);
   summary = await readSummary(seed.newToken);
   expect(summary.total).toBe(1);
   expect(summary.mine).toBe(false);

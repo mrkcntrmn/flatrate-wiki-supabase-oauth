@@ -21,7 +21,6 @@ function fail(string $message): void
 
 $summary = (string) file_get_contents($root.'/src/Voting/DiscussionVoteSummary.php');
 $serialize = (string) file_get_contents($root.'/src/Api/SerializeDiscussionVoteSummary.php');
-$enforce = (string) file_get_contents($root.'/src/Voting/EnforceOneBallotPerDiscussion.php');
 $provider = (string) file_get_contents($root.'/src/Voting/VotingServiceProvider.php');
 $extend = (string) file_get_contents($root.'/extend.php');
 $pv = (string) file_get_contents($root.'/js/dist/plain-voting.js');
@@ -51,48 +50,12 @@ str_contains($serialize, 'flatRateDiscussionUpvotes')
     ? pass('DISCUSSION_SUMMARY_ATTRIBUTES')
     : fail('bounded discussion summary attributes missing');
 
-str_contains($enforce, 'ONE_EFFECTIVE_POSITIVE_BALLOT')
-    && str_contains($enforce, "where('post_votes.value', '>', 0)")
-    && str_contains($enforce, "'value' => 0")
-    && str_contains($enforce, 'lockForUpdate')
-    && str_contains($enforce, "->table('users')")
-    && str_contains($enforce, "->where('id', \$actorId)")
-    && str_contains($enforce, '->lockForUpdate()')
-    && str_contains($enforce, "'value' => 1")
-    && str_contains($enforce, 'resyncRanks')
-    && str_contains($enforce, 'recalculateAuthorPointsAndRanks')
-    && str_contains($enforce, "'user_id' => \$userId")
-    && str_contains($enforce, "'rank_id' => (int) \$rankId")
-    ? pass('ONE_POSITIVE_BALLOT_PER_DISCUSSION')
-    : fail('one-ballot move enforcement missing');
-
-str_contains($enforce, "->table('users')")
-    && preg_match("/table\\('users'\\)[\\s\\S]{0,120}lockForUpdate/", $enforce)
-    ? pass('ONE_BALLOT_LOCKS_USERS_FOR_UPDATE')
-    : fail('reconcile must lockForUpdate on users');
-
-str_contains($enforce, "'value' => 1")
-    && preg_match("/existingKeep[\\s\\S]{0,400}'value' => 1/", $enforce)
-    ? pass('ONE_BALLOT_REASSERT_VALUE_ONE')
-    : fail('reconcile must reassert keep-target value => 1');
-
-str_contains($enforce, 'resyncRanks')
-    && str_contains($enforce, "table('rank_users')->where('user_id', \$userId)->delete()")
-    && str_contains($enforce, "'user_id' => \$userId")
-    && str_contains($enforce, "'rank_id' => (int) \$rankId")
-    ? pass('ONE_BALLOT_RANK_USERS_RESYNC')
-    : fail('reconcile must resync rank_users');
-
-str_contains($enforce, 'recalculateAuthorPointsAndRanks')
-    && str_contains($enforce, 'array_keys($affectedAuthorIds)')
-    ? pass('ONE_BALLOT_RECALCULATE_AUTHOR_POINTS')
-    : fail('reconcile must call recalculateAuthorPointsAndRanks');
-
-str_contains($provider, 'EnforceOneBallotPerDiscussion')
-    && str_contains($provider, 'PostWasVoted')
+! str_contains($provider, 'EnforceOneBallotPerDiscussion')
+    && ! str_contains($provider, 'PostWasVoted')
     && str_contains($provider, 'DiscussionVoteSummary')
-    ? pass('PROVIDER_WIRES_SUMMARY_AND_ENFORCE')
-    : fail('VotingServiceProvider missing summary/enforce wiring');
+    ? pass('MULTI_POST_BALLOTS_PRESERVED')
+    : fail('FlatRate must not zero a member\'s other positive post votes');
+
 
 str_contains($extend, 'BasicDiscussionSerializer')
     && str_contains($extend, 'SerializeDiscussionVoteSummary')
@@ -116,7 +79,7 @@ str_contains($less, '.FlatRateDiscussionVote')
     : fail('discussion header CSS missing');
 
 str_contains($docs, 'DISCUSSION_UPVOTE_TOTAL')
-    && str_contains($docs, 'ONE_EFFECTIVE_POSITIVE_BALLOT_PER_MEMBER_PER_DISCUSSION')
+    && str_contains($docs, 'MULTIPLE_POSITIVE_BALLOTS_PER_MEMBER_PER_DISCUSSION=true')
     && str_contains($docs, 'not FoF discussion.votes')
     ? pass('DOCS_DISTINGUISH_AGGREGATE')
     : fail('docs must distinguish discussion aggregate from FoF votes');
