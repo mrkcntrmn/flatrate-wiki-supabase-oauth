@@ -57,7 +57,25 @@ flatrate-admin-gamify:
     sharing: Sharing
     referrals: Referrals
     test_lab: Test Lab
-    test_lab_deferred: Test Lab actions ship in the next bounded tranche. Dashboard reads remain live.
+    test_lab_session: Test Session
+    test_lab_state: State
+    test_lab_started: Started
+    test_lab_expires: Expires
+    test_lab_session_id: Session ID
+    test_lab_start: Start test session
+    test_lab_end: End test session
+    test_lab_create_share: Create Test Share
+    test_lab_target_type: Target type
+    test_lab_target_path: Target path
+    test_lab_share_intent: Share intent
+    test_lab_create: Create
+    test_lab_share_code: Share code
+    test_lab_copy_path: Copy path
+    test_lab_open_recipient: Open recipient test
+    test_lab_busy: Working…
+    test_lab_error: Test Lab action failed.
+    test_lab_need_session: Start a test session before creating a share.
+    test_lab_need_share: Create a test share before opening a recipient launch.
     refresh: Refresh
     loading: Loading live data…
     load_error: Unable to load admin gamification data.

@@ -195,7 +195,12 @@ return [
         ->get('/flatrate-admin/gamification/overview', 'flatrate.admin.gamification.overview', AdminGamify\OverviewController::class)
         ->get('/flatrate-admin/gamification/quality', 'flatrate.admin.gamification.quality', AdminGamify\QualityController::class)
         ->get('/flatrate-admin/gamification/sharing', 'flatrate.admin.gamification.sharing', AdminGamify\SharingController::class)
-        ->get('/flatrate-admin/gamification/referrals', 'flatrate.admin.gamification.referrals', AdminGamify\ReferralsController::class),
+        ->get('/flatrate-admin/gamification/referrals', 'flatrate.admin.gamification.referrals', AdminGamify\ReferralsController::class)
+        ->post('/flatrate-admin/gamification/test-lab/session/start', 'flatrate.admin.gamification.test_lab.session.start', AdminGamify\TestSessionStartController::class)
+        ->post('/flatrate-admin/gamification/test-lab/session/end', 'flatrate.admin.gamification.test_lab.session.end', AdminGamify\TestSessionEndController::class)
+        ->post('/flatrate-admin/gamification/test-lab/session/status', 'flatrate.admin.gamification.test_lab.session.status', AdminGamify\TestSessionStatusController::class)
+        ->post('/flatrate-admin/gamification/test-lab/share/create', 'flatrate.admin.gamification.test_lab.share.create', AdminGamify\TestShareCreateController::class)
+        ->post('/flatrate-admin/gamification/test-lab/launch/create', 'flatrate.admin.gamification.test_lab.launch.create', AdminGamify\TestLaunchCreateController::class),
 
     (new Extend\Routes('forum'))
         ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),
