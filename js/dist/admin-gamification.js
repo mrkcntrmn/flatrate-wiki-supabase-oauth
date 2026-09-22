@@ -130,6 +130,12 @@
             });
         }
 
+        if (Page && Page.default) {
+            Page = Page.default;
+        }
+        if (UserPage && UserPage.default) {
+            UserPage = UserPage.default;
+        }
         var BasePage = Page || Component;
         if (!BasePage) {
             if (typeof module !== 'undefined') {
@@ -138,35 +144,49 @@
             return;
         }
 
-        function AdminGamificationPage() {
-            BasePage.apply(this, arguments);
-            this.window = '30d';
-            this.tab = 'overview';
-            this.loading = true;
-            this.error = null;
-            this.payload = null;
-            this.pollTimer = null;
-            this.lastUpdated = null;
+        function initAdminGamificationState(page) {
+            page.window = '30d';
+            page.tab = 'overview';
+            page.loading = true;
+            page.error = null;
+            page.payload = null;
+            page.pollTimer = null;
+            page.lastUpdated = null;
         }
 
-        AdminGamificationPage.prototype = Object.create(BasePage.prototype);
-        AdminGamificationPage.prototype.constructor = AdminGamificationPage;
-
-        AdminGamificationPage.prototype.oninit = function (vnode) {
-            if (BasePage.prototype.oninit) {
-                BasePage.prototype.oninit.call(this, vnode);
-            }
-            this.ensureOwnProfile();
-            this.load();
-            this.startPolling();
+        var pageSpec = {
+            oninit: function (vnode) {
+                if (BasePage.prototype && BasePage.prototype.oninit) {
+                    BasePage.prototype.oninit.call(this, vnode);
+                }
+                initAdminGamificationState(this);
+                this.ensureOwnProfile();
+                this.load();
+                this.startPolling();
+            },
+            onremove: function (vnode) {
+                this.stopPolling();
+                if (BasePage.prototype && BasePage.prototype.onremove) {
+                    BasePage.prototype.onremove.call(this, vnode);
+                }
+            },
         };
 
-        AdminGamificationPage.prototype.onremove = function () {
-            this.stopPolling();
-            if (BasePage.prototype.onremove) {
-                BasePage.prototype.onremove.call(this);
+        var AdminGamificationPage;
+        if (typeof BasePage.extend === 'function') {
+            AdminGamificationPage = BasePage.extend(pageSpec);
+        } else {
+            // Fallback for environments without Component.extend
+            function AdminGamificationPageCtor() {
+                BasePage.apply(this, arguments);
             }
-        };
+            AdminGamificationPageCtor.prototype = Object.create(BasePage.prototype);
+            AdminGamificationPageCtor.prototype.constructor = AdminGamificationPageCtor;
+            Object.keys(pageSpec).forEach(function (key) {
+                AdminGamificationPageCtor.prototype[key] = pageSpec[key];
+            });
+            AdminGamificationPage = AdminGamificationPageCtor;
+        }
 
         AdminGamificationPage.prototype.ensureOwnProfile = function () {
             var sessionUser = app.session && app.session.user;

@@ -81,10 +81,10 @@ final class QualitySignalsService
             ->whereNotNull('posts.user_id')
             ->groupBy('posts.user_id')
             ->orderByRaw('COUNT(DISTINCT post_votes.post_id) DESC')
-            ->orderBy('posts.user_id')
+            ->orderByRaw('posts.user_id ASC')
             ->limit($limit)
             ->get([
-                'posts.user_id as member_number',
+                $this->db->raw('posts.user_id as member_number'),
                 $this->db->raw('COUNT(DISTINCT post_votes.post_id) as rated_contributions'),
                 $this->db->raw('SUM(CASE WHEN post_votes.value > 0 THEN 1 ELSE 0 END) as positive_ballots'),
                 $this->db->raw('SUM(CASE WHEN post_votes.value < 0 THEN 1 ELSE 0 END) as negative_ballots'),
