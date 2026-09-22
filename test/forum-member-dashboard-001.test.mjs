@@ -25,7 +25,7 @@ test("DASHBOARD-001A/B: owner DTO is actor-matched and public Member # stays pub
   assert.match(serializer, /flatRateMemberNumber/);
   assert.match(serializer, /flatRateOwnerDashboard/);
   assert.match(serializer, /\$actor->id !== \$memberNumber/);
-  assert.match(serializer, /OwnerDashboardDto::make\(\)/);
+  assert.match(serializer, /OwnerDashboardDto::make\(\$actor->isAdmin\(\)\)/);
   assert.doesNotMatch(serializer, /OWNER_PROFILE_BRIDGE|service_role|zip_private/);
 
   const publicReturn = serializer.indexOf("return $exposed;");
