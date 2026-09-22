@@ -14,16 +14,29 @@ final class QualityController extends AbstractAdminGamifyController
         // until PRODUCT-ACTIVITY vote events provide longitudinal timestamps.
         unset($actor);
 
+        $summary = $this->quality->siteSummary();
+        try {
+            $leaderboard = $this->quality->contributorLeaderboard($parsed['limit']);
+        } catch (\Throwable $e) {
+            $leaderboard = [
+                'status' => 'unavailable',
+                'error' => 'leaderboard_query_failed',
+                'time_window_support' => is_array($summary) ? ($summary['time_window_support'] ?? false) : false,
+                'time_window' => is_array($summary) ? ($summary['time_window'] ?? 'current_effective_state/all_time') : 'current_effective_state/all_time',
+                'rows' => [],
+            ];
+        }
+
         return [
             'ok' => true,
             'generated_at' => gmdate('c'),
             'requested_window' => $parsed['window'],
             'sources' => [
-                'quality_signals' => ['status' => 'ok'],
+                'quality_signals' => ['status' => ($summary['status'] ?? null) === 'ok' ? 'ok' : 'unavailable'],
             ],
             'data' => [
-                'summary' => $this->quality->siteSummary(),
-                'leaderboard' => $this->quality->contributorLeaderboard($parsed['limit']),
+                'summary' => $summary,
+                'leaderboard' => $leaderboard,
             ],
         ];
     }
