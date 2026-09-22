@@ -76,6 +76,29 @@ flatrate-admin-gamify:
     test_lab_error: Test Lab action failed.
     test_lab_need_session: Start a test session before creating a share.
     test_lab_need_share: Create a test share before opening a recipient launch.
+    test_lab_attribution: Attribution State
+    test_lab_assertions: Assertions
+    test_lab_refresh_status: Refresh status
+    test_lab_recipient_class: Recipient class
+    test_lab_stage_share_created: Share created
+    test_lab_stage_landing: Landing observed
+    test_lab_stage_pending_claim: Pending claim
+    test_lab_stage_recipient_auth: Recipient authenticated
+    test_lab_stage_referral: Referral attribution
+    test_lab_stage_signup: Signup qualification
+    test_lab_stage_qualified: Qualified-member state
+    test_lab_stage_shadow_points: Shadow points
+    test_lab_stage_first_contribution: First contribution
+    test_lab_stage_repeat_contribution: Repeat contribution
+    test_lab_points_state: Signup points state
+    test_lab_points_value: Signup referral points
+    test_lab_assert_self_referral: Self-referral rejected
+    test_lab_assert_existing_member: Existing-member case
+    test_lab_assert_relink: Relink rejected
+    test_lab_assert_replay: Replay rejected
+    test_lab_assert_expired: Expired claim rejected
+    test_lab_assert_signup_once: "+25 signup awarded exactly once"
+    test_lab_assert_inviter: Effective inviter stable
     refresh: Refresh
     loading: Loading live data…
     load_error: Unable to load admin gamification data.

@@ -200,6 +200,7 @@ return [
         ->post('/flatrate-admin/gamification/test-lab/session/end', 'flatrate.admin.gamification.test_lab.session.end', AdminGamify\TestSessionEndController::class)
         ->post('/flatrate-admin/gamification/test-lab/session/status', 'flatrate.admin.gamification.test_lab.session.status', AdminGamify\TestSessionStatusController::class)
         ->post('/flatrate-admin/gamification/test-lab/share/create', 'flatrate.admin.gamification.test_lab.share.create', AdminGamify\TestShareCreateController::class)
+        ->post('/flatrate-admin/gamification/test-lab/share/status', 'flatrate.admin.gamification.test_lab.share.status', AdminGamify\TestShareStatusController::class)
         ->post('/flatrate-admin/gamification/test-lab/launch/create', 'flatrate.admin.gamification.test_lab.launch.create', AdminGamify\TestLaunchCreateController::class),
 
     (new Extend\Routes('forum'))

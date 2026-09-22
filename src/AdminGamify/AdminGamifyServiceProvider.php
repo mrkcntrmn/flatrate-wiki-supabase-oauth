@@ -20,6 +20,7 @@ final class AdminGamifyServiceProvider extends AbstractServiceProvider
         $this->container->singleton(TestSessionEndController::class);
         $this->container->singleton(TestSessionStatusController::class);
         $this->container->singleton(TestShareCreateController::class);
+        $this->container->singleton(TestShareStatusController::class);
         $this->container->singleton(TestLaunchCreateController::class);
 
         // Reuse the existing HMAC signer singleton when bound.
