@@ -124,6 +124,12 @@ test("Test Lab frontend is functional and secret-free", () => {
   assert.match(source, /test_lab_start|Start test session/);
   assert.equal(source.includes("test_lab_deferred"), false);
   assert.match(source, /\/api\/flatrate-admin\/gamification\/test-lab\//);
+  assert.match(source, /share\/status/);
+  assert.match(source, /ATTRIBUTION_POLL_MS = 5000/);
+  assert.match(source, /ATTRIBUTION_POLL_MAX_MS = 60000/);
+  assert.match(source, /stopAttributionPolling/);
+  assert.match(source, /test_lab_attribution|Attribution State/);
+  assert.match(source, /test_lab_assertions|Assertions/);
   for (const needle of [
     "ADMIN_GAMIFY_BRIDGE_SECRET",
     "GROWTH_SHARE_E2E_UNLOCK_SECRET",

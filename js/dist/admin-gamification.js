@@ -3,6 +3,8 @@
     'use strict';
 
     var POLL_MS = 45000;
+    var ATTRIBUTION_POLL_MS = 5000;
+    var ATTRIBUTION_POLL_MAX_MS = 60000;
     var WINDOWS = ['today', '7d', '30d', 'current_month', 'all_time'];
 
     function coreExport(id) {
@@ -156,6 +158,9 @@
             page.testSession = null;
             page.testShare = null;
             page.testLaunch = null;
+            page.attributionStatus = null;
+            page.attributionPollTimer = null;
+            page.attributionPollStartedAt = null;
             page.labBusy = false;
             page.labError = null;
             page.labTargetType = 'discussion';
@@ -187,6 +192,7 @@
 
             onremove(vnode) {
                 this.stopPolling();
+                this.stopAttributionPolling();
                 if (typeof super.onremove === 'function') {
                     super.onremove(vnode);
                 }
@@ -291,10 +297,13 @@
         
             }
 
-            labRequest(path, body) {
+            labRequest(path, body, options) {
 
                         var self = this;
-                        this.labBusy = true;
+                        var quiet = !!(options && options.quiet);
+                        if (!quiet) {
+                            this.labBusy = true;
+                        }
                         this.labError = null;
                         return app
                             .request({
@@ -303,12 +312,16 @@
                                 body: body || {},
                             })
                             .then(function (response) {
-                                self.labBusy = false;
+                                if (!quiet) {
+                                    self.labBusy = false;
+                                }
                                 m.redraw();
                                 return response;
                             })
                             .catch(function (error) {
-                                self.labBusy = false;
+                                if (!quiet) {
+                                    self.labBusy = false;
+                                }
                                 self.labError =
                                     (error && error.response && error.response.error) ||
                                     (error && error.status) ||
@@ -338,6 +351,8 @@
                             self.applyTestSession(response);
                             self.testShare = null;
                             self.testLaunch = null;
+                            self.attributionStatus = null;
+                            self.stopAttributionPolling();
                             m.redraw();
                         });
         
@@ -353,6 +368,7 @@
                             test_session_id: this.testSessionId,
                         }).then(function (response) {
                             self.applyTestSession(response);
+                            self.stopAttributionPolling();
                             m.redraw();
                         });
         
@@ -374,7 +390,9 @@
                         }).then(function (response) {
                             self.testShare = response && response.share ? response.share : null;
                             self.testLaunch = null;
-                            m.redraw();
+                            self.attributionStatus = null;
+                            self.startAttributionPolling();
+                            return self.refreshAttributionStatus();
                         });
         
             }
@@ -396,8 +414,74 @@
                             if (launchUrl && typeof window !== 'undefined' && window.open) {
                                 window.open(launchUrl, '_blank', 'noopener,noreferrer');
                             }
-                            m.redraw();
+                            self.startAttributionPolling();
+                            return self.refreshAttributionStatus();
                         });
+        
+            }
+
+            refreshAttributionStatus() {
+
+                        var self = this;
+                        if (!this.testSessionId || !this.testShare || !this.testShare.share_code) {
+                            return Promise.resolve();
+                        }
+                        var session = this.testSession || {};
+                        if (session.state && session.state !== 'active') {
+                            this.stopAttributionPolling();
+                            return Promise.resolve();
+                        }
+                        return this.labRequest('share/status', {
+                            test_session_id: this.testSessionId,
+                            share_code: this.testShare.share_code,
+                        }, { quiet: true }).then(function (response) {
+                            self.attributionStatus = response || null;
+                            if (
+                                response &&
+                                response.test_session &&
+                                response.test_session.state &&
+                                response.test_session.state !== 'active'
+                            ) {
+                                self.applyTestSession(response);
+                                self.stopAttributionPolling();
+                            }
+                            m.redraw();
+                            return response;
+                        });
+        
+            }
+
+            startAttributionPolling() {
+
+                        var self = this;
+                        this.stopAttributionPolling();
+                        this.attributionPollStartedAt = Date.now();
+                        this.attributionPollTimer = setInterval(function () {
+                            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+                                return;
+                            }
+                            var started = self.attributionPollStartedAt || 0;
+                            if (Date.now() - started > ATTRIBUTION_POLL_MAX_MS) {
+                                self.stopAttributionPolling();
+                                return;
+                            }
+                            var session = self.testSession || {};
+                            if (!self.testSessionId || (session.state && session.state !== 'active')) {
+                                self.stopAttributionPolling();
+                                return;
+                            }
+                            self.refreshAttributionStatus();
+                        }, ATTRIBUTION_POLL_MS);
+        
+            }
+
+            stopAttributionPolling() {
+
+                        if (this.attributionPollTimer) {
+                            clearInterval(this.attributionPollTimer);
+                            this.attributionPollTimer = null;
+                        }
+                        this.attributionPollStartedAt = null;
         
             }
 
@@ -426,6 +510,10 @@
                         var session = this.testSession || {};
                         var state = session.state || 'inactive';
                         var share = this.testShare;
+                        var status = this.attributionStatus || {};
+                        var stages = status.stages || {};
+                        var assertions = status.assertions || {};
+                        var points = status.points || {};
                         var labErrorLabel =
                             this.labError === 'need_session'
                                 ? t('test_lab_need_session')
@@ -550,8 +638,19 @@
                                                   ': ' +
                                                   formatMetric(share.share_code)
                                           ),
-                                          m('li', 'path: ' + formatMetric(share.share_path)),
-                                          m('li', 'intent: ' + formatMetric(share.share_intent)),
+                                          m(
+                                              'li',
+                                              t('test_lab_target_type') +
+                                                  ': ' +
+                                                  formatMetric(share.target_type)
+                                          ),
+                                          m('li', 'path: ' + formatMetric(share.share_path || share.target_path)),
+                                          m(
+                                              'li',
+                                              t('test_lab_share_intent') +
+                                                  ': ' +
+                                                  formatMetric(share.share_intent)
+                                          ),
                                       ])
                                     : null,
                                 share
@@ -580,6 +679,158 @@
                                       ])
                                     : null,
                             ]),
+                            share
+                                ? m('div.FlatRateAdminGamify-labSection', [
+                                      m('h4', t('test_lab_attribution')),
+                                      m('ul.FlatRateAdminGamify-metrics', [
+                                          m(
+                                              'li',
+                                              t('test_lab_recipient_class') +
+                                                  ': ' +
+                                                  formatMetric(status.recipient_class || 'UNKNOWN')
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_share_created') +
+                                                  ': ' +
+                                                  formatMetric(stages.share_created)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_landing') +
+                                                  ': ' +
+                                                  formatMetric(stages.landing_observed)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_pending_claim') +
+                                                  ': ' +
+                                                  formatMetric(stages.pending_claim)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_recipient_auth') +
+                                                  ': ' +
+                                                  formatMetric(stages.recipient_authenticated)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_referral') +
+                                                  ': ' +
+                                                  formatMetric(stages.referral_attributed)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_signup') +
+                                                  ': ' +
+                                                  formatMetric(stages.signup_verified)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_qualified') +
+                                                  ': ' +
+                                                  formatMetric(stages.member_qualified)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_shadow_points') +
+                                                  ': ' +
+                                                  formatMetric(stages.shadow_points)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_first_contribution') +
+                                                  ': ' +
+                                                  formatMetric(stages.first_contribution)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_stage_repeat_contribution') +
+                                                  ': ' +
+                                                  formatMetric(stages.repeat_contribution)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_points_state') +
+                                                  ': ' +
+                                                  formatMetric(points.signup_referral_points_state)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_points_value') +
+                                                  ': ' +
+                                                  formatMetric(
+                                                      points.signup_referral_points === null ||
+                                                          points.signup_referral_points === undefined
+                                                          ? null
+                                                          : points.signup_referral_points
+                                                  )
+                                          ),
+                                      ]),
+                                      m('div.FlatRateAdminGamify-controls', [
+                                          m(
+                                              'button.Button',
+                                              {
+                                                  type: 'button',
+                                                  disabled: !!self.labBusy || !self.testSessionId,
+                                                  onclick: function () {
+                                                      self.refreshAttributionStatus();
+                                                  },
+                                              },
+                                              t('test_lab_refresh_status')
+                                          ),
+                                      ]),
+                                  ])
+                                : null,
+                            share
+                                ? m('div.FlatRateAdminGamify-labSection', [
+                                      m('h4', t('test_lab_assertions')),
+                                      m('ul.FlatRateAdminGamify-metrics', [
+                                          m(
+                                              'li',
+                                              t('test_lab_assert_self_referral') +
+                                                  ': ' +
+                                                  formatMetric(assertions.self_referral_rejected)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_assert_existing_member') +
+                                                  ': ' +
+                                                  formatMetric(assertions.existing_member_case)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_assert_relink') +
+                                                  ': ' +
+                                                  formatMetric(assertions.relink_rejected)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_assert_replay') +
+                                                  ': ' +
+                                                  formatMetric(assertions.replay_rejected)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_assert_expired') +
+                                                  ': ' +
+                                                  formatMetric(assertions.expired_claim_rejected)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_assert_signup_once') +
+                                                  ': ' +
+                                                  formatMetric(assertions.signup_reward_exact_once)
+                                          ),
+                                          m(
+                                              'li',
+                                              t('test_lab_assert_inviter') +
+                                                  ': ' +
+                                                  formatMetric(assertions.one_effective_inviter)
+                                          ),
+                                      ]),
+                                  ])
+                                : null,
                         ]);
         
             }

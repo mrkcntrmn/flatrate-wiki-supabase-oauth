@@ -19,6 +19,7 @@ final class AdminGamifyBridgeClient
         'test_session_end' => '/api/internal/admin-gamify/test-session/end',
         'test_session_status' => '/api/internal/admin-gamify/test-session/status',
         'test_share_create' => '/api/internal/admin-gamify/test-share/create',
+        'test_share_status' => '/api/internal/admin-gamify/test-share/status',
         'test_launch_create' => '/api/internal/admin-gamify/test-launch/create',
     ];
 
