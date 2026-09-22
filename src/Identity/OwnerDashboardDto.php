@@ -82,11 +82,14 @@ final class OwnerDashboardDto
      *     settings_path: string
      * }
      */
-    public static function make(): array
+    public static function make(bool $isAdmin = false): array
     {
         $sections = [];
         foreach (self::SECTION_IDS as $id) {
             $sections[] = ['id' => $id];
+        }
+        if ($isAdmin) {
+            $sections[] = ['id' => 'gamification'];
         }
 
         return [

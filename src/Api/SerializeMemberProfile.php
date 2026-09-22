@@ -35,7 +35,7 @@ final class SerializeMemberProfile
             return $exposed;
         }
 
-        $exposed['flatRateOwnerDashboard'] = OwnerDashboardDto::make();
+        $exposed['flatRateOwnerDashboard'] = OwnerDashboardDto::make($actor->isAdmin());
 
         $profile = MemberProfile::query()->whereKey($memberNumber)->first();
         if (! $profile) {

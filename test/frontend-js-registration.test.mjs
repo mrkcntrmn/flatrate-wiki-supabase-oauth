@@ -26,6 +26,7 @@ const EXPECTED_JS = [
   "js/dist/mobile-brand-drawer.js",
   "js/dist/member-display.js",
   "js/dist/member-dashboard.js",
+  "js/dist/admin-gamification.js",
   "js/dist/plain-voting.js",
 ];
 
@@ -148,14 +149,14 @@ test("Flarum 1.8.19 Frontend::js is a scalar overwrite; css appends", () => {
   console.error("FLARUM_FRONTEND_CSS_METHOD_APPENDS=true");
 });
 
-test("companion registers six forum JS paths via separate Frontend extenders", () => {
+test("companion registers seven forum JS paths via separate Frontend extenders", () => {
   const extendPhp = withoutWhenExtensionDisabled(text("extend.php"));
   const forum = parseFrontendExtenders(extendPhp).filter(
     (r) => r.frontend === "forum" && r.jsPaths.length > 0,
   );
   const expected = EXPECTED_JS;
 
-  assert.equal(forum.length, 6, "expected six forum Frontend JS extenders");
+  assert.equal(forum.length, 7, "expected seven forum Frontend JS extenders");
 
   const registered = forum.map((r) => r.jsPaths.join(","));
   assert.deepEqual(
@@ -186,13 +187,15 @@ test("companion registers six forum JS paths via separate Frontend extenders", (
   const drawer = allJs.indexOf(expected[2]);
   const member = allJs.indexOf(expected[3]);
   const dashboard = allJs.indexOf(expected[4]);
-  const plainVoting = allJs.indexOf(expected[5]);
+  const adminGamify = allJs.indexOf(expected[5]);
+  const plainVoting = allJs.indexOf(expected[6]);
   assert.ok(
     nav < forumJs &&
       forumJs < drawer &&
       drawer < member &&
       member < dashboard &&
-      dashboard < plainVoting,
+      dashboard < adminGamify &&
+      adminGamify < plainVoting,
     "FRONTEND_JS_ORDER_GATE=PASS",
   );
 
@@ -383,6 +386,7 @@ test("legacy desktop IndexPage renderer is gated only while dedicated nav is dis
   assert.match(extendPhp, /js\/dist\/mobile-brand-drawer\.js/);
   assert.match(extendPhp, /js\/dist\/member-display\.js/);
   assert.match(extendPhp, /js\/dist\/member-dashboard\.js/);
+  assert.match(extendPhp, /js\/dist\/admin-gamification\.js/);
   assert.doesNotMatch(
     withoutWhenExtensionDisabled(extendPhp),
     /js\/dist\/forum-desktop-navigation\.js/,
