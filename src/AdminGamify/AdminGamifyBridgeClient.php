@@ -15,6 +15,11 @@ final class AdminGamifyBridgeClient
         'overview' => '/api/internal/admin-gamify/overview',
         'sharing' => '/api/internal/admin-gamify/sharing',
         'referrals' => '/api/internal/admin-gamify/referrals',
+        'test_session_start' => '/api/internal/admin-gamify/test-session/start',
+        'test_session_end' => '/api/internal/admin-gamify/test-session/end',
+        'test_session_status' => '/api/internal/admin-gamify/test-session/status',
+        'test_share_create' => '/api/internal/admin-gamify/test-share/create',
+        'test_launch_create' => '/api/internal/admin-gamify/test-launch/create',
     ];
 
     public function __construct(

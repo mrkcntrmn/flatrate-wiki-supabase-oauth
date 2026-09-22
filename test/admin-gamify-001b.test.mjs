@@ -118,3 +118,19 @@ test("ordinary owner without gamification section is denied by helper", () => {
     sandbox.FlatRateAdminGamification.dto(user)
   ), false);
 });
+
+test("Test Lab frontend is functional and secret-free", () => {
+  assert.match(source, /class AdminGamificationPage extends/);
+  assert.match(source, /test_lab_start|Start test session/);
+  assert.equal(source.includes("test_lab_deferred"), false);
+  assert.match(source, /\/api\/flatrate-admin\/gamification\/test-lab\//);
+  for (const needle of [
+    "ADMIN_GAMIFY_BRIDGE_SECRET",
+    "GROWTH_SHARE_E2E_UNLOCK_SECRET",
+    "SUPABASE_SERVICE_ROLE",
+    "service_role",
+    "claim_token_hash",
+  ]) {
+    assert.equal(source.includes(needle), false, `must not contain ${needle}`);
+  }
+});

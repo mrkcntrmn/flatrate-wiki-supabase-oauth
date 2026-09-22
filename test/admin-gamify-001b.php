@@ -40,8 +40,18 @@ expect_true(str_contains($extend, '/flatrate-admin/gamification/overview'), 'ove
 expect_true(str_contains($extend, '/flatrate-admin/gamification/quality'), 'quality route');
 expect_true(str_contains($extend, '/flatrate-admin/gamification/sharing'), 'sharing route');
 expect_true(str_contains($extend, '/flatrate-admin/gamification/referrals'), 'referrals route');
+expect_true(str_contains($extend, '/flatrate-admin/gamification/test-lab/session/start'), 'test lab session start route');
+expect_true(str_contains($extend, '/flatrate-admin/gamification/test-lab/session/end'), 'test lab session end route');
+expect_true(str_contains($extend, '/flatrate-admin/gamification/test-lab/session/status'), 'test lab session status route');
+expect_true(str_contains($extend, '/flatrate-admin/gamification/test-lab/share/create'), 'test lab share create route');
+expect_true(str_contains($extend, '/flatrate-admin/gamification/test-lab/launch/create'), 'test lab launch create route');
+expect_true(str_contains($extend, "->post('/flatrate-admin/gamification/test-lab/session/start'"), 'test lab routes use POST');
 
-foreach (['OverviewController', 'QualityController', 'SharingController', 'ReferralsController'] as $class) {
+expect_true(str_contains($bridgeClient, "'test_session_start'"), 'bridge path test_session_start');
+expect_true(str_contains($bridgeClient, "'test_share_create'"), 'bridge path test_share_create');
+expect_true(str_contains($bridgeClient, "'test_launch_create'"), 'bridge path test_launch_create');
+
+foreach (['OverviewController', 'QualityController', 'SharingController', 'ReferralsController', 'TestSessionStartController', 'TestSessionEndController', 'TestSessionStatusController', 'TestShareCreateController', 'TestLaunchCreateController'] as $class) {
     $src = (string) file_get_contents($root.'/src/AdminGamify/'.$class.'.php');
     expect_true(
         str_contains($src, 'extends AbstractAdminGamifyController'),
@@ -50,6 +60,13 @@ foreach (['OverviewController', 'QualityController', 'SharingController', 'Refer
 }
 $abstract = (string) file_get_contents($root.'/src/AdminGamify/AbstractAdminGamifyController.php');
 expect_true(str_contains($abstract, 'assertAdmin'), 'ADMIN_API_ADMIN gate in abstract controller');
+$shareCreate = (string) file_get_contents($root.'/src/AdminGamify/TestShareCreateController.php');
+expect_true(str_contains($shareCreate, 'FlatRateSubjectResolver'), 'share create resolves FlatRate subject');
+expect_true(str_contains($shareCreate, 'admin_gamify_sender_identity_required'), 'sender identity required error');
+$http = (string) file_get_contents($root.'/src/AdminGamify/AdminGamifyHttp.php');
+expect_true(str_contains($http, 'parseJsonBody'), 'JSON body parser for Test Lab POSTs');
+expect_true(str_contains($http, 'agtl_'), 'sanitize documents agtl ticket allowance');
+
 
 expect_true(str_contains($quality, 'post_votes'), 'QUALITY_CURRENT_BALLOT_AUTHORITY=post_votes');
 expect_true(str_contains($quality, 'whereNull(\'posts.hidden_at\')'), 'QUALITY_HIDDEN_POST_EXCLUSION=PASS');
@@ -77,15 +94,22 @@ expect_true(str_contains($frontend, 'Last updated') || str_contains($frontend, '
 expect_true(str_contains($frontend, 'source_unavailable') || str_contains($frontend, 'Unavailable'), 'source failure UI');
 expect_true(str_contains($frontend, '/u/:username/gamification'), 'admin route path');
 expect_true(str_contains($frontend, 'class AdminGamificationPage extends BasePage'), 'PAGE_CLASS_EXTENDS=true');
+expect_true(str_contains($frontend, 'class AdminGamificationPage extends'), 'class AdminGamificationPage extends');
 expect_true(! str_contains($frontend, 'Object.create(BasePage.prototype)'), 'no raw prototype Page subclass');
+expect_true(str_contains($frontend, 'Start test session') || str_contains($frontend, 'test_lab_start'), 'Test Lab Start test session');
+expect_true(! str_contains($frontend, 'test_lab_deferred'), 'Test Lab no longer deferred-only');
+expect_true(str_contains($frontend, '/api/flatrate-admin/gamification/test-lab/'), 'Test Lab API paths in frontend');
 
 expect_true(str_contains($locale, 'flatrate-admin-gamify'), 'locale present');
+expect_true(str_contains($locale, 'test_lab_start'), 'locale Start test session');
+expect_true(! str_contains($locale, 'test_lab_deferred'), 'locale deferred copy removed');
 
 $forbiddenLeakNeedles = [
     'ADMIN_GAMIFY_BRIDGE_SECRET',
     'GROWTH_SHARE_E2E_UNLOCK_SECRET',
     'service_role',
     'SUPABASE_SERVICE_ROLE',
+    'claim_token_hash',
 ];
 foreach ($forbiddenLeakNeedles as $needle) {
     expect_true(! str_contains($frontend, $needle), "BRIDGE_SECRET_SERIALIZED=false for {$needle}");

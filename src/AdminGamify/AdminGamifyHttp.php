@@ -58,6 +58,24 @@ final class AdminGamifyHttp
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public static function parseJsonBody(ServerRequestInterface $request): array
+    {
+        $parsed = $request->getParsedBody();
+        if (is_array($parsed)) {
+            return $parsed;
+        }
+
+        $decoded = json_decode((string) $request->getBody(), true);
+        if (! is_array($decoded)) {
+            throw new AdminGamifyRequestException('admin_gamify_invalid_json', 400);
+        }
+
+        return $decoded;
+    }
+
+    /**
      * @param array<string, mixed> $body
      */
     public static function json(array $body, int $status = 200): JsonResponse
@@ -75,20 +93,66 @@ final class AdminGamifyHttp
      */
     public static function sanitizeBridgePayload(array $bridgeBody): array
     {
-        $encoded = json_encode($bridgeBody);
-        if (! is_string($encoded)) {
-            throw new AdminGamifyRequestException('admin_gamify_sanitize_failed', 500);
+        self::assertSanitizedValue($bridgeBody, '$');
+
+        return $bridgeBody;
+    }
+
+    /**
+     * Reject private identity fields. Bare UUID string values are rejected, but
+     * launch_url strings that embed agtl_… base64url tickets are allowed.
+     */
+    private static function assertSanitizedValue(mixed $value, string $path): void
+    {
+        if ($value === null) {
+            return;
         }
-        if (preg_match('/"activity_subject_id"\s*:/', $encoded)
-            || preg_match('/"supabase_user_id"\s*:/', $encoded)
-            || preg_match('/"claim_token_hash"\s*:/', $encoded)
-            || preg_match('/"email"\s*:/', $encoded)
-            || preg_match('/"phone"\s*:/', $encoded)
-            || preg_match('/asub_[a-f0-9]{32}/i', $encoded)
-        ) {
+
+        if (is_array($value)) {
+            $isList = array_is_list($value);
+            foreach ($value as $key => $child) {
+                if (! $isList) {
+                    $lower = strtolower((string) $key);
+                    if (str_contains($lower, 'activity_subject')
+                        || str_contains($lower, 'supabase_user')
+                        || $lower === 'email'
+                        || $lower === 'phone'
+                        || str_contains($lower, 'claim_token')
+                        || $lower === 'claim_token_hash'
+                    ) {
+                        throw new AdminGamifyRequestException('admin_gamify_identity_leak', 500);
+                    }
+                    self::assertSanitizedValue($child, $path.'.'.$key);
+                } else {
+                    self::assertSanitizedValue($child, $path.'['.$key.']');
+                }
+            }
+
+            return;
+        }
+
+        if (! is_string($value)) {
+            return;
+        }
+
+        if (preg_match('/^asub_[a-f0-9]{32}$/i', $value)) {
             throw new AdminGamifyRequestException('admin_gamify_identity_leak', 500);
         }
 
-        return $bridgeBody;
+        // Exact UUID only — launch_url / launch_path with agtl_ tickets must pass.
+        if (preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            $value
+        )) {
+            throw new AdminGamifyRequestException('admin_gamify_identity_leak', 500);
+        }
+
+        if (preg_match('/^[a-f0-9]{64}$/i', $value) && preg_match('/claim|token|hash/i', $path)) {
+            throw new AdminGamifyRequestException('admin_gamify_identity_leak', 500);
+        }
+
+        if (str_contains($value, '@') && preg_match('/email/i', $path)) {
+            throw new AdminGamifyRequestException('admin_gamify_identity_leak', 500);
+        }
     }
 }

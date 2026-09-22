@@ -152,7 +152,27 @@
             page.payload = null;
             page.pollTimer = null;
             page.lastUpdated = null;
+            page.testSessionId = null;
+            page.testSession = null;
+            page.testShare = null;
+            page.testLaunch = null;
+            page.labBusy = false;
+            page.labError = null;
+            page.labTargetType = 'discussion';
+            page.labTargetPath = '/d/1';
+            page.labShareIntent = 'inform';
         }
+
+        var LAB_TARGET_TYPES = [
+            'discussion',
+            'reply',
+            'job_report',
+            'operation',
+            'brand_board',
+            'public_profile',
+            'knowledge_prompt',
+        ];
+        var LAB_SHARE_INTENTS = ['inform', 'ask_technician', 'invite_brand'];
 
         // Flarum 1.8 Page is an ES6 class (no Component.extend). Prototype
         // subclasses break Mithril lifecycle (initAttrs / onbeforeupdate).
@@ -268,6 +288,299 @@
 
                         this.window = windowId;
                         this.load();
+        
+            }
+
+            labRequest(path, body) {
+
+                        var self = this;
+                        this.labBusy = true;
+                        this.labError = null;
+                        return app
+                            .request({
+                                method: 'POST',
+                                url: '/api/flatrate-admin/gamification/test-lab/' + path,
+                                body: body || {},
+                            })
+                            .then(function (response) {
+                                self.labBusy = false;
+                                m.redraw();
+                                return response;
+                            })
+                            .catch(function (error) {
+                                self.labBusy = false;
+                                self.labError =
+                                    (error && error.response && error.response.error) ||
+                                    (error && error.status) ||
+                                    'error';
+                                m.redraw();
+                                throw error;
+                            });
+        
+            }
+
+            applyTestSession(response) {
+
+                        var session =
+                            response && response.test_session
+                                ? response.test_session
+                                : null;
+                        this.testSession = session;
+                        this.testSessionId =
+                            session && session.test_session_id ? session.test_session_id : null;
+        
+            }
+
+            startTestSession() {
+
+                        var self = this;
+                        return this.labRequest('session/start', {}).then(function (response) {
+                            self.applyTestSession(response);
+                            self.testShare = null;
+                            self.testLaunch = null;
+                            m.redraw();
+                        });
+        
+            }
+
+            endTestSession() {
+
+                        var self = this;
+                        if (!this.testSessionId) {
+                            return Promise.resolve();
+                        }
+                        return this.labRequest('session/end', {
+                            test_session_id: this.testSessionId,
+                        }).then(function (response) {
+                            self.applyTestSession(response);
+                            m.redraw();
+                        });
+        
+            }
+
+            createTestShare() {
+
+                        var self = this;
+                        if (!this.testSessionId) {
+                            this.labError = 'need_session';
+                            m.redraw();
+                            return Promise.resolve();
+                        }
+                        return this.labRequest('share/create', {
+                            test_session_id: this.testSessionId,
+                            target_type: this.labTargetType,
+                            target_path: this.labTargetPath,
+                            share_intent: this.labShareIntent,
+                        }).then(function (response) {
+                            self.testShare = response && response.share ? response.share : null;
+                            self.testLaunch = null;
+                            m.redraw();
+                        });
+        
+            }
+
+            openRecipientTest() {
+
+                        var self = this;
+                        if (!this.testSessionId || !this.testShare || !this.testShare.share_code) {
+                            this.labError = 'need_share';
+                            m.redraw();
+                            return Promise.resolve();
+                        }
+                        return this.labRequest('launch/create', {
+                            test_session_id: this.testSessionId,
+                            share_code: this.testShare.share_code,
+                        }).then(function (response) {
+                            self.testLaunch = response || null;
+                            var launchUrl = response && response.launch_url ? response.launch_url : null;
+                            if (launchUrl && typeof window !== 'undefined' && window.open) {
+                                window.open(launchUrl, '_blank', 'noopener,noreferrer');
+                            }
+                            m.redraw();
+                        });
+        
+            }
+
+            copySharePath() {
+
+                        var path =
+                            this.testShare && this.testShare.share_path
+                                ? this.testShare.share_path
+                                : '';
+                        if (!path) {
+                            return;
+                        }
+                        if (
+                            typeof navigator !== 'undefined' &&
+                            navigator.clipboard &&
+                            typeof navigator.clipboard.writeText === 'function'
+                        ) {
+                            navigator.clipboard.writeText(path);
+                        }
+        
+            }
+
+            renderTestLab() {
+
+                        var self = this;
+                        var session = this.testSession || {};
+                        var state = session.state || 'inactive';
+                        var share = this.testShare;
+                        var labErrorLabel =
+                            this.labError === 'need_session'
+                                ? t('test_lab_need_session')
+                                : this.labError === 'need_share'
+                                  ? t('test_lab_need_share')
+                                  : this.labError
+                                    ? t('test_lab_error')
+                                    : null;
+
+                        return m('div.FlatRateAdminGamify-panel', [
+                            m('h3', t('test_lab')),
+                            this.labBusy ? m('p.FlatRateAdminGamify-help', t('test_lab_busy')) : null,
+                            labErrorLabel ? m('p.FlatRateAdminGamify-help', labErrorLabel) : null,
+                            m('div.FlatRateAdminGamify-labSection', [
+                                m('h4', t('test_lab_session')),
+                                m('ul.FlatRateAdminGamify-metrics', [
+                                    m('li', t('test_lab_state') + ': ' + state),
+                                    m(
+                                        'li',
+                                        t('test_lab_started') +
+                                            ': ' +
+                                            formatMetric(session.started_at || null)
+                                    ),
+                                    m(
+                                        'li',
+                                        t('test_lab_expires') +
+                                            ': ' +
+                                            formatMetric(session.expires_at || null)
+                                    ),
+                                    m(
+                                        'li',
+                                        t('test_lab_session_id') +
+                                            ': ' +
+                                            formatMetric(session.test_session_id || null)
+                                    ),
+                                ]),
+                                m('div.FlatRateAdminGamify-controls', [
+                                    m(
+                                        'button.Button.Button--primary',
+                                        {
+                                            type: 'button',
+                                            disabled: !!self.labBusy,
+                                            onclick: function () {
+                                                self.startTestSession();
+                                            },
+                                        },
+                                        t('test_lab_start')
+                                    ),
+                                    m(
+                                        'button.Button',
+                                        {
+                                            type: 'button',
+                                            disabled: !!self.labBusy || !self.testSessionId,
+                                            onclick: function () {
+                                                self.endTestSession();
+                                            },
+                                        },
+                                        t('test_lab_end')
+                                    ),
+                                ]),
+                            ]),
+                            m('div.FlatRateAdminGamify-labSection', [
+                                m('h4', t('test_lab_create_share')),
+                                m('div.FlatRateAdminGamify-controls', [
+                                    m('label', [
+                                        t('test_lab_target_type'),
+                                        m(
+                                            'select',
+                                            {
+                                                value: self.labTargetType,
+                                                onchange: function (event) {
+                                                    self.labTargetType = event.target.value;
+                                                },
+                                            },
+                                            LAB_TARGET_TYPES.map(function (type) {
+                                                return m('option', { value: type }, type);
+                                            })
+                                        ),
+                                    ]),
+                                    m('label', [
+                                        t('test_lab_target_path'),
+                                        m('input.FormControl', {
+                                            type: 'text',
+                                            value: self.labTargetPath,
+                                            oninput: function (event) {
+                                                self.labTargetPath = event.target.value;
+                                            },
+                                        }),
+                                    ]),
+                                    m('label', [
+                                        t('test_lab_share_intent'),
+                                        m(
+                                            'select',
+                                            {
+                                                value: self.labShareIntent,
+                                                onchange: function (event) {
+                                                    self.labShareIntent = event.target.value;
+                                                },
+                                            },
+                                            LAB_SHARE_INTENTS.map(function (intent) {
+                                                return m('option', { value: intent }, intent);
+                                            })
+                                        ),
+                                    ]),
+                                    m(
+                                        'button.Button.Button--primary',
+                                        {
+                                            type: 'button',
+                                            disabled: !!self.labBusy || !self.testSessionId,
+                                            onclick: function () {
+                                                self.createTestShare();
+                                            },
+                                        },
+                                        t('test_lab_create')
+                                    ),
+                                ]),
+                                share
+                                    ? m('ul.FlatRateAdminGamify-metrics', [
+                                          m(
+                                              'li',
+                                              t('test_lab_share_code') +
+                                                  ': ' +
+                                                  formatMetric(share.share_code)
+                                          ),
+                                          m('li', 'path: ' + formatMetric(share.share_path)),
+                                          m('li', 'intent: ' + formatMetric(share.share_intent)),
+                                      ])
+                                    : null,
+                                share
+                                    ? m('div.FlatRateAdminGamify-controls', [
+                                          m(
+                                              'button.Button',
+                                              {
+                                                  type: 'button',
+                                                  onclick: function () {
+                                                      self.copySharePath();
+                                                  },
+                                              },
+                                              t('test_lab_copy_path')
+                                          ),
+                                          m(
+                                              'button.Button.Button--primary',
+                                              {
+                                                  type: 'button',
+                                                  disabled: !!self.labBusy,
+                                                  onclick: function () {
+                                                      self.openRecipientTest();
+                                                  },
+                                              },
+                                              t('test_lab_open_recipient')
+                                          ),
+                                      ])
+                                    : null,
+                            ]),
+                        ]);
         
             }
 
@@ -559,12 +872,7 @@
                             !this.loading && this.tab === 'quality' ? this.renderQuality() : null,
                             !this.loading && this.tab === 'sharing' ? this.renderSharing() : null,
                             !this.loading && this.tab === 'referrals' ? this.renderReferrals() : null,
-                            this.tab === 'lab'
-                                ? m('div.FlatRateAdminGamify-panel', [
-                                      m('h3', t('test_lab')),
-                                      m('p.FlatRateAdminGamify-help', t('test_lab_deferred')),
-                                  ])
-                                : null,
+                            this.tab === 'lab' ? this.renderTestLab() : null,
                         ]);
         
             }

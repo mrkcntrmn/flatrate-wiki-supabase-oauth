@@ -81,4 +81,28 @@ abstract class AbstractAdminGamifyController implements RequestHandlerInterface
 
         return AdminGamifyHttp::sanitizeBridgePayload($result['body']);
     }
+
+    /**
+     * Mutation-style bridge call: surface upstream errors instead of soft-unavailable.
+     *
+     * @param array<string, mixed> $body
+     * @return array<string, mixed>
+     */
+    protected function bridgeAction(string $routeKey, array $body): array
+    {
+        $result = $this->bridge->post($routeKey, $body);
+        if (! $result['ok'] || ! is_array($result['body'])) {
+            $status = (int) ($result['status'] ?? 0);
+            if ($status < 400 || $status > 599) {
+                $status = 502;
+            }
+
+            throw new AdminGamifyRequestException(
+                (string) ($result['error'] ?? 'bridge_unavailable'),
+                $status
+            );
+        }
+
+        return AdminGamifyHttp::sanitizeBridgePayload($result['body']);
+    }
 }
