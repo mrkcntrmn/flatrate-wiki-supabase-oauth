@@ -54,6 +54,9 @@ jobs:
       - name: Run owner dashboard DTO gates
         run: php test/owner-dashboard-dto.php
 
+      - name: Run ADMIN-GAMIFY-001B gates
+        run: php test/admin-gamify-001b.php
+
       - name: Run frontend JS registration gates
         run: php test/frontend-js-registration.php
 

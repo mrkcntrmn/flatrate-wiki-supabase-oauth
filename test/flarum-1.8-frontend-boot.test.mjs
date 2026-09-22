@@ -133,6 +133,7 @@ test("candidate member-display.js then member-dashboard.js assign module.exports
     ...EXISTING_ASSETS,
     "js/dist/member-display.js",
     "js/dist/member-dashboard.js",
+    "js/dist/admin-gamification.js",
   ]);
   if (result.error) {
     console.error("NEW_CANDIDATE_SPA_BOOT=FAIL");

@@ -57,6 +57,11 @@ return [
     (new Extend\Frontend('forum'))
         ->js(__DIR__.'/js/dist/member-dashboard.js'),
 
+    // ADMIN-GAMIFY-001: admin-only gamification dashboard. Separate Frontend
+    // extender required (Flarum 1.8 js() overwrites within one extender).
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/admin-gamification.js'),
+
     // GROWTH-001B: plain-voting UI suppression + gate-aware vote chrome.
     // Separate Frontend extender required (Flarum 1.8 js() overwrites).
     // Must end with module.exports = {} (webpack CJS entry contract).
@@ -78,6 +83,9 @@ return [
 
     (new Extend\ServiceProvider())
         ->register(VotingServiceProvider::class),
+
+    (new Extend\ServiceProvider())
+        ->register(AdminGamify\AdminGamifyServiceProvider::class),
 
     // Fail-closed rankings denial for ordinary users regardless of provider
     // migration defaults. Admins may still inspect.
@@ -147,7 +155,9 @@ return [
         ->default('flatrate-activity.ingest_url', '')
         ->default('flatrate-activity.drain_token_sha256', '')
         // GROWTH-001B: FlatRate vote gate. Default CLOSED.
-        ->default('flatrate-voting.enabled', false),
+        ->default('flatrate-voting.enabled', false)
+        ->default('flatrate-admin-gamify.bridge_url', '')
+        ->default('flatrate-admin-gamify.bridge_secret', ''),
 
     // Safe FoF setting defaults only while the provider is absent/disabled.
     // Flarum Settings::default() is immutable — registering the same keys
@@ -181,7 +191,11 @@ return [
         ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class)
         ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class)
         ->post('/flatrate-activity/drain', 'flatrate.activity.drain', Activity\DrainActivityOutboxController::class)
-        ->get('/flatrate-voting/readiness', 'flatrate.voting.readiness', VotingReadinessController::class),
+        ->get('/flatrate-voting/readiness', 'flatrate.voting.readiness', VotingReadinessController::class)
+        ->get('/flatrate-admin/gamification/overview', 'flatrate.admin.gamification.overview', AdminGamify\OverviewController::class)
+        ->get('/flatrate-admin/gamification/quality', 'flatrate.admin.gamification.quality', AdminGamify\QualityController::class)
+        ->get('/flatrate-admin/gamification/sharing', 'flatrate.admin.gamification.sharing', AdminGamify\SharingController::class)
+        ->get('/flatrate-admin/gamification/referrals', 'flatrate.admin.gamification.referrals', AdminGamify\ReferralsController::class),
 
     (new Extend\Routes('forum'))
         ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),

@@ -34,7 +34,8 @@ expect(
 );
 
 $ids = array_map(static fn (array $section): string => $section['id'], $dto['sections']);
-expect($ids === OwnerDashboardDto::SECTION_IDS, 'section ids match frozen Phase 1 list');
+expect($ids === OwnerDashboardDto::SECTION_IDS, 'ordinary owner section ids match frozen Phase 1 list');
+expect(! in_array('gamification', $ids, true), 'ORDINARY_OWNER_GAMIFICATION_NAV=false');
 expect(! in_array('merit', $ids, true), 'Merit omitted');
 expect(! in_array('profile_privacy', $ids, true), 'private Profile & Privacy omitted');
 expect(! in_array('brands_live', $ids, true), 'Brands & Live omitted');
@@ -42,6 +43,14 @@ expect(! in_array('garage', $ids, true), 'Garage omitted');
 expect(! in_array('following', $ids, true), 'Following omitted');
 expect(! in_array('for_you', $ids, true), 'For You omitted');
 expect(! in_array('points', $ids, true), 'Points omitted');
+
+$adminDto = OwnerDashboardDto::make(true);
+$adminIds = array_map(static fn (array $section): string => $section['id'], $adminDto['sections']);
+expect(in_array('gamification', $adminIds, true), 'ADMIN_OWNER_GAMIFICATION_NAV=PASS');
+expect(
+    array_slice($adminIds, 0, count(OwnerDashboardDto::SECTION_IDS)) === OwnerDashboardDto::SECTION_IDS,
+    'OWNER_DASHBOARD_EXISTING_SECTIONS_UNCHANGED=PASS'
+);
 
 $encoded = json_encode($dto);
 expect(is_string($encoded) && $encoded !== '', 'DTO JSON encodes');
@@ -54,7 +63,7 @@ foreach (OwnerDashboardDto::FORBIDDEN_KEYS as $key) {
 
 $serializer = (string) file_get_contents($root.'/src/Api/SerializeMemberProfile.php');
 expect(str_contains($serializer, 'flatRateOwnerDashboard'), 'serializer assigns owner dashboard');
-expect(str_contains($serializer, 'OwnerDashboardDto::make()'), 'serializer uses versioned DTO');
+expect(str_contains($serializer, 'OwnerDashboardDto::make($actor->isAdmin())'), 'serializer uses admin-aware DTO');
 expect(str_contains($serializer, '$actor->id !== $memberNumber'), 'owner DTO requires actor match');
 expect(
     strpos($serializer, 'return $exposed;') < strpos($serializer, 'flatRateOwnerDashboard'),

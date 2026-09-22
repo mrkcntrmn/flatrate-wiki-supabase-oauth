@@ -48,6 +48,62 @@ flatrate-dashboard:
     manage_notifications: Notification preferences
     view_discussions: View discussions
 
+flatrate-admin-gamify:
+  forum:
+    nav: Gamification
+    intro: Site-wide live gamification monitoring for operators. Public points and leaderboards remain off.
+    overview: Overview
+    quality_signals: Quality Signals
+    sharing: Sharing
+    referrals: Referrals
+    test_lab: Test Lab
+    test_lab_deferred: Test Lab actions ship in the next bounded tranche. Dashboard reads remain live.
+    refresh: Refresh
+    loading: Loading live data…
+    load_error: Unable to load admin gamification data.
+    admin_only: Gamification monitoring is available only on an admin owner profile.
+    last_updated: "Last updated {time}"
+    source_live: Live
+    source_partial: Partial
+    source_unavailable: Unavailable
+    not_measured: NOT_MEASURED
+    votes_label: Votes
+    sharing_label: Sharing
+    referrals_label: Referrals
+    activity_label: Activity funnel
+    rated_contributors: Rated contributors
+    active_ballots: Active ballots
+    tracked_shares: Tracked shares
+    signed_out_landings: Signed-out tracked landings
+    verified_referrals: Verified referred members
+    signup_shadow_points: Signup shadow points
+    qualified_at_count: Qualified-at count
+    shadow_points: Contribution Points — Shadow / Partial Coverage
+    score_version: Score version
+    quality_window_note: Quality Signals use current effective ballot state (all-time). Trustworthy vote timestamps are not available for Today/7d/30d windows.
+    rank: Rank
+    technician: Technician
+    rated_contributions: Rated contributions
+    positive_ballots: Positive ballots
+    negative_ballots: Negative ballots
+    distinct_voters: Distinct voters
+    sample_size: Sample size
+    positive_ratio: Positive ratio
+    share_code: Share code
+    intent: Intent
+    target: Target
+    verified_referral: Verified referral
+    inviter: Inviter
+    invitee: Invitee
+    unlinked: Unlinked
+    yes: "Yes"
+    no: "No"
+    window_today: Today
+    window_7d: 7 days
+    window_30d: 30 days
+    window_current_month: Current month
+    window_all_time: All time
+
 flatrate-identity:
   forum:
     settings:

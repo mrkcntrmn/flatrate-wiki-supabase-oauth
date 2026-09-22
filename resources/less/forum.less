@@ -656,3 +656,55 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.FlatRateAdminGamify {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem 0 1.5rem;
+}
+
+.FlatRateAdminGamify-heading {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.FlatRateAdminGamify-help,
+.FlatRateAdminGamify-freshness {
+  margin: 0.25rem 0 0;
+  color: var(--muted-color, #667);
+}
+
+.FlatRateAdminGamify-sources,
+.FlatRateAdminGamify-controls,
+.FlatRateAdminGamify-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+
+.FlatRateAdminGamify-metrics {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.FlatRateAdminGamify-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.FlatRateAdminGamify-table th,
+.FlatRateAdminGamify-table td {
+  border-bottom: 1px solid var(--control-bg, #ddd);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+@media (max-width: 767px) {
+  .FlatRateAdminGamify-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
