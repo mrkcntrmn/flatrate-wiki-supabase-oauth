@@ -92,6 +92,7 @@ async function brandRuntime(options = {}) {
     mode = "flarum1",
     masqueradeFields = [masqueradeField({})],
     userModel = user({ answers: [masqueradeAnswer({ content: "Toyota" })] }),
+    sessionUser = {},
   } = options;
 
   const bundle = await text("js/dist/forum.js");
@@ -121,6 +122,7 @@ async function brandRuntime(options = {}) {
         };
 
   const app = {
+    session: { user: sessionUser },
     initializers: {
       add(name, initializer) {
         initializers.set(name, initializer);
@@ -182,6 +184,14 @@ test("affiliated brand field resolves by exact name and select type", async () =
   assert.equal(wrapped.children[0].selector, "span.username");
   assert.equal(wrapped.children[1].selector, "span.FlatRateAffiliatedBrand");
   assert.equal(wrapped.children[1].children[0], "Toyota");
+});
+
+test("guest/public render suppresses affiliated brand and keeps native username vnode", async () => {
+  const { PostUser, userModel } = await brandRuntime({ sessionUser: null });
+  const items = new PostUser().linkChildren(userModel);
+
+  assert.equal(items.get("username").selector, "span.username");
+  assert.notEqual(items.get("username").selector, "span.FlatRatePostUserIdentityStack");
 });
 
 test("affiliated brand does not add a top-level userViewItems entry", async () => {
