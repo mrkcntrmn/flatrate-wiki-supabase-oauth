@@ -296,8 +296,9 @@ When marked, the reply reuses the existing Flarum **Job Breakdown** secondary ta
 
 ## Optional Affiliated Brand presentation
 
-When **FoF Masquerade** is installed and enabled, the forum bundle can render one optional self-declared profile value directly beneath the author's username in discussion posts and replies.
+When **FoF Masquerade** is installed and enabled, the authenticated Community bundle can render one optional self-declared profile value directly beneath the author's username in discussion posts and replies. Guest/open-web author presentation never renders this affiliation line, so the public `tech_<8hex>` pseudonym remains unaccompanied by brand affiliation.
 
+- Guest/crawler presentation: `Affiliated Brand` is suppressed entirely; gating is based on unauthenticated session state, not username pattern matching.
 - Masquerade field name: `Affiliated Brand` (Dropdown / `select`, optional).
 - The renderer resolves the unique active Masquerade field by exact name and type from the already-loaded `masquerade-field` store; it does not hardcode production field IDs.
 - User answers are read from the loaded `user.masqueradeAnswers()` relationship; the bundle does not issue per-post API requests.
