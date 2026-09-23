@@ -242,6 +242,10 @@
         }
 
         extend(PostUser.prototype, 'linkChildren', function (items, user) {
+            if (!app || !app.session || !app.session.user) {
+                return;
+            }
+
             var brand = affiliatedBrandForUser(user);
 
             if (!brand || !items.has('username')) {
