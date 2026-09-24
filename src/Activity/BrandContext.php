@@ -20,6 +20,7 @@ class BrandContext
     private const ACCEPTED_BRAND_SLUGS = [
         'acura' => true,
         'alpha-romeo' => true,
+        'aston-martin' => true,
         'audi' => true,
         'bentley' => true,
         'bmw' => true,
@@ -37,7 +38,9 @@ class BrandContext
         'honda' => true,
         'hyundai' => true,
         'infiniti' => true,
+        'jlr' => true,
         'jaguar' => true,
+        'land-rover' => true,
         'jeep' => true,
         'kia' => true,
         'lamborghini' => true,
@@ -53,6 +56,7 @@ class BrandContext
         'other-makes' => true,
         'porsche' => true,
         'ram' => true,
+        'range-rover' => true,
         'rivian' => true,
         'subaru' => true,
         'tesla' => true,
@@ -64,6 +68,7 @@ class BrandContext
     private const FAMILY_SLUGS = [
         'gm' => true,
         'cdjr' => true,
+        'jlr' => true,
     ];
 
     private const FAMILY_CHILDREN = [
@@ -75,7 +80,20 @@ class BrandContext
         'dodge' => 'cdjr',
         'jeep' => 'cdjr',
         'ram' => 'cdjr',
+        'jaguar' => 'jlr',
+        'land-rover' => 'jlr',
+        'range-rover' => 'jlr',
     ];
+
+    /**
+     * Canonical accepted Brand slugs used by actor-visible aggregate reads.
+     *
+     * @return list<string>
+     */
+    public function acceptedBrandSlugs(): array
+    {
+        return array_keys(self::ACCEPTED_BRAND_SLUGS);
+    }
 
     public function brandSlugFromDiscussion(?Discussion $discussion): ?string
     {
