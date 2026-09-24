@@ -18,6 +18,7 @@ final class VotingServiceProvider extends AbstractServiceProvider
         $this->container->singleton(GlobalVotingPolicy::class);
         $this->container->singleton(VoterIdentityRelationshipGuard::class);
         $this->container->singleton(DiscussionVoteSummary::class);
+        $this->container->singleton(BrandVoteSummary::class);
     }
 
     /**
