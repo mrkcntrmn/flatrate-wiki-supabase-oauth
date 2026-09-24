@@ -445,6 +445,21 @@
   }
 }
 
+// Board discussion-list rows always present the FlatRate whole-discussion
+// aggregate in lime, including a real computed zero. The row remains read-only
+// presentation; viewer vote state does not recolor this total.
+.DiscussionListItem-votes.FlatRateVotes--discussionAggregate {
+  .DiscussionListItem-voteCount {
+    display: inline !important;
+    color: @flatrate-vote-has !important;
+  }
+
+  .DiscussionListItem-voteButton--up,
+  .DiscussionListItem-voteButton--up .Button-icon {
+    color: @flatrate-vote-zero !important;
+  }
+}
+
 // Keep the reply action compact: a reply with no endorsements shows only the
 // actionable thumb. The first post and any nonzero reply retain their count.
 .CommentPost-votes.FlatRateVotes--zero.FlatRateVotes--reply {
