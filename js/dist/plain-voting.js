@@ -87,6 +87,41 @@
       });
     }
 
+    function refreshBrandVoteTotals() {
+      var apiUrl = null;
+      try {
+        apiUrl = app.forum && app.forum.attribute('apiUrl');
+      } catch (e) {}
+      if (!apiUrl || typeof app.request !== 'function') {
+        return Promise.resolve(null);
+      }
+      return app
+        .request({ method: 'GET', url: apiUrl })
+        .then(function (payload) {
+          var attributes =
+            payload && payload.data && payload.data.attributes
+              ? payload.data.attributes
+              : null;
+          if (
+            attributes &&
+            Object.prototype.hasOwnProperty.call(attributes, 'flatRateBrandUpvotes') &&
+            app.forum &&
+            typeof app.forum.pushAttributes === 'function'
+          ) {
+            app.forum.pushAttributes({
+              flatRateBrandUpvotes: attributes.flatRateBrandUpvotes,
+            });
+            if (typeof m !== 'undefined' && m.redraw) {
+              m.redraw();
+            }
+          }
+          return attributes;
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+
     // Suppress FoF Gamification product surfaces (V1). Safe no-ops when absent.
     try {
       var UserCard = unwrap(coreExport('forum/components/UserCard'));
@@ -229,7 +264,10 @@
           return Promise.resolve(result).then(function (saved) {
             var discussion =
               typeof post.discussion === 'function' ? post.discussion() : null;
-            return refreshDiscussionSummary(discussion).then(function () {
+            return Promise.all([
+              refreshDiscussionSummary(discussion),
+              refreshBrandVoteTotals(),
+            ]).then(function () {
               return saved;
             });
           });
@@ -251,17 +289,29 @@
       var count = 0;
       var mine = false;
       var isReply = false;
+      var isDiscussionAggregate = votesEl.classList.contains('DiscussionListItem-votes');
       try {
-        if (model && typeof model.votes === 'function') {
+        if (
+          isDiscussionAggregate &&
+          model &&
+          typeof model.attribute === 'function'
+        ) {
+          count = Number(model.attribute('flatRateDiscussionUpvotes')) || 0;
+          var discussionCountEl = votesEl.querySelector('.DiscussionListItem-voteCount');
+          if (discussionCountEl) {
+            discussionCountEl.textContent = String(count);
+          }
+        } else if (model && typeof model.votes === 'function') {
           count = Number(model.votes()) || 0;
         }
-        if (model && typeof model.hasUpvoted === 'function') {
+        if (!isDiscussionAggregate && model && typeof model.hasUpvoted === 'function') {
           mine = !!model.hasUpvoted();
         }
         if (model && typeof model.number === 'function') {
           isReply = Number(model.number()) > 1;
         }
       } catch (err) {}
+      votesEl.classList.toggle('FlatRateVotes--discussionAggregate', isDiscussionAggregate);
       votesEl.classList.toggle('FlatRateVotes--zero', count <= 0);
       votesEl.classList.toggle('FlatRateVotes--hasVotes', count > 0);
       votesEl.classList.toggle('FlatRateVotes--mine', mine);
@@ -399,6 +449,9 @@
                 flatRateDiscussionCanUpvote: true,
                 flatRateDiscussionViewerVotePostId: null,
               });
+            })
+            .then(function () {
+              return refreshBrandVoteTotals();
             })
             .then(function () {
               discussionHeaderLoading[discId] = false;
