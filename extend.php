@@ -144,7 +144,8 @@ return [
         ->attributes(Api\SerializeGuestPublicIdentity::class),
 
     (new Extend\ApiSerializer(ForumSerializer::class))
-        ->attributes(Api\SerializeFlatRateVotingEnabled::class),
+        ->attributes(Api\SerializeFlatRateVotingEnabled::class)
+        ->attributes(Api\SerializeBrandVoteSummary::class),
 
     // GROWTH-001UI: whole-discussion upvote aggregate (not FoF first-post votes).
     (new Extend\ApiSerializer(BasicDiscussionSerializer::class))
