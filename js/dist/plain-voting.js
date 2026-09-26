@@ -301,6 +301,30 @@
           if (discussionCountEl) {
             discussionCountEl.textContent = String(count);
           }
+
+          // Board rows present the aggregate beside the discussion title.
+          // Keep the FoF vote widget as the data/handler source but do not use
+          // its far-edge visual container for FlatRate's read-only total.
+          var titleEl = root.querySelector('.DiscussionListItem-title');
+          if (titleEl) {
+            var inlineTotal = titleEl.querySelector('.FlatRateDiscussionListTotal');
+            if (count > 0) {
+              if (!inlineTotal && typeof document !== 'undefined') {
+                inlineTotal = document.createElement('span');
+                inlineTotal.className = 'FlatRateDiscussionListTotal';
+                titleEl.appendChild(inlineTotal);
+              }
+              if (inlineTotal) {
+                inlineTotal.textContent = String(count);
+                inlineTotal.setAttribute(
+                  'aria-label',
+                  'Discussion total: ' + String(count) + ' upvote' + (count === 1 ? '' : 's')
+                );
+              }
+            } else if (inlineTotal && inlineTotal.parentNode) {
+              inlineTotal.parentNode.removeChild(inlineTotal);
+            }
+          }
         } else if (model && typeof model.votes === 'function') {
           count = Number(model.votes()) || 0;
         }
