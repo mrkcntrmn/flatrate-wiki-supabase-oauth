@@ -75,10 +75,14 @@ str_contains($pv, "flatRateDiscussionUpvotes")
     ? pass_brand('CLIENT_WHOLE_DISCUSSION_AND_BRAND_REFRESH')
     : fail_brand('board rows/Brand totals client projection missing');
 
-str_contains($less, '.DiscussionListItem-votes.FlatRateVotes--discussionAggregate')
+str_contains($pv, 'FlatRateDiscussionListTotal')
+    && str_contains($pv, 'count > 0')
+    && str_contains($less, '.DiscussionListItem-title .FlatRateDiscussionListTotal')
+    && str_contains($less, '.DiscussionListItem-votes.FlatRateVotes--discussionAggregate')
+    && str_contains($less, 'display: none !important')
     && str_contains($less, 'color: @flatrate-vote-has !important')
-    ? pass_brand('BOARD_ROW_LIME_TOTAL')
-    : fail_brand('board whole-discussion total must render lime');
+    ? pass_brand('BOARD_ROW_INLINE_POSITIVE_TOTAL_ONLY')
+    : fail_brand('board whole-discussion total must render beside the title and omit zero totals');
 
 if ($failures > 0) {
     fwrite(STDERR, "plain-voting-brand-aggregate.php: {$failures} failure(s)\n");
