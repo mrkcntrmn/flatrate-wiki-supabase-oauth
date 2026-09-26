@@ -445,19 +445,24 @@
   }
 }
 
-// Board discussion-list rows always present the FlatRate whole-discussion
-// aggregate in lime, including a real computed zero. The row remains read-only
-// presentation; viewer vote state does not recolor this total.
+// Board discussion-list rows use the FlatRate whole-discussion aggregate as
+// read-only title metadata. The original FoF alternate vote widget is hidden;
+// a positive total is projected beside the discussion title by plain-voting.js.
+// Real zero totals are intentionally omitted from presentation.
 .DiscussionListItem-votes.FlatRateVotes--discussionAggregate {
-  .DiscussionListItem-voteCount {
-    display: inline !important;
-    color: @flatrate-vote-has !important;
-  }
+  display: none !important;
+}
 
-  .DiscussionListItem-voteButton--up,
-  .DiscussionListItem-voteButton--up .Button-icon {
-    color: @flatrate-vote-zero !important;
-  }
+.DiscussionListItem-title .FlatRateDiscussionListTotal {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: @flatrate-vote-has !important;
+  font-size: 0.82em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  vertical-align: baseline;
+  white-space: nowrap;
 }
 
 // Keep the reply action compact: a reply with no endorsements shows only the
