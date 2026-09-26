@@ -84,6 +84,19 @@ str_contains($pv, 'FlatRateDiscussionListTotal')
     ? pass_brand('BOARD_ROW_INLINE_POSITIVE_TOTAL_ONLY')
     : fail_brand('board whole-discussion total must render beside the title and omit zero totals');
 
+$decorateCall = strpos($pv, 'decorateDiscussionListTotal(root, model);');
+$votesGuard = strpos($pv, 'if (!votesEl)');
+$decorateCall !== false
+    && $votesGuard !== false
+    && $decorateCall < $votesGuard
+    && str_contains($pv, "root.querySelector('.DiscussionListItem-title')")
+    && str_contains($pv, "model.attribute('flatRateDiscussionUpvotes')")
+    && str_contains($pv, 'function decorateDiscussionListTotal')
+    ? pass_brand('BOARD_ROW_TOTAL_INDEPENDENT_OF_FOF_LIST_NODE')
+    : fail_brand(
+        'board-row aggregate must project before optional FoF votes-node guard'
+    );
+
 if ($failures > 0) {
     fwrite(STDERR, "plain-voting-brand-aggregate.php: {$failures} failure(s)\n");
     exit(1);

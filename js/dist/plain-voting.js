@@ -275,10 +275,53 @@
       }
     } catch (e) {}
 
+    // DiscussionListItem-votes is optional in FoF list rendering (including public
+    // board rows). FlatRate's read-only aggregate comes from the serialized
+    // discussion model, so project it into the title independently of that node.
+    function decorateDiscussionListTotal(root, model) {
+      if (
+        !root ||
+        !root.querySelector ||
+        !model ||
+        typeof model.attribute !== 'function'
+      ) {
+        return;
+      }
+      var titleEl = root.querySelector('.DiscussionListItem-title');
+      if (!titleEl) {
+        return;
+      }
+      var count = Number(model.attribute('flatRateDiscussionUpvotes')) || 0;
+      var inlineTotal = titleEl.querySelector('.FlatRateDiscussionListTotal');
+      if (count > 0) {
+        if (!inlineTotal && typeof document !== 'undefined') {
+          inlineTotal = document.createElement('span');
+          inlineTotal.className = 'FlatRateDiscussionListTotal';
+          titleEl.appendChild(inlineTotal);
+        }
+        if (inlineTotal) {
+          inlineTotal.textContent = String(count);
+          inlineTotal.setAttribute(
+            'aria-label',
+            'Discussion total: ' +
+              String(count) +
+              ' upvote' +
+              (count === 1 ? '' : 's')
+          );
+        }
+      } else if (inlineTotal && inlineTotal.parentNode) {
+        inlineTotal.parentNode.removeChild(inlineTotal);
+      }
+    }
+
     function decorateVoteChrome(root, model) {
       if (!root || !root.querySelector) {
         return;
       }
+      // FlatRate's read-only board-row aggregate belongs to the discussion/title
+      // projection and must not depend on FoF rendering its optional list-votes
+      // container.
+      decorateDiscussionListTotal(root, model);
       var votesEl =
         root.querySelector('.CommentPost-votes') ||
         root.querySelector('.Post-votes') ||
@@ -300,30 +343,6 @@
           var discussionCountEl = votesEl.querySelector('.DiscussionListItem-voteCount');
           if (discussionCountEl) {
             discussionCountEl.textContent = String(count);
-          }
-
-          // Board rows present the aggregate beside the discussion title.
-          // Keep the FoF vote widget as the data/handler source but do not use
-          // its far-edge visual container for FlatRate's read-only total.
-          var titleEl = root.querySelector('.DiscussionListItem-title');
-          if (titleEl) {
-            var inlineTotal = titleEl.querySelector('.FlatRateDiscussionListTotal');
-            if (count > 0) {
-              if (!inlineTotal && typeof document !== 'undefined') {
-                inlineTotal = document.createElement('span');
-                inlineTotal.className = 'FlatRateDiscussionListTotal';
-                titleEl.appendChild(inlineTotal);
-              }
-              if (inlineTotal) {
-                inlineTotal.textContent = String(count);
-                inlineTotal.setAttribute(
-                  'aria-label',
-                  'Discussion total: ' + String(count) + ' upvote' + (count === 1 ? '' : 's')
-                );
-              }
-            } else if (inlineTotal && inlineTotal.parentNode) {
-              inlineTotal.parentNode.removeChild(inlineTotal);
-            }
           }
         } else if (model && typeof model.votes === 'function') {
           count = Number(model.votes()) || 0;
