@@ -80,6 +80,15 @@ Legacy `^tech_[0-9]+$` and canonical `^tech_#[0-9]+$` (case-insensitive) are res
 
 ## Install
 
+Release **v0.3.0** is tagged on GitHub but is **not published on Packagist yet**. Install from the repository VCS source:
+
+```bash
+composer config repositories.flatrate-supabase-oauth vcs https://github.com/mrkcntrmn/flatrate-wiki-supabase-oauth
+composer require flatrate/wiki-supabase-oauth:0.3.0
+```
+
+After **v0.3.0** is published on Packagist, the default install path will be:
+
 ```bash
 composer require flatrate/wiki-supabase-oauth:^0.3
 ```
