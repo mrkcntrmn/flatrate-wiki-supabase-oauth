@@ -32,6 +32,9 @@
     }
   },
   "extra": {
+    "branch-alias": {
+      "dev-main": "0.3.x-dev"
+    },
     "flarum-extension": {
       "title": "FlatRate Wiki Login",
       "category": "feature",

@@ -71,8 +71,9 @@ Legacy `^tech_[0-9]+$` and canonical `^tech_#[0-9]+$` (case-insensitive) are res
 ## Requirements
 
 - PHP `>=8.1`
-- Flarum `^1.8.1`
+- Flarum `^1.8.19`
 - `flarum/nicknames:^1.8.3`
+- `flarum/tags:^1.8.0`
 - `fof/oauth:^1.7.4`
 - `fof/extend:^1.3.4`
 - `league/oauth2-client:^2.7`
@@ -80,7 +81,7 @@ Legacy `^tech_[0-9]+$` and canonical `^tech_#[0-9]+$` (case-insensitive) are res
 ## Install
 
 ```bash
-composer require flatrate/wiki-supabase-oauth:^0.2
+composer require flatrate/wiki-supabase-oauth:^0.3
 ```
 
 For the managed PikaPods/Flarum image, persist the package in `/data/extensions/list` so it is restored after restart.
