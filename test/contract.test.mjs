@@ -11,7 +11,7 @@ async function text(path) {
 test("package pins the PKCE-capable Flarum/FoF floor and Nicknames", async () => {
   const composer = JSON.parse(await text("composer.json"));
   assert.equal(composer.name, "flatrate/wiki-supabase-oauth");
-  assert.equal(composer.require["flarum/core"], "^1.8.19");
+  assert.equal(composer.require["flarum/core"], "^1.8.1");
   assert.equal(composer.require["flarum/nicknames"], "^1.8.3");
   assert.equal(composer.require["fof/oauth"], "^1.7.4");
   assert.equal(composer.require["fof/extend"], "^1.3.4");
