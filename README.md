@@ -194,31 +194,6 @@ Example response shape:
 }
 ```
 
-### `POST /api/flatrate-sso/deletion/preflight`
-
-Authenticated server-to-server only. Request body contains only the immutable Supabase subject:
-
-```json
-{
-  "sub": "immutable-supabase-sub"
-}
-```
-
-This endpoint is **preflight-only**:
-
-- canonical lookup uses `login_providers(provider=flatrate, identifier=sub)`;
-- no email, username, nickname, or legacy tech assignment is used for identity resolution;
-- returns bounded counts and policy/status flags only;
-- public discussion/post content is classified `retain_detach_author`;
-- optional Direct and Live Chat schemas are detected before their rows are counted;
-- Flarum root user id 1 is reported as blocked;
-- no user, content, session, ticket, or login-provider row is mutated;
-- `destructive_execute_supported=false` is always returned.
-
-The shared HMAC authenticator still performs its existing bounded nonce anti-replay security write. That security write is not account deletion and does not mutate the inspected Community user.
-
-There is intentionally **no** `/api/flatrate-sso/deletion/execute` route in this tranche.
-
 ### `GET /auth/flatrate/session?ticket=<opaque>`
 
 Browser entry endpoint. It:
