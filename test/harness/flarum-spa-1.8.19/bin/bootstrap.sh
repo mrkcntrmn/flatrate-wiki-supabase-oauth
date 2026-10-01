@@ -27,7 +27,7 @@ sed \
   -e "s#password: flarum#password: ${DB_PASSWORD}#g" \
   "$HARNESS_DIR/install.yml" > "$WORK_DIR/install.yml"
 
-composer create-project flarum/flarum:1.8.1 "$FLARUM_DIR" --no-interaction --prefer-dist
+composer create-project flarum/flarum:1.8.1 "$FLARUM_DIR" --no-interaction --prefer-dist --no-install
 cd "$FLARUM_DIR"
 
 # Composer 2.10 blocks the Flysystem 1.x line required by supported Flarum
