@@ -51,8 +51,8 @@ function expectedIgnoreId(): array
     $result = [];
     foreach (EXPECTED_ADVISORIES as $id => $reason) {
         $result[$id] = [
-            'on-block' => true,
-            'on-audit' => false,
+            'on-block' => false,
+            'on-audit' => true,
             'reason' => $reason,
         ];
     }
@@ -119,8 +119,8 @@ function verifyPolicy(array $root): void
     foreach (array_keys(EXPECTED_ADVISORIES) as $id) {
         echo "ACCEPTED_ADVISORY_ID={$id}\n";
     }
-    echo "ACCEPTED_ON_BLOCK=true\n";
-    echo "ACCEPTED_ON_AUDIT=false\n";
+    echo "ACCEPTED_ON_BLOCK=false\n";
+    echo "ACCEPTED_ON_AUDIT=true\n";
     echo "GLOBAL_SECURITY_BLOCKING_DISABLED=false\n";
     echo "PACKAGE_WIDE_IGNORE=false\n";
 
