@@ -123,7 +123,7 @@
                         component.flatRateJobBreakdown = !!event.target.checked;
                     }
                 }),
-                m('span', 'Job Breakdown')
+                m('span', 'Tip')
             ]);
         }
 
