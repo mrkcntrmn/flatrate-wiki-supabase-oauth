@@ -71,16 +71,26 @@ Legacy `^tech_[0-9]+$` and canonical `^tech_#[0-9]+$` (case-insensitive) are res
 ## Requirements
 
 - PHP `>=8.1`
-- Flarum `^1.8.1`
+- Flarum `^1.8.19`
 - `flarum/nicknames:^1.8.3`
+- `flarum/tags:^1.8.0`
 - `fof/oauth:^1.7.4`
 - `fof/extend:^1.3.4`
 - `league/oauth2-client:^2.7`
 
 ## Install
 
+Release **v0.3.0** is tagged on GitHub but is **not published on Packagist yet**. Install from the repository VCS source:
+
 ```bash
-composer require flatrate/wiki-supabase-oauth:^0.2
+composer config repositories.flatrate-supabase-oauth vcs https://github.com/mrkcntrmn/flatrate-wiki-supabase-oauth
+composer require flatrate/wiki-supabase-oauth:0.3.0
+```
+
+After **v0.3.0** is published on Packagist, the default install path will be:
+
+```bash
+composer require flatrate/wiki-supabase-oauth:^0.3
 ```
 
 For the managed PikaPods/Flarum image, persist the package in `/data/extensions/list` so it is restored after restart.
