@@ -96,7 +96,16 @@ jobs:
 
       - name: Install FORUM-SUB-001 disposable runtime harness
         working-directory: test/harness/forum-sub001-runtime
-        run: composer install --no-interaction --prefer-dist
+        run: |
+          php ../../../scripts/ci-composer-advisory-policy.php apply composer.json
+          php ../../../scripts/ci-composer-advisory-policy.php verify composer.json
+          composer install --no-interaction --prefer-dist --no-audit
+          set +e
+          composer audit --format=json > /tmp/forum-sub001-composer-audit.json
+          audit_rc=$?
+          set -e
+          echo "COMPOSER_AUDIT_EXIT=${audit_rc}"
+          php ../../../scripts/ci-composer-advisory-policy.php assert-audit /tmp/forum-sub001-composer-audit.json
 
       - name: Run FORUM-SUB-001 runtime resolver/binding gates
         run: php test/forum-sub001-runtime.php
