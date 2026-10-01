@@ -99,7 +99,7 @@ jobs:
         run: |
           php ../../../scripts/ci-composer-advisory-policy.php apply composer.json
           php ../../../scripts/ci-composer-advisory-policy.php verify composer.json
-          composer install --no-interaction --prefer-dist --no-audit
+          composer install --no-interaction --prefer-dist
           set +e
           composer audit --format=json > /tmp/forum-sub001-composer-audit.json
           audit_rc=$?
