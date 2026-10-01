@@ -56,7 +56,7 @@ function post({ number, marked = false }) {
 function tag({
   id = "7",
   slug = "job-breakdown",
-  name = "Job Breakdown",
+  name = "Tip",
   color = "#16a34a",
   icon = "fas fa-wrench",
   child = true,
@@ -257,6 +257,7 @@ test("Flarum 1.8-shaped compat executes the reply marker initializer end to end"
   assert.equal(replyHeader.has("flatrateJobBreakdown"), true);
   const toggle = replyHeader.get("flatrateJobBreakdown").item;
   assert.equal(toggle.selector, "label.FlatRateReplyJobBreakdownToggle");
+  assert.equal(toggle.children[1].children, "Tip");
 
   toggle.children[0].attrs.onchange({ target: { checked: true } });
   assert.equal(reply.flatRateJobBreakdown, true);
