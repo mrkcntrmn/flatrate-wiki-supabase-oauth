@@ -171,7 +171,7 @@ $tag = $db->table('tags')->where('slug', 'job-breakdown')->first();
 $tagId = $tag
     ? (int) $tag->id
     : (int) $db->table('tags')->insertGetId(filterRow($schema, 'tags', [
-        'name' => 'Job Breakdown',
+        'name' => 'Tip',
         'slug' => 'job-breakdown',
         'description' => 'Harness tag',
         'color' => '#111827',

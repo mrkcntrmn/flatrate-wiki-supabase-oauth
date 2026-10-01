@@ -280,15 +280,15 @@ The extension:
 - rejects native public user creation without an OAuth registration token;
 - preserves native administrator password login for recovery.
 
-## Reply Job Breakdown marker
+## Reply Tip marker
 
 Reply classification is stored as FlatRate-owned post metadata because Flarum tags are discussion-level relationships. The extension does not attach native Flarum tags to individual posts.
 
-When marked, the reply reuses the existing Flarum **Job Breakdown** secondary tag's TagLabel presentation (name, color, icon) without modifying the discussion's tag relationship.
+When marked, the reply reuses the existing Flarum **Tip** secondary tag's TagLabel presentation (name, color, icon) without modifying the discussion's tag relationship.
 
 - The `flatrate_post_markers` table stores the controlled `job-breakdown` marker by post ID.
 - API post payloads expose the marker as `attributes.flatRateJobBreakdown`.
-- Reply and edit composers show a compact **Job Breakdown** checkbox for replies.
+- Reply and edit composers show a compact **Tip** checkbox for replies.
 - Marked replies resolve the canonical Flarum tag by slug `job-breakdown` and render Flarum's own `tags/helpers/tagLabel` output in the post header.
 - Discussion starters are not valid marker targets, and the backend fails closed if a request tries to mark one.
 - Deleting a post deletes its local marker rows.
@@ -307,7 +307,7 @@ When **FoF Masquerade** is installed and enabled, the authenticated Community bu
 - Blank or missing values render nothing (no spacer line).
 - Masquerade is optional at runtime: if the extension or field is absent, SSO and other forum behavior continue unchanged.
 
-This value is self-declared profile metadata only. It does not indicate employment, certification, dealership status, or OEM verification; it is not mirrored to Supabase; and it does not mutate discussion vehicle-make tags or Job Breakdown metadata.
+This value is self-declared profile metadata only. It does not indicate employment, certification, dealership status, or OEM verification; it is not mirrored to Supabase; and it does not mutate discussion vehicle-make tags or Tip metadata.
 
 FoF Masquerade stores dropdown option lists in `fof_masquerade_fields.validation` as a comma-separated `in:` rule. The upstream default column is `VARCHAR(255)`, which truncates long brand lists. This extension widens that column to `TEXT` when Masquerade is present so the full Affiliated Brand vocabulary can be saved.
 
@@ -329,7 +329,7 @@ Before removing the OAuth product path, verify:
 - changing the Supabase email does not create a second forum identity;
 - Flarum bans/suspensions still apply;
 - PikaPods restart restores the extension and migrations;
-- reply Job Breakdown markers can be created, edited, rendered, and deleted without changing forum tags;
+- reply Tip markers can be created, edited, rendered, and deleted without changing forum tags;
 - no bridge secret, Supabase token, password, or PII appears in browser URLs, logs, GitHub, or public assets.
 
 ## Development

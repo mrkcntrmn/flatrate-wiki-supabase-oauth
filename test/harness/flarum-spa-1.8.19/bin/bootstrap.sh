@@ -27,10 +27,16 @@ sed \
   -e "s#password: flarum#password: ${DB_PASSWORD}#g" \
   "$HARNESS_DIR/install.yml" > "$WORK_DIR/install.yml"
 
-composer create-project flarum/flarum:1.8.1 "$FLARUM_DIR" --no-interaction --prefer-dist
+composer create-project flarum/flarum:1.8.1 "$FLARUM_DIR" --no-interaction --prefer-dist --no-install
 cd "$FLARUM_DIR"
 
-composer require --no-interaction --prefer-dist \
+# Composer 2.10 blocks the Flysystem 1.x line required by supported Flarum
+# 1.8.x. Permit only the two reviewed advisory IDs for dependency resolution;
+# the explicit audit gate below must still see and validate that debt.
+php "$EXTENSION_ROOT/scripts/ci-composer-advisory-policy.php" apply composer.json
+php "$EXTENSION_ROOT/scripts/ci-composer-advisory-policy.php" verify composer.json
+
+composer require --no-interaction --prefer-dist --no-audit \
   flarum/core:1.8.19 \
   flarum/nicknames:1.8.3 \
   flarum/tags:1.8.8 \
@@ -38,7 +44,15 @@ composer require --no-interaction --prefer-dist \
   fof/gamification:1.6.12
 
 composer config repositories.flatrate "{\"type\":\"path\",\"url\":\"$EXTENSION_ROOT\",\"options\":{\"symlink\":true}}"
-composer require --no-interaction --prefer-dist flatrate/wiki-supabase-oauth:@dev
+composer require --no-interaction --prefer-dist --no-audit flatrate/wiki-supabase-oauth:@dev
+
+set +e
+composer audit --format=json > "$WORK_DIR/composer-audit.json"
+audit_rc=$?
+set -e
+echo "COMPOSER_AUDIT_EXIT=${audit_rc}"
+php "$EXTENSION_ROOT/scripts/ci-composer-advisory-policy.php" assert-audit "$WORK_DIR/composer-audit.json"
+rm -f "$WORK_DIR/composer-audit.json"
 
 php flarum install --file="$WORK_DIR/install.yml"
 php flarum cache:clear
