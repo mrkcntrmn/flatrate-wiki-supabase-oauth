@@ -108,7 +108,8 @@ test("001B browser surfaces do not expose the raw projection", async () => {
   assert.deepEqual(hits, []);
 });
 
-test("001B leaves the production composer constraint unchanged", async () => {
+test("001B does not add a Composer dependency", async () => {
   const composer = await text("composer.json");
-  assert.match(composer, /"flarum\/core": "\^1\.8\.1"/);
+  assert.match(composer, /"flarum\/core": "\^1\.8\.1(?:9)?"/);
+  assert.doesNotMatch(composer, /beta-tester|flatrate-beta/);
 });
