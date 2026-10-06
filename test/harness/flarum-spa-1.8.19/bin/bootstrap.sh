@@ -30,6 +30,25 @@ sed \
 composer create-project flarum/flarum:1.8.1 "$FLARUM_DIR" --no-interaction --prefer-dist
 cd "$FLARUM_DIR"
 
+# Composer blocks the Flysystem 1.x line required by supported Flarum 1.8.x.
+# Permit only the two already reviewed advisory IDs in this disposable tree.
+# Do not disable advisory blocking, and do not change the extension composer.json.
+php -r '
+$path = "composer.json";
+$root = json_decode((string) file_get_contents($path), true);
+if (!is_array($root)) { fwrite(STDERR, "disposable composer.json is invalid\n"); exit(1); }
+$root["config"]["policy"]["advisories"]["block"] = true;
+$root["config"]["policy"]["advisories"]["ignore-id"] = [
+    "PKSA-w9tt-7782-78jx" => "Required transitively by supported Flarum 1.8.x; disposable qualification only.",
+    "PKSA-pwh8-d4fr-nywn" => "Required transitively by supported Flarum 1.8.x; disposable qualification only.",
+];
+$encoded = json_encode($root, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+if (!is_string($encoded)) { fwrite(STDERR, "disposable composer.json encode failed\n"); exit(1); }
+file_put_contents($path, $encoded . "\n");
+'
+grep -q PKSA-w9tt-7782-78jx composer.json
+grep -q PKSA-pwh8-d4fr-nywn composer.json
+
 composer require --no-interaction --prefer-dist \
   flarum/core:1.8.19 \
   flarum/nicknames:1.8.3 \
