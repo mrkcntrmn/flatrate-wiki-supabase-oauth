@@ -3,6 +3,7 @@
 namespace FlatRate\SupabaseOAuth\Sso;
 
 use FlatRate\SupabaseOAuth\Auth\FlatRateUserProvisioner;
+use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionStore;
 use FoF\OAuth\Errors\AuthenticationException;
 use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -14,7 +15,8 @@ final class TicketController implements RequestHandlerInterface
     public function __construct(
         private SharedSecretAuthenticator $authenticator,
         private FlatRateUserProvisioner $provisioner,
-        private TicketStore $tickets
+        private TicketStore $tickets,
+        private BetaTesterProjectionStore $projection
     ) {
     }
 
@@ -29,6 +31,10 @@ final class TicketController implements RequestHandlerInterface
             $returnTo = $this->tickets->validateReturnTo((string) ($body['return_to'] ?? '/'));
 
             $user = $this->provisioner->ensure($sub, $email, $verified, $body);
+            $betaActive = BetaTesterPayload::optional($body);
+            if ($betaActive !== null) {
+                $this->projection->sync($user, $betaActive);
+            }
             $ticket = $this->tickets->issue($user, $returnTo);
 
             return $this->json([
