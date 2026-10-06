@@ -245,3 +245,10 @@ jobs:
         run: |
           FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
           php test/harness/flarum-spa-1.8.19/bin/qualify-beta-projection.php "$FLARUM_DIR"
+
+      - name: Run account deletion preflight qualification
+        env:
+          FORUM_SSO_SHARED_SECRET: flarum-beta-001b-disposable-shared-secret
+        run: |
+          FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
+          php test/harness/flarum-spa-1.8.19/bin/qualify-deletion-preflight.php "$FLARUM_DIR"
