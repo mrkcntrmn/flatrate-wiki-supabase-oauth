@@ -191,6 +191,7 @@ return [
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
         ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class)
         ->post('/flatrate-sso/beta-access', 'flatrate-sso.beta-access', Sso\BetaAccessSyncController::class)
+        ->post('/flatrate-sso/deletion/preflight', 'flatrate-sso.deletion.preflight', Sso\DeletionPreflightController::class)
         ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class)
         ->post('/flatrate-activity/drain', 'flatrate.activity.drain', Activity\DrainActivityOutboxController::class)
         ->get('/flatrate-voting/readiness', 'flatrate.voting.readiness', VotingReadinessController::class)

@@ -9,9 +9,13 @@ test("HMAC/bearer bridge POST routes bypass browser CSRF and only those routes a
   assert.match(serviceProvider, /flarum\.http\.csrfExemptPaths/);
   assert.match(serviceProvider, /'flatrate-sso\.provision'/);
   assert.match(serviceProvider, /'flatrate-sso\.ticket'/);
+  assert.match(serviceProvider, /'flatrate-sso\.beta-access'/);
+  assert.match(serviceProvider, /'flatrate-sso\.deletion\.preflight'/);
   assert.match(serviceProvider, /'flatrate\.activity\.drain'/);
   assert.doesNotMatch(serviceProvider, /auth\/flatrate\/session/);
   assert.match(extension, /post\('\/flatrate-sso\/provision', 'flatrate-sso\.provision'/);
   assert.match(extension, /post\('\/flatrate-sso\/ticket', 'flatrate-sso\.ticket'/);
+  assert.match(extension, /post\('\/flatrate-sso\/beta-access', 'flatrate-sso\.beta-access'/);
+  assert.match(extension, /post\('\/flatrate-sso\/deletion\/preflight', 'flatrate-sso\.deletion\.preflight'/);
   assert.match(extension, /post\('\/flatrate-activity\/drain', 'flatrate\.activity\.drain'/);
 });
