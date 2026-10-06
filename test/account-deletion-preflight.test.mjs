@@ -9,12 +9,14 @@ async function text(path) {
 test("ACCOUNT-DELETION-001C preflight is routed through the existing signed SSO bridge", async () => {
   const routes = await text("extend.php");
   const controller = await text("src/Sso/DeletionPreflightController.php");
+  const provider = await text("src/ServiceProvider.php");
 
   assert.match(
     routes,
     /post\('\/flatrate-sso\/deletion\/preflight',\s*'flatrate-sso\.deletion\.preflight',\s*Sso\\DeletionPreflightController::class\)/,
   );
   assert.doesNotMatch(routes, /flatrate-sso\/deletion\/execute/);
+  assert.match(provider, /'flatrate-sso\.deletion\.preflight'/);
   assert.match(controller, /SharedSecretAuthenticator \$authenticator/);
   assert.match(controller, /\$this->authenticator->authenticate\(\$request\)/);
   assert.match(controller, /Cache-Control' => 'no-store'/);
