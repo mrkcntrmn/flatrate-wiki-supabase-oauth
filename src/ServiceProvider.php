@@ -3,6 +3,9 @@
 namespace FlatRate\SupabaseOAuth;
 
 use FlatRate\SupabaseOAuth\Auth\AutoProvisioningResponseFactory;
+use FlatRate\SupabaseOAuth\Beta\BetaTesterProjection;
+use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionStore;
+use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionTable;
 use FlatRate\SupabaseOAuth\Identity\GuestAwareDisplayNameDriver;
 use FlatRate\SupabaseOAuth\Identity\GuestIdentityProjection;
 use FlatRate\SupabaseOAuth\Identity\ViewerIdentityContext;
@@ -19,6 +22,9 @@ final class ServiceProvider extends AbstractServiceProvider
         // Replace it with a drop-in subclass that changes behavior only for
         // the `flatrate` provider and delegates every other provider upstream.
         $this->container->bind(ResponseFactory::class, AutoProvisioningResponseFactory::class);
+        $this->container->singleton(BetaTesterProjectionTable::class);
+        $this->container->singleton(BetaTesterProjectionStore::class);
+        $this->container->alias(BetaTesterProjectionStore::class, BetaTesterProjection::class);
 
         $this->container->singleton(ViewerIdentityContext::class, function () {
             return new ViewerIdentityContext();
@@ -49,6 +55,7 @@ final class ServiceProvider extends AbstractServiceProvider
         $this->container->extend('flarum.http.csrfExemptPaths', function (array $routes) {
             $routes[] = 'flatrate-sso.provision';
             $routes[] = 'flatrate-sso.ticket';
+            $routes[] = 'flatrate-sso.beta-access';
             $routes[] = 'flatrate.activity.drain';
 
             return array_values(array_unique($routes));

@@ -2,19 +2,18 @@
 
 namespace FlatRate\SupabaseOAuth\Sso;
 
-use FlatRate\SupabaseOAuth\Auth\FlatRateUserProvisioner;
 use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionStore;
-use FoF\OAuth\Errors\AuthenticationException;
+use FlatRate\SupabaseOAuth\Beta\LinkedFlatRateUserResolver;
 use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-final class ProvisionController implements RequestHandlerInterface
+final class BetaAccessSyncController implements RequestHandlerInterface
 {
     public function __construct(
         private SharedSecretAuthenticator $authenticator,
-        private FlatRateUserProvisioner $provisioner,
+        private LinkedFlatRateUserResolver $linkedUsers,
         private BetaTesterProjectionStore $projection
     ) {
     }
@@ -25,24 +24,29 @@ final class ProvisionController implements RequestHandlerInterface
             $this->authenticator->authenticate($request);
             $body = $this->payload($request);
             $sub = trim((string) ($body['sub'] ?? ''));
-            $email = trim((string) ($body['email'] ?? ''));
-            $verified = filter_var($body['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-            $user = $this->provisioner->ensure($sub, $email, $verified, $body);
-            $betaActive = BetaTesterPayload::optional($body);
-            if ($betaActive !== null) {
-                $this->projection->sync($user, $betaActive);
+            if ($sub === '') {
+                throw new SsoException('invalid_subject', 400);
             }
+
+            $active = BetaTesterPayload::required($body);
+            $user = $this->linkedUsers->findBySubject($sub);
+            if (! $user) {
+                return $this->json([
+                    'ok' => true,
+                    'linked' => false,
+                    'changed' => false,
+                ]);
+            }
+
+            $changed = $this->projection->sync($user, $active);
 
             return $this->json([
                 'ok' => true,
-                'user_id' => $user->id,
+                'linked' => true,
+                'changed' => $changed,
             ]);
         } catch (SsoException $error) {
             return $this->json(['error' => $error->errorCode], $error->statusCode);
-        } catch (AuthenticationException $error) {
-            $status = $error->getMessage() === 'existing_account_requires_explicit_link' ? 409 : 400;
-            return $this->json(['error' => $error->getMessage()], $status);
         }
     }
 
