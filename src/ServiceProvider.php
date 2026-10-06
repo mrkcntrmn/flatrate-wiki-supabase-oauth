@@ -56,6 +56,7 @@ final class ServiceProvider extends AbstractServiceProvider
             $routes[] = 'flatrate-sso.provision';
             $routes[] = 'flatrate-sso.ticket';
             $routes[] = 'flatrate-sso.beta-access';
+            $routes[] = 'flatrate-sso.deletion.preflight';
             $routes[] = 'flatrate.activity.drain';
 
             return array_values(array_unique($routes));
