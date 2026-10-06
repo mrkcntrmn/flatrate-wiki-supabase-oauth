@@ -54,6 +54,9 @@ jobs:
       - name: Run owner dashboard DTO gates
         run: php test/owner-dashboard-dto.php
 
+      - name: Run beta tester payload gates
+        run: php test/beta-tester-payload.php
+
       - name: Run ADMIN-GAMIFY-001B gates
         run: php test/admin-gamify-001b.php
 
@@ -154,6 +157,9 @@ jobs:
       - name: Run MariaDB member-profile migration gates
         run: php test/member-profile-mariadb-migration.php
 
+      - name: Run MariaDB beta projection gates
+        run: php test/beta-tester-projection-mariadb.php
+
   flarum-spa-boot:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -205,6 +211,8 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Start Flarum
+        env:
+          FORUM_SSO_SHARED_SECRET: flarum-beta-001b-disposable-shared-secret
         run: |
           FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
           php -S 127.0.0.1:8080 -t "$FLARUM_DIR/public" "$FLARUM_DIR/router.php" > test/harness/flarum-spa-1.8.19/.work/php-server.log 2>&1 &
@@ -230,3 +238,10 @@ jobs:
           php test/harness/flarum-spa-1.8.19/bin/qualify-guest-identity.php \
             "$FLARUM_DIR" \
             test/harness/flarum-spa-1.8.19/.work/seed.json
+
+      - name: Run beta projection SSO qualification
+        env:
+          FORUM_SSO_SHARED_SECRET: flarum-beta-001b-disposable-shared-secret
+        run: |
+          FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
+          php test/harness/flarum-spa-1.8.19/bin/qualify-beta-projection.php "$FLARUM_DIR"
