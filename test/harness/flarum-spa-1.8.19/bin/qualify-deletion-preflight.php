@@ -147,7 +147,7 @@ $beforePosts = (int) $db->table('posts')->count();
 $beforeDiscussions = (int) $db->table('discussions')->count();
 
 $linked = signedDeletionPost($baseUrl, $route, $secret, ['sub' => $sub]);
-assertDeletionSame(200, $linked['status'], 'linked preflight HTTP 200');
+assertDeletion($linked['status'] === 200, 'linked preflight HTTP 200', 'status='.$linked['status'].' body='.$linked['raw']);
 assertDeletionSame(true, $linked['json']['linked'] ?? null, 'linked linked=true');
 assertDeletionSame(false, $linked['json']['root_admin_block'] ?? null, 'ordinary linked user not root-admin blocked');
 assertDeletionSame('linked_user_present', $linked['json']['identity_integrity'] ?? null, 'identity integrity bounded');
@@ -167,7 +167,7 @@ foreach (['email', 'username', 'nickname', 'user_id', 'sub', 'token', 'message',
 }
 
 $bad = signedDeletionPost($baseUrl, $route, $secret, ['sub' => $sub], str_repeat('ab', 32));
-assertDeletionSame(401, $bad['status'], 'bad HMAC denied');
+assertDeletion($bad['status'] === 401, 'bad HMAC denied', 'status='.$bad['status'].' body='.$bad['raw']);
 assertDeletionSame('invalid_sso_signature', $bad['json']['error'] ?? null, 'bad HMAC bounded error');
 assertDeletionSame($beforeUsers, (int) $db->table('users')->count(), 'bad HMAC deletes no users');
 
