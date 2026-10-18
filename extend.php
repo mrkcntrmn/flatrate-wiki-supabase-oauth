@@ -152,6 +152,7 @@ return [
         ->attributes(Api\SerializeDiscussionVoteSummary::class),
 
     (new Extend\Settings())
+        ->default('flatrate-brand-moderator.signed_sync_enabled', '0')
         ->default('flatrate-activity.emit_enabled', false)
         ->default('flatrate-activity.ingest_url', '')
         ->default('flatrate-activity.drain_token_sha256', '')
@@ -191,6 +192,7 @@ return [
         ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
         ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class)
         ->post('/flatrate-sso/beta-access', 'flatrate-sso.beta-access', Sso\BetaAccessSyncController::class)
+        ->post('/flatrate-sso/brand-moderator', 'flatrate-sso.brand-moderator', Sso\BrandModeratorSyncController::class)
         ->post('/flatrate-sso/deletion/preflight', 'flatrate-sso.deletion.preflight', Sso\DeletionPreflightController::class)
         ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class)
         ->post('/flatrate-activity/drain', 'flatrate.activity.drain', Activity\DrainActivityOutboxController::class)
