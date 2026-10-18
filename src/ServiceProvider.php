@@ -6,6 +6,9 @@ use FlatRate\SupabaseOAuth\Auth\AutoProvisioningResponseFactory;
 use FlatRate\SupabaseOAuth\Beta\BetaTesterProjection;
 use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionStore;
 use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionTable;
+use FlatRate\SupabaseOAuth\Brand\BrandModeratorProjection;
+use FlatRate\SupabaseOAuth\Brand\BrandModeratorProjectionStore;
+use FlatRate\SupabaseOAuth\Brand\BrandModeratorProjectionTable;
 use FlatRate\SupabaseOAuth\Identity\GuestAwareDisplayNameDriver;
 use FlatRate\SupabaseOAuth\Identity\GuestIdentityProjection;
 use FlatRate\SupabaseOAuth\Identity\ViewerIdentityContext;
@@ -25,6 +28,9 @@ final class ServiceProvider extends AbstractServiceProvider
         $this->container->singleton(BetaTesterProjectionTable::class);
         $this->container->singleton(BetaTesterProjectionStore::class);
         $this->container->alias(BetaTesterProjectionStore::class, BetaTesterProjection::class);
+        $this->container->singleton(BrandModeratorProjectionTable::class);
+        $this->container->singleton(BrandModeratorProjectionStore::class);
+        $this->container->alias(BrandModeratorProjectionStore::class, BrandModeratorProjection::class);
 
         $this->container->singleton(ViewerIdentityContext::class, function () {
             return new ViewerIdentityContext();
@@ -56,6 +62,7 @@ final class ServiceProvider extends AbstractServiceProvider
             $routes[] = 'flatrate-sso.provision';
             $routes[] = 'flatrate-sso.ticket';
             $routes[] = 'flatrate-sso.beta-access';
+            $routes[] = 'flatrate-sso.brand-moderator';
             $routes[] = 'flatrate-sso.deletion.preflight';
             $routes[] = 'flatrate.activity.drain';
 
