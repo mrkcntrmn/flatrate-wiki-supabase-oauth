@@ -160,6 +160,9 @@ jobs:
       - name: Run MariaDB beta projection gates
         run: php test/beta-tester-projection-mariadb.php
 
+      - name: Run MariaDB Brand moderator projection gates
+        run: php test/brand-moderator-projection-mariadb.php
+
   flarum-spa-boot:
     runs-on: ubuntu-latest
     timeout-minutes: 25
