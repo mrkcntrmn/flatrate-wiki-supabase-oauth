@@ -1,6 +1,7 @@
 {
   "name": "flatrate/wiki-supabase-oauth",
-  "description": "FlatRate Wiki Supabase OAuth 2.1 SSO provider and public-auth gate for Flarum 1.8.",
+  "description": "Flarum 2.0.2 identity canary for FlatRate server-to-server provisioning and one-time tickets. This branch is not a complete port of the Flarum 1 extension.",
+  "version": "2.0.2",
   "type": "flarum-extension",
   "license": "MIT",
   "keywords": [
@@ -18,13 +19,8 @@
     "source": "https://github.com/mrkcntrmn/flatrate-wiki-supabase-oauth"
   },
   "require": {
-    "php": ">=8.1",
-    "flarum/core": "^1.8.1",
-    "flarum/nicknames": "^1.8.3",
-    "flarum/tags": "^1.8.0",
-    "fof/oauth": "^1.7.4",
-    "fof/extend": "^1.3.4",
-    "league/oauth2-client": "^2.7"
+    "php": ">=8.3",
+    "flarum/core": "2.0.2"
   },
   "autoload": {
     "psr-4": {
@@ -33,7 +29,7 @@
   },
   "extra": {
     "flarum-extension": {
-      "title": "FlatRate Wiki Login",
+      "title": "FlatRate Wiki Login F2 identity canary",
       "category": "feature",
       "icon": {
         "name": "fas fa-sign-in-alt",
