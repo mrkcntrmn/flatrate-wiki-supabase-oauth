@@ -8,18 +8,31 @@ on:
 permissions:
   contents: read
 
+# F1 jobs execute the immutable pin. They do not read this branch's extend.php.
+# F2 jobs execute only the identity-canary contract. A red F1 result is not
+# relabeled as an F2 pass, and an F2 exclusion is not made green by deleting
+# an F1 expectation.
+
+env:
+  F1_PIN: 6c7b0b4e10aeeef4edf2dcf441f209fe28f2e7b1
+
 jobs:
-  contract:
+  f1-legacy-contract:
+    name: F1 legacy contract (pin 6c7b0b4e)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 6c7b0b4e10aeeef4edf2dcf441f209fe28f2e7b1
+          path: f1-pin
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Run contract tests
+      - name: Run Flarum 1 legacy contract tests
+        working-directory: f1-pin
         run: node --test test/*.test.mjs
 
       - name: Set up PHP
@@ -30,84 +43,65 @@ jobs:
           tools: composer:v2
           extensions: pdo_mysql, gd, mbstring, tokenizer, xml, curl, fileinfo
 
-      - name: Validate Composer metadata
+      - name: Validate Flarum 1 Composer metadata
+        working-directory: f1-pin
         run: composer validate --strict --no-check-publish
 
-      - name: Run reserved email policy gates
-        run: php test/forum-email-policy.php
-
-      - name: Run tech_number payload gates
-        run: php test/tech-number.php
-
-      - name: Run reserved nickname gates
-        run: php test/reserved-tech-nickname.php
-
-      - name: Run member identity gates
-        run: php test/member-identity.php
-
-      - name: Run member display policy gates
-        run: php test/member-display-policy.php
-
-      - name: Run guest identity projection gates
-        run: php test/guest-identity-projection.php
-
-      - name: Run owner dashboard DTO gates
-        run: php test/owner-dashboard-dto.php
-
-      - name: Run beta tester payload gates
-        run: php test/beta-tester-payload.php
-
-      - name: Run ADMIN-GAMIFY-001B gates
-        run: php test/admin-gamify-001b.php
-
-      - name: Run frontend JS registration gates
-        run: php test/frontend-js-registration.php
-
-      - name: Run GROWTH-001B plain voting foundation gates
-        run: php test/plain-voting-foundation.php
-
-      - name: Run GROWTH-001B1 fail-closed hardening gates
-        run: php test/plain-voting-fail-closed.php
-
-      - name: Run GROWTH-001UI discussion aggregate upvote gates
-        run: php test/plain-voting-discussion-aggregate.php
-
-      - name: Run GROWTH-001UI multi-post MariaDB runtime gates
-        run: php test/plain-voting-multi-post-runtime.php
-
-      - name: Run desktop navigation handoff gates
-        run: php test/forum-desktop-navigation-handoff.php
-
-      - name: Run FORUM-SUB-001 family follow gates
-        run: php test/forum-sub001-family-follow.php
-
-      - name: Run FORUM-SUB-001 FoF-absent load gates
-        run: php test/forum-sub001-absent-load.php
+      - name: Run Flarum 1 PHP gates
+        working-directory: f1-pin
+        run: |
+          php test/forum-email-policy.php
+          php test/tech-number.php
+          php test/reserved-tech-nickname.php
+          php test/member-identity.php
+          php test/member-display-policy.php
+          php test/guest-identity-projection.php
+          php test/owner-dashboard-dto.php
+          php test/beta-tester-payload.php
+          php test/admin-gamify-001b.php
+          php test/frontend-js-registration.php
+          php test/plain-voting-foundation.php
+          php test/plain-voting-fail-closed.php
+          php test/plain-voting-discussion-aggregate.php
+          php test/plain-voting-multi-post-runtime.php
+          php test/forum-desktop-navigation-handoff.php
+          php test/forum-sub001-family-follow.php
+          php test/forum-sub001-absent-load.php
 
       - name: Install activity R1 disposable behavior harness
-        working-directory: test/harness/activity-r1
+        working-directory: f1-pin/test/harness/activity-r1
         run: composer install --no-interaction --prefer-dist
 
-      - name: Run REP-001F.A1 R1 activity behavior gates
-        run: php test/activity-r1-behavior.php
-
-      - name: Run REP-001F.A1 R2 activity behavior gates
-        run: php test/activity-r2-behavior.php
-
-      - name: Run external Activity drain endpoint gates
-        run: php test/activity-external-drain-endpoint.php
+      - name: Run Flarum 1 activity behavior gates
+        working-directory: f1-pin
+        run: |
+          php test/activity-r1-behavior.php
+          php test/activity-r2-behavior.php
+          php test/activity-external-drain-endpoint.php
 
       - name: Install FORUM-SUB-001 disposable runtime harness
-        working-directory: test/harness/forum-sub001-runtime
-        run: composer install --no-interaction --prefer-dist
+        working-directory: f1-pin/test/harness/forum-sub001-runtime
+        env:
+          COMPOSER_HOME: ${{ runner.temp }}/f1-sub001-composer-home
+        run: |
+          mkdir -p "$COMPOSER_HOME"
+          composer config --global policy.advisories.block true
+          composer config --global --json policy.advisories.ignore-id '{"PKSA-w9tt-7782-78jx":"Disposable Flarum 1.8.19 lab only. league/flysystem 1.x is required by flarum/core 1.8.19. Not a production or Flarum 2 exception.","PKSA-pwh8-d4fr-nywn":"Disposable Flarum 1.8.19 lab only. league/flysystem 1.x is required by flarum/core 1.8.19. Not a production or Flarum 2 exception."}'
+          echo "F1_ADVISORY_EXCEPTION=PKSA-w9tt-7782-78jx,PKSA-pwh8-d4fr-nywn"
+          echo "F1_ADVISORY_PACKAGE=league/flysystem"
+          echo "F1_ADVISORY_SCOPE=FORUM-SUB-001 disposable harness step only"
+          composer install --no-interaction --prefer-dist
 
       - name: Run FORUM-SUB-001 runtime resolver/binding gates
+        working-directory: f1-pin
         run: php test/forum-sub001-runtime.php
 
-      - name: Lint PHP
+      - name: Lint Flarum 1 PHP
+        working-directory: f1-pin
         run: find . -name '*.php' -not -path './test/harness/*/vendor/*' -not -path './test/harness/*/.work/*' -print0 | xargs -0 -n1 php -l
 
-  mariadb-migration:
+  f1-legacy-mariadb-migration:
+    name: F1 legacy MariaDB migrations (pin 6c7b0b4e)
     runs-on: ubuntu-latest
     env:
       MARIADB_HOST: 127.0.0.1
@@ -132,6 +126,9 @@ jobs:
           --health-retries=12
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 6c7b0b4e10aeeef4edf2dcf441f209fe28f2e7b1
+          path: f1-pin
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -142,16 +139,19 @@ jobs:
           extensions: pdo_mysql
 
       - name: Install MariaDB member-profile migration harness
-        working-directory: test/harness/mariadb-migration
+        working-directory: f1-pin/test/harness/mariadb-migration
         run: composer install --no-interaction --prefer-dist
 
-      - name: Run MariaDB member-profile migration gates
+      - name: Run Flarum 1 MariaDB member-profile migration gates
+        working-directory: f1-pin
         run: php test/member-profile-mariadb-migration.php
 
-      - name: Run MariaDB beta projection gates
+      - name: Run Flarum 1 MariaDB beta projection gates
+        working-directory: f1-pin
         run: php test/beta-tester-projection-mariadb.php
 
-  flarum-spa-boot:
+  f1-legacy-spa-boot:
+    name: F1 1.8.19 SPA boot (pin 6c7b0b4e)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -178,6 +178,9 @@ jobs:
           --health-retries=12
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 6c7b0b4e10aeeef4edf2dcf441f209fe28f2e7b1
+          path: f1-pin
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -192,16 +195,29 @@ jobs:
         with:
           node-version: 20
 
-      - name: Bootstrap disposable Flarum 1.8.19
+      - name: Apply disposable F1 Flysystem advisory exception
+        run: |
+          export COMPOSER_HOME="$RUNNER_TEMP/f1-composer-home"
+          mkdir -p "$COMPOSER_HOME"
+          composer config --global policy.advisories.block true
+          composer config --global --json policy.advisories.ignore-id '{"PKSA-w9tt-7782-78jx":"Disposable Flarum 1.8.19 lab only. league/flysystem 1.x is required by flarum/core 1.8.19. Not a production or Flarum 2 exception.","PKSA-pwh8-d4fr-nywn":"Disposable Flarum 1.8.19 lab only. league/flysystem 1.x is required by flarum/core 1.8.19. Not a production or Flarum 2 exception."}'
+          echo "COMPOSER_HOME=$COMPOSER_HOME" >> "$GITHUB_ENV"
+          echo "F1_ADVISORY_EXCEPTION=PKSA-w9tt-7782-78jx,PKSA-pwh8-d4fr-nywn"
+          echo "F1_ADVISORY_PACKAGE=league/flysystem"
+          echo "F1_ADVISORY_SCOPE=this job only"
+
+      - name: Bootstrap disposable Flarum 1.8.19 from the immutable pin
+        working-directory: f1-pin
         run: bash test/harness/flarum-spa-1.8.19/bin/bootstrap.sh
 
       - name: Install Playwright
-        working-directory: test/harness/flarum-spa-1.8.19
+        working-directory: f1-pin/test/harness/flarum-spa-1.8.19
         run: |
           npm install
           npx playwright install --with-deps chromium
 
       - name: Start Flarum
+        working-directory: f1-pin
         env:
           FORUM_SSO_SHARED_SECRET: flarum-beta-001b-disposable-shared-secret
         run: |
@@ -220,10 +236,11 @@ jobs:
           exit 1
 
       - name: Run Flarum 1.8.19 browser boot gates
-        working-directory: test/harness/flarum-spa-1.8.19
+        working-directory: f1-pin/test/harness/flarum-spa-1.8.19
         run: npx playwright test
 
       - name: Run guest identity in-process qualification
+        working-directory: f1-pin
         run: |
           FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
           php test/harness/flarum-spa-1.8.19/bin/qualify-guest-identity.php \
@@ -231,8 +248,51 @@ jobs:
             test/harness/flarum-spa-1.8.19/.work/seed.json
 
       - name: Run beta projection SSO qualification
+        working-directory: f1-pin
         env:
           FORUM_SSO_SHARED_SECRET: flarum-beta-001b-disposable-shared-secret
         run: |
           FLARUM_DIR="$(cat test/harness/flarum-spa-1.8.19/.work/flarum-dir.txt)"
           php test/harness/flarum-spa-1.8.19/bin/qualify-beta-projection.php "$FLARUM_DIR"
+
+  f2-identity-canary:
+    name: F2 identity canary contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Flarum 2 identity canary contract
+        run: node --test test/f2-identity-canary.test.mjs
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Lint Flarum 2 canary PHP
+        run: find extend.php src/Canary src/Sso/SharedSecretAuthenticator.php -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Validate Flarum 2 canary Composer metadata
+        run: |
+          set +e
+          output=$(composer validate --no-check-publish --strict 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          unexpected=$(printf '%s\n' "$output" | grep -Ev 'version field is present|exact version constraints|is valid, but|getcomposer.org|# General warnings|^$' || true)
+          if [ -n "$unexpected" ]; then
+            echo "UNEXPECTED_COMPOSER_VALIDATION"
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+          echo "COMPOSER_VALIDATION=KNOWN_CANARY_PIN_WARNINGS"
