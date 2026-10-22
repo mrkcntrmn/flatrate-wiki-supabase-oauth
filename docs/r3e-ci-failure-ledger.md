@@ -41,3 +41,16 @@ These files stay in `migrations-unqualified/`. Flarum does not load that directo
 | PKSA-pwh8-d4fr-nywn | league/flysystem 1.x | F1 1.8.19 disposable job only |
 
 The exception is a job-local `COMPOSER_HOME`. It is not written to the extension `composer.json`, the F2 canary, or production.
+
+## Follow-up run 39725944409
+
+Head `5089d5f960f4916f0a35db16e8595d679aa20320`. Completed 2026-10-22T05:06Z (job timestamps 05:04Z). This run does not change run `39724979948`, which stays FAIL.
+
+| Job | Result | Evidence |
+| --- | --- | --- |
+| F1 1.8.19 SPA boot | pass | Job-local Composer home accepted the two advisory IDs and the pin bootstrap completed |
+| F1 legacy MariaDB migrations | pass | Member-profile and beta projection gates ran against the pin |
+| F1 legacy contract | fail | `node --test` reported `# fail 0`. The later FORUM-SUB-001 harness `composer install` then hit the same two Flysystem advisories because that step had no job-local ignore |
+| F2 identity canary contract | fail | `node --test test/f2-identity-canary.test.mjs` reported `# fail 0` and `php -l` was clean. `composer validate --strict` printed only the two known pin warnings. The step then exited 1 because `grep -v` returns 1 when every line is excluded and `set -e` aborted before the known-warning disposition |
+
+The contract-harness advisory miss is the same baseline blocker, now on `test/harness/forum-sub001-runtime/composer.json` requiring `flarum/core` 1.8.19. The repair stays a step-local Composer home for those two IDs. The F2 validate miss is a workflow exit-status bug, not a new package defect.
