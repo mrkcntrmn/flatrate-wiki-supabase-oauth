@@ -61,6 +61,15 @@ test("F2 canary: historical migrations remain source-accessible and inactive", a
   assert.equal(extend.includes("migrations-unqualified"), false);
 });
 
+test("F2 canary: registration sends the generated handle and ignores a request username", async () => {
+  const provisioner = await text("src/Canary/IdentityProvisioner.php");
+  const controller = await text("src/Canary/ProvisionController.php");
+  assert.match(provisioner, /NeutralIdentity::handle\(\$sub\)/);
+  assert.match(provisioner, /'username'\s*=>\s*\$username/);
+  assert.equal(controller.includes("body['username']"), false);
+  assert.equal(controller.includes('body["username"]'), false);
+});
+
 test("F2 canary: package text does not claim a complete production replacement", async () => {
   const readme = await text("CANARY.md");
   assert.match(readme, /not a port of the Flarum 1 extension/i);

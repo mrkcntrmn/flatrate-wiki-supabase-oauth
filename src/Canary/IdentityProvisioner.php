@@ -64,6 +64,9 @@ final class IdentityProvisioner
     {
         $admin = $this->administrator();
         $username = NeutralIdentity::handle($sub);
+        if (! preg_match('/^(?![0-9]*$)[a-z0-9_-]{3,30}$/i', $username)) {
+            throw new SsoException('identity_handle_invalid', 500);
+        }
         $token = RegistrationToken::generate('flatrate', $sub, [
             'username' => $username,
             'email' => $email,
@@ -81,6 +84,7 @@ final class IdentityProvisioner
                     'data' => [
                         'type' => 'users',
                         'attributes' => [
+                            'username' => $username,
                             'token' => $token->token,
                         ],
                     ],
