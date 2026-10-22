@@ -47,7 +47,11 @@ final class SharedSecretAuthenticator
             throw new SsoException('invalid_sso_signature', 401);
         }
 
-        $body = (string) $request->getBody();
+        $bodyStream = $request->getBody();
+        if ($bodyStream->isSeekable()) {
+            $bodyStream->rewind();
+        }
+        $body = (string) $bodyStream;
         $canonical = implode("\n", [
             $timestampRaw,
             $nonce,
