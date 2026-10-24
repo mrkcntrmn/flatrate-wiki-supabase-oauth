@@ -26,7 +26,6 @@ test("F2 canary: extend.php does not boot excluded F1 surfaces", async () => {
     "RegisterUserHandler",
     "FoF\\OAuth",
     "AdminGamify",
-    "RequireFlatRateIdentity",
     "MemberDisplayController",
     "beta-access",
     "flatrate-voting",
@@ -35,14 +34,18 @@ test("F2 canary: extend.php does not boot excluded F1 surfaces", async () => {
   for (const token of absent) {
     assert.equal(extend.includes(token), false, token);
   }
+  assert.match(extend, /RequireFlatRateIdentity/);
   assert.match(extend, /flatrate-sso\/provision/);
   assert.match(extend, /flatrate-sso\/ticket/);
   assert.match(extend, /auth\/flatrate\/session/);
 });
 
-test("F2 canary: active migrations are only the SSO bridge", async () => {
+test("F2 canary: active migrations are the SSO bridge and legacy counter defaults", async () => {
   const active = (await readdir(new URL("migrations/", root))).filter((name) => name.endsWith(".php")).sort();
-  assert.deepEqual(active, ["2026_08_28_000000_create_sso_bridge_tables.php"]);
+  assert.deepEqual(active, [
+    "2026_08_28_000000_create_sso_bridge_tables.php",
+    "2026_10_24_000000_default_legacy_counter_columns.php",
+  ]);
 });
 
 test("F2 canary: historical migrations remain source-accessible and inactive", async () => {
