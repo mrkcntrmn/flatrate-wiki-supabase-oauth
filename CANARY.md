@@ -30,4 +30,6 @@ These Flarum 1 capabilities stay in the tree and are excluded from `extend.php` 
 - Admin gamification and member-display routes.
 - Forum and API identity middleware that previously gated ordinary browsing.
 
+The server-side gate `RequireFlatRateIdentity` is registered. It rejects ordinary password login and native signup. An administrator can still use password recovery. It does not hide the forum from guests.
+
 Unqualified routes such as `/api/flatrate-voting/readiness` are not registered.
