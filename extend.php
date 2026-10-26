@@ -8,6 +8,8 @@
  * email listener, and the server-side signup and password-login gate.
  * Voting, analytics, activity, member display, beta projection, and FoF
  * OAuth are not registered and must not boot from this entry point.
+ * The legacy Tip path /t/job-breakdown redirects to /t/tip. The reply
+ * marker renderer is not registered here.
  */
 
 use FlatRate\SupabaseOAuth\Canary\CsrfServiceProvider;
@@ -15,6 +17,7 @@ use FlatRate\SupabaseOAuth\Canary\ProvisionController;
 use FlatRate\SupabaseOAuth\Canary\SessionController;
 use FlatRate\SupabaseOAuth\Canary\TicketController;
 use FlatRate\SupabaseOAuth\Canary\TicketHeaderMiddleware;
+use FlatRate\SupabaseOAuth\Http\LegacyTipSlugMiddleware;
 use FlatRate\SupabaseOAuth\Listeners\TrustVerifiedSupabaseEmail;
 use FlatRate\SupabaseOAuth\Middleware\RequireFlatRateIdentity;
 use Flarum\Extend;
@@ -27,6 +30,7 @@ return [
 
     (new Extend\Middleware('forum'))
         ->insertBefore(ReferrerPolicyHeader::class, TicketHeaderMiddleware::class)
+        ->insertBefore('flarum.forum.route_resolver', LegacyTipSlugMiddleware::class)
         ->add(RequireFlatRateIdentity::class),
 
     (new Extend\Middleware('api'))
