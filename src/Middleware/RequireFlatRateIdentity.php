@@ -2,6 +2,7 @@
 
 namespace FlatRate\SupabaseOAuth\Middleware;
 
+use FlatRate\SupabaseOAuth\Auth\NativeAdminRecoveryGate;
 use Flarum\Http\RequestUtil;
 use Flarum\User\UserRepository;
 use Laminas\Diactoros\Response\JsonResponse;
@@ -12,8 +13,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 final class RequireFlatRateIdentity implements MiddlewareInterface
 {
+    private NativeAdminRecoveryGate $recovery;
+
     public function __construct(private UserRepository $users)
     {
+        $this->recovery = new NativeAdminRecoveryGate();
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -33,7 +37,7 @@ final class RequireFlatRateIdentity implements MiddlewareInterface
             // Keep native password auth only as an unadvertised administrator
             // recovery mechanism. Ordinary users must authenticate through the
             // FlatRate Wiki OAuth provider.
-            if (!$user || !$user->isAdmin()) {
+            if (!$this->recovery->allowsPasswordLogin($user !== null, $user !== null && $user->isAdmin())) {
                 return $this->ssoRequired();
             }
         }
@@ -45,7 +49,7 @@ final class RequireFlatRateIdentity implements MiddlewareInterface
             // OAuth registration arrives with a Flarum registration token.
             // Admins may still create recovery/operator accounts. Public native
             // username/password signup is rejected even if allow_sign_up=true.
-            if (!$actor->isAdmin() && (!is_string($token) || trim($token) === '')) {
+            if (!$this->recovery->allowsNativeSignup($actor->isAdmin(), $token)) {
                 return $this->ssoRequired();
             }
         }

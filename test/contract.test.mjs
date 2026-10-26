@@ -170,6 +170,9 @@ test("ordinary native password login and signup remain blocked server-side", asy
   assert.match(middleware, /\/api\/users/);
   assert.match(middleware, /isAdmin\(\)/);
   assert.match(middleware, /flatrate_sso_required/);
+  assert.match(middleware, /NativeAdminRecoveryGate/);
+  assert.match(middleware, /allowsPasswordLogin/);
+  assert.match(middleware, /allowsNativeSignup/);
 });
 
 test("forum UI keeps branded fallback SSO and removes local credential controls", async () => {
