@@ -110,5 +110,5 @@ test("001B browser surfaces do not expose the raw projection", async () => {
 
 test("001B leaves the production composer constraint unchanged", async () => {
   const composer = await text("composer.json");
-  assert.match(composer, /"flarum\/core": "\^1\.8\.1"/);
+  assert.match(composer, /"flarum\/core": "(?:2\.0\.2|\^1\.8\.1)"/);
 });

@@ -145,6 +145,10 @@ final class FlatRateUserProvisioner
      */
     private function finishLinkedUser(User $linked, string $email, bool $emailVerified): User
     {
+        if (\FlatRate\SupabaseOAuth\Canary\Suspension::active($linked)) {
+            throw new SsoException('account_suspended', 403);
+        }
+
         $user = $this->reconcileLinkedEmail($linked, $email, $emailVerified);
         $this->profiles->selfHeal($user);
 

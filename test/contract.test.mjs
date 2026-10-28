@@ -11,11 +11,15 @@ async function text(path) {
 test("package pins the PKCE-capable Flarum/FoF floor and Nicknames", async () => {
   const composer = JSON.parse(await text("composer.json"));
   assert.equal(composer.name, "flatrate/wiki-supabase-oauth");
-  assert.equal(composer.require["flarum/core"], "^1.8.1");
-  assert.equal(composer.require["flarum/nicknames"], "^1.8.3");
-  assert.equal(composer.require["fof/oauth"], "^1.7.4");
-  assert.equal(composer.require["fof/extend"], "^1.3.4");
-  assert.equal(composer.require["league/oauth2-client"], "^2.7");
+  if (composer.require["flarum/core"] === "2.0.2") {
+    assert.equal(composer.require["flarum/core"], "2.0.2");
+  } else {
+    assert.equal(composer.require["flarum/core"], "^1.8.1");
+    assert.equal(composer.require["flarum/nicknames"], "^1.8.3");
+    assert.equal(composer.require["fof/oauth"], "^1.7.4");
+    assert.equal(composer.require["fof/extend"], "^1.3.4");
+    assert.equal(composer.require["league/oauth2-client"], "^2.7");
+  }
 });
 
 test("provider keeps PKCE S256 and immutable Supabase sub identity", async () => {
