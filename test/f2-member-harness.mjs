@@ -3,10 +3,17 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, symli
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const template = resolve(source, 'test/harness/f2-member-experience');
 const root = process.env.F2_LAB_ROOT;
 assert.ok(root?.startsWith('/tmp/') && !existsSync(root), 'New /tmp lab directory required');
+const base = new URL(process.env.F2_BASE_URL || 'http://127.0.0.1:18767');
+assert.equal(base.hostname, '127.0.0.1');
+// Never run HTTP acceptance against an older fixture occupying our port.
+const probe = createServer();
+await new Promise((done, fail) => { probe.once('error', fail); probe.listen(Number(base.port), '127.0.0.1', done); });
+await new Promise(done => probe.close(done));
 const sources = JSON.parse(process.env.F2_SOURCES_JSON || '{}');
 sources.oauth = source;
 for (const name of ['oauth', 'navigation', 'messaging', 'dm', 'live', 'media']) assert.ok(typeof sources[name] === 'string' && existsSync(resolve(sources[name], 'composer.json')), 'Explicit source directory required: ' + name);
@@ -35,10 +42,10 @@ run(php, [...ini, 'flarum', 'install', '--file=' + env.F2_INSTALL_FILE]);
 for (const id of ['fof-masquerade', 'flatrate-wiki-supabase-oauth', 'fof-follow-tags', 'fof-formatting', 'fof-polls', 'fof-reactions', 'fof-seo', 'fof-sitemap', 'fof-upload', 'flatrate-forum-navigation', 'flatrate-private-messages-bridge', 'flatrate-messaging-ui', 'flatrate-media-privacy', 'flarum-extension-manager']) run(php, [...ini, 'flarum', 'extension:enable', id]);
 run(php, [...ini, resolve(source, 'test/f2-member-experience-seed.php')]);
 for (const name of ['f2-resource-contract-boot.php', 'f2-member-features-boot.php', 'f2-native-voting-boot.php', 'f2-upload-privacy-boot.php', 'f2-masquerade-completion-boot.php', 'f2-migration-ledger-preservation.php']) run(php, [...ini, resolve(source, 'test', name)]);
-const base = new URL(process.env.F2_BASE_URL || 'http://127.0.0.1:18767');
 const server = spawn(php, [...ini, '-S', base.host, '-t', 'public', 'public/router.php'], { cwd: app, env, stdio: ['ignore', 'ignore', 'ignore'] });
 try {
-  for (let attempt = 0; ; attempt++) { try { const r = await fetch(base); if (r.status === 200) break; } catch {} if (attempt >= 30) throw new Error('Local acceptance server unavailable'); await new Promise(r => setTimeout(r, 1000)); }
+  await new Promise(r => setTimeout(r, 150));
+  for (let attempt = 0; ; attempt++) { if (server.exitCode !== null) throw new Error('Acceptance server exited before readiness'); try { const r = await fetch(base); if (r.status === 200) break; } catch {} if (attempt >= 30) throw new Error('Local acceptance server unavailable'); await new Promise(r => setTimeout(r, 1000)); }
   for (const name of ['f2-identity-http.mjs', 'f2-crawl-http.mjs', 'f2-member-experience-browser.mjs']) run(process.execPath, [resolve(source, 'test', name)]);
   run(php, [...ini, 'flarum', 'extension:disable', 'fof-sitemap']);
   try {
