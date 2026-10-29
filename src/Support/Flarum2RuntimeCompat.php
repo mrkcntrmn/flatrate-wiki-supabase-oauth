@@ -247,12 +247,18 @@ if (! class_exists(ApiSerializer::class, false)) {
                         Attribute::make('flatRateMemberNumber')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest())
                             ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateMemberNumber')),
-                        Attribute::make('flatRateDisplayMode')
+                        Attribute::make('flatRateMemberNickname')
+                            ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest())
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateMemberNickname')),
+                        Attribute::make('flatRateNicknameMode')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && (int) $c->getActor()->id === (int) $user->id)
-                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateDisplayMode')),
-                        Attribute::make('flatRateCustomDisplayName')
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateNicknameMode')),
+                        Attribute::make('flatRateCustomNickname')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && (int) $c->getActor()->id === (int) $user->id)
-                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateCustomDisplayName')),
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateCustomNickname')),
+                        Attribute::make('flatRateCustomNicknameOrigin')
+                            ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && (int) $c->getActor()->id === (int) $user->id)
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateCustomNicknameOrigin')),
                         Attribute::make('flatRateOwnerDashboard')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && (int) $c->getActor()->id === (int) $user->id)
                             ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateOwnerDashboard')),
@@ -267,7 +273,12 @@ if (! class_exists(ApiSerializer::class, false)) {
                 static::$extendedResources[PostResource::class] = true;
                 (new ApiResource(PostResource::class))
                     ->fields(fn () => [
-                        Attribute::make('flatRateJobBreakdown')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatRateJobBreakdown')),
+                        Attribute::make('flatRateJobBreakdown')
+                            ->writable()
+                            // SaveJobBreakdownMarker validates the actor and
+                            // persists the canonical marker after the post save.
+                            ->save(static fn () => null)
+                            ->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatRateJobBreakdown')),
                         Attribute::make('flatrateHelpfulCount')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateHelpfulCount')),
                         Attribute::make('flatrateViewerMarkedHelpful')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateViewerMarkedHelpful')),
                         Attribute::make('flatrateCanMarkHelpful')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateCanMarkHelpful')),
@@ -283,15 +294,14 @@ if (! class_exists(ApiSerializer::class, false)) {
                     ->extend($container, $extension);
             }
 
-            if (is_a($this->serializerClass, DiscussionSerializer::class, true) && ! isset(static::$extendedResources[DiscussionResource::class])) {
+            if (is_a($this->serializerClass, BasicDiscussionSerializer::class, true) && ! isset(static::$extendedResources[DiscussionResource::class])) {
                 static::$extendedResources[DiscussionResource::class] = true;
                 (new ApiResource(DiscussionResource::class))
                     ->fields(fn () => [
-                        Attribute::make('votes')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'votes')),
-                        Attribute::make('flatrateDiscussionVoteCount')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'flatrateDiscussionVoteCount')),
-                        Attribute::make('hasUpvoted')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'hasUpvoted')),
-                        Attribute::make('canVote')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'canVote')),
-                        Attribute::make('canSeeVotes')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'canSeeVotes')),
+                        Attribute::make('flatRateDiscussionUpvotes')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'flatRateDiscussionUpvotes')),
+                        Attribute::make('flatRateDiscussionViewerUpvoted')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'flatRateDiscussionViewerUpvoted')),
+                        Attribute::make('flatRateDiscussionViewerVotePostId')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'flatRateDiscussionViewerVotePostId')),
+                        Attribute::make('flatRateDiscussionCanUpvote')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'flatRateDiscussionCanUpvote')),
                     ])
                     ->extend($container, $extension);
             }
@@ -300,7 +310,10 @@ if (! class_exists(ApiSerializer::class, false)) {
                 static::$extendedResources[ForumResource::class] = true;
                 (new ApiResource(ForumResource::class))
                     ->fields(fn () => [
-                        Attribute::make('flatrateBrandVoteTotals')->get(fn ($m, Context $c) => self::resolveForumAttr($container, $m, $c, 'flatrateBrandVoteTotals')),
+                        Attribute::make('flatRateVotingEnabled')->get(fn ($m, Context $c) => (bool) self::resolveForumAttr($container, $m, $c, 'flatRateVotingEnabled')),
+                        Attribute::make('flatRateBrandUpvotes')
+                            ->visible(fn ($m, Context $c) => self::resolveForumAttr($container, $m, $c, 'flatRateBrandUpvotes') !== null)
+                            ->get(fn ($m, Context $c) => self::resolveForumAttr($container, $m, $c, 'flatRateBrandUpvotes')),
                     ])
                     ->extend($container, $extension);
             }

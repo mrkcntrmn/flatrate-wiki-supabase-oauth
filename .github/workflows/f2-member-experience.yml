@@ -1,0 +1,90 @@
+name: F2 member experience
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  combined-stack:
+    name: F2 combined stack and member browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: disposable-test-password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: oauth
+      - uses: actions/checkout@v4
+        with:
+          repository: mrkcntrmn/flatrate-flarum-forum-navigation
+          ref: 1fcfbbddfd10b60889bb0004d832dc5ff2eb4ad6
+          path: navigation
+      - uses: actions/checkout@v4
+        with:
+          repository: mrkcntrmn/flatrate-flarum-messaging-ui
+          ref: f530fb435006e9d696eb6a76264dfff4537514c4
+          path: messaging
+      - uses: actions/checkout@v4
+        with:
+          repository: mrkcntrmn/flatrate-flarum-private-messages-bridge
+          ref: 9f8c48ef60ba702510a57d465273489f8d3d1f59
+          path: dm
+      - uses: actions/checkout@v4
+        with:
+          repository: mrkcntrmn/flatrate-flarum-live-chat
+          ref: b048f30a6bdef3e8bb1d29ded9ebd1975688603c
+          path: live
+      - uses: actions/checkout@v4
+        with:
+          repository: mrkcntrmn/flatrate-flarum-media-privacy
+          ref: 1127516475077a6c8afebef1d4a561b006f0add2
+          path: media
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo_mysql, gd, mbstring, xml, curl, fileinfo, zip
+          ini-values: memory_limit=768M, zend.assertions=1, assert.exception=1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit regressions
+        working-directory: oauth
+        run: node --test test/*.test.mjs
+      - name: Install pinned browser runner
+        working-directory: navigation/js
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Run real Composer and MariaDB member qualification
+        working-directory: oauth
+        env:
+          F2_LAB_ROOT: /tmp/f2-member-qualification
+          F2_DB_NAME: fr_f2_acceptance_ci
+          F2_DB_PASSWORD: disposable-test-password
+          F2_BASE_URL: http://127.0.0.1:18767
+        run: |
+          export F2_SOURCES_JSON="$(node -e 'const p=require("path");console.log(JSON.stringify(Object.fromEntries(["navigation","messaging","dm","live","media"].map(n=>[n,p.resolve("..",n)]))))')"
+          export PLAYWRIGHT_PACKAGE_JSON="$GITHUB_WORKSPACE/navigation/js/package.json"
+          node test/f2-member-harness.mjs
+      - name: Audit the locked dependencies
+        working-directory: /tmp/f2-member-qualification/app
+        run: composer audit --locked
+      - name: Upload sanitized qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-member-qualification
+          path: /tmp/f2-member-qualification/evidence
+          if-no-files-found: warn

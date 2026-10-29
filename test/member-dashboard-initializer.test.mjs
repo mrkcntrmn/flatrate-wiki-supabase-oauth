@@ -134,6 +134,19 @@ test("initializer extends UserCard, UserPage, and PostsUserPage via registry", (
   assert.equal(sandbox.module.exports && typeof sandbox.module.exports, "object");
 });
 
+test('Flarum 2 profile route chunks retain dashboard hooks when loaded after boot', () => {
+  const { sandbox, initializers, calls } = loadWithReg();
+  const get = sandbox.flarum.reg.get;
+  const subscribers = new Map();
+  sandbox.flarum.reg.get = (namespace, id) => /\/(UserPage|PostsUserPage)$/.test(id) ? null : get(namespace, id);
+  sandbox.flarum.reg.onLoad = (namespace, id, callback) => subscribers.set(id, callback);
+  initializers['flatrate-wiki-member-dashboard']();
+  assert.deepEqual(calls.map(c => c.method), ['infoItems']);
+  subscribers.get('forum/components/UserPage')(UserPage);
+  subscribers.get('forum/components/PostsUserPage')(PostsUserPage);
+  assert.deepEqual(calls.map(c => c.method), ['infoItems', 'navItems', 'content']);
+});
+
 test("owner chrome is withheld without server DTO even if a user object exists", () => {
   const { initializers, calls } = loadWithReg();
   initializers["flatrate-wiki-member-dashboard"]();

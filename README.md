@@ -1,13 +1,13 @@
 # FlatRate Wiki Supabase OAuth
 
-Flarum 1.8 extension for FlatRate Wiki identity integration and forum metadata.
+Flarum 2.0.2 member-experience restoration candidate for FlatRate Wiki identity integration and forum metadata. This source is not a production release. Qualification and promotion boundaries are defined in [the F2 verification protocol](docs/f2-member-verification.md).
 
 Supabase Auth remains the canonical credential/account authority. Flarum keeps only local community identity/state linked to the immutable Supabase/OIDC `sub`.
 
 The production target has two complementary paths:
 
 1. **Primary product path:** FlatRate.wiki provisions the linked Flarum identity server-to-server and enters Community with a short-lived, opaque, one-time session ticket. Users do not see an OAuth consent/callback flow when they click Community.
-2. **Rollback/fallback path:** the existing OAuth 2.1 authorization-code flow with PKCE `S256` remains available during migration and for explicit legacy-account linking.
+2. **Historical fallback:** the Flarum 1 OAuth/PKCE implementation remains in source history. The Flarum 2 entrypoint does not enable a parallel FoF OAuth provider.
 
 ## Security and identity contract
 

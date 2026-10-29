@@ -15,7 +15,7 @@ test("F2 canary: composer requires exact Flarum 2.0.2 and not the F1 extension s
   assert.equal(composer.require["fof/extend"], undefined);
   assert.equal(composer.require["flarum/nicknames"], undefined);
   assert.equal(composer.require["flarum/tags"], undefined);
-  assert.match(composer.description, /not a complete port/i);
+  assert.match(composer.description, /restoration candidate.*not a production release/i);
   assert.doesNotMatch(composer.require["flarum/core"], /\*/);
 });
 
@@ -46,6 +46,7 @@ test("F2 member experience: active migrations are the qualified member experienc
     "2026_10_06_000000_create_beta_tester_projection.php",
     "2026_10_24_000000_default_legacy_counter_columns.php",
     "2026_10_28_000000_repair_masquerade_field_validation_text.php",
+    "2026_10_29_000000_native_plain_votes.php",
   ]);
 });
 

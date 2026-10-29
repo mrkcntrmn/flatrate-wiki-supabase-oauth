@@ -1,5 +1,7 @@
 # Flarum 2.0.2 identity canary
 
+Historical evidence for the original identity-only canary. Its exclusion list does not describe the current restoration candidate. See [F2 verification](docs/f2-member-verification.md) for current source scope and gates.
+
 Source pin: `6c7b0b4e10aeeef4edf2dcf441f209fe28f2e7b1`.
 
 This branch is a disposable identity and ticket bridge. It is not a port of the Flarum 1 extension, and it is not a production release.

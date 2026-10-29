@@ -74,7 +74,7 @@ function loadWithReg() {
 test("initializer registers and extends SettingsPage.prototype via flarum.reg", () => {
   const { sandbox, initializers, calls } = loadWithReg();
   assert.equal(typeof initializers["flatrate-wiki-member-display"], "function");
-  initializers["flatrate-wiki-member-display"]();
+  initializers["flatrate-wiki-member-display"](sandbox.app);
   assert.deepEqual(
     calls.map((c) => c.method),
     ["oninit", "settingsItems"],
@@ -82,6 +82,20 @@ test("initializer registers and extends SettingsPage.prototype via flarum.reg", 
   assert.equal(calls[0].object, SettingsPage.prototype);
   assert.equal(sandbox.module.exports && typeof sandbox.module.exports, "object");
   assert.equal(sandbox.module.exports.extend, undefined);
+});
+
+test("Flarum 2 settings route chunk is extended when it loads after application boot", () => {
+  const { sandbox, initializers, calls } = loadWithReg();
+  const originalGet = sandbox.flarum.reg.get;
+  const subscribers = new Map();
+  sandbox.flarum.reg.get = (namespace, id) => id === 'forum/components/SettingsPage' ? null : originalGet(namespace, id);
+  sandbox.flarum.reg.onLoad = (namespace, id, callback) => subscribers.set(`${namespace}:${id}`, callback);
+  initializers['flatrate-wiki-member-display']();
+  assert.equal(calls.length, 0);
+  const loaded = subscribers.get('core:forum/components/SettingsPage');
+  assert.equal(typeof loaded, 'function');
+  loaded(SettingsPage);
+  assert.deepEqual(calls.map(c => c.method), ['oninit', 'settingsItems']);
 });
 
 test("initializer extends SettingsPage via Flarum 1.8.19 flarum.core.compat", () => {

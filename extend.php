@@ -79,6 +79,14 @@ return [
     (new Extend\Frontend('forum'))
         ->js(__DIR__.'/js/dist/plain-voting.js'),
 
+    // Native F2 ballots replace the intentionally retired FoF provider.
+    (new Extend\Conditional())
+        ->whenExtensionDisabled('fof-gamification', fn () => [
+            (new Extend\ApiResource(PostResource::class))->fields(Voting\NativeVoteFields::class),
+            (new Extend\Frontend('forum'))->js(__DIR__.'/js/dist/native-voting.js'),
+            (new Extend\Frontend('admin'))->js(__DIR__.'/js/dist/native-voting-admin.js'),
+        ]),
+
     new Extend\Locales(__DIR__.'/resources/locale'),
 
     (new Extend\View())

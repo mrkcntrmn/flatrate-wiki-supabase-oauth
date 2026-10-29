@@ -631,6 +631,17 @@
   font-weight: 700;
 }
 
+.FlatRateNativeVote {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  &--mine { color: @primary-color; }
+  &:focus-visible { outline: 2px solid @primary-color; outline-offset: 2px; }
+}
+
 .FlatRateOwnerDashboard {
   margin: 0 0 24px;
   max-width: 100%;

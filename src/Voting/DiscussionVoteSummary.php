@@ -15,7 +15,8 @@ final class DiscussionVoteSummary
 {
     public function __construct(
         private ConnectionInterface $db,
-        private VoteSafetyGate $gate
+        private VoteSafetyGate $gate,
+        private ?NativePlainVotes $native = null
     ) {
     }
 
@@ -46,6 +47,10 @@ final class DiscussionVoteSummary
             // Clickability is "no ballot yet". First-post mutation policy still
             // runs on the vote API (self-vote / gate / FoF permissions).
             $canUpvote = ! $viewerUpvoted;
+            if ($this->native !== null) {
+                $firstPost = $discussion->firstPost;
+                $canUpvote = $canUpvote && $firstPost !== null && $this->native->canVote($actor, $firstPost);
+            }
         }
 
         return [
