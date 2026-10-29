@@ -52,14 +52,14 @@ function resolveFlarumFrontendSource() {
  */
 function withoutWhenExtensionDisabled(extendPhp) {
   return extendPhp.replace(
-    /->whenExtensionDisabled\s*\(\s*'[^']+'\s*,\s*\[[\s\S]*?\]\s*\)/g,
+    /->whenExtensionDisabled\s*\(\s*'[^']+'\s*,\s*(?:fn\s*\(\)\s*=>\s*)?\[[\s\S]*?\]\s*\)/g,
     "->whenExtensionDisabled('stripped', [])",
   );
 }
 
 function parseWhenExtensionDisabled(extendPhp) {
   const matches = [...extendPhp.matchAll(
-    /whenExtensionDisabled\s*\(\s*'([^']+)'\s*,\s*\[([\s\S]*?)\]\s*\)/g,
+    /whenExtensionDisabled\s*\(\s*'([^']+)'\s*,\s*(?:fn\s*\(\)\s*=>\s*)?\[([\s\S]*?)\]\s*\)/g,
   )];
   return matches.map((m) => ({
     extensionId: m[1],

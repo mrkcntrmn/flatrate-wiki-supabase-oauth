@@ -19,9 +19,11 @@ final class DrainActivityOutboxCommand extends AbstractCommand
             ->setDescription('Drain due FlatRate activity outbox rows with fresh HMAC delivery');
     }
 
-    protected function fire(): void
+    protected function fire(): int
     {
         $count = $this->drainer->drain();
         $this->info('flatrate_activity_outbox_drained='.$count);
+
+        return 0;
     }
 }

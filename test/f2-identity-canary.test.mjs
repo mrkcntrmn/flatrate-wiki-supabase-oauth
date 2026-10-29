@@ -19,17 +19,11 @@ test("F2 canary: composer requires exact Flarum 2.0.2 and not the F1 extension s
   assert.doesNotMatch(composer.require["flarum/core"], /\*/);
 });
 
-test("F2 canary: extend.php does not boot excluded F1 surfaces", async () => {
+test("F2: extend.php preserves boundaries: no parallel FoF OAuth and no FoF Gamification", async () => {
   const extend = await text("extend.php");
   const absent = [
-    "ApiSerializer",
-    "RegisterUserHandler",
     "FoF\\OAuth",
-    "AdminGamify",
-    "MemberDisplayController",
-    "beta-access",
-    "flatrate-voting",
-    "DrainActivityOutboxController",
+    "FoF\\Gamification",
   ];
   for (const token of absent) {
     assert.equal(extend.includes(token), false, token);
@@ -40,25 +34,26 @@ test("F2 canary: extend.php does not boot excluded F1 surfaces", async () => {
   assert.match(extend, /auth\/flatrate\/session/);
 });
 
-test("F2 canary: active migrations are the SSO bridge and legacy counter defaults", async () => {
+test("F2 member experience: active migrations are the qualified member experience and SSO migrations", async () => {
   const active = (await readdir(new URL("migrations/", root))).filter((name) => name.endsWith(".php")).sort();
   assert.deepEqual(active, [
-    "2026_08_28_000000_create_sso_bridge_tables.php",
-    "2026_10_24_000000_default_legacy_counter_columns.php",
-  ]);
-});
-
-test("F2 canary: historical migrations remain source-accessible and inactive", async () => {
-  const historical = (await readdir(new URL("migrations-unqualified/", root))).filter((name) => name.endsWith(".php")).sort();
-  assert.deepEqual(historical, [
     "2026_08_27_000000_enable_public_nicknames.php",
+    "2026_08_28_000000_create_sso_bridge_tables.php",
     "2026_08_30_000000_create_post_markers.php",
     "2026_09_01_000000_widen_masquerade_field_validation.php",
-    "2026_09_10_000000_create_activity_emitter_tables.php",
-    "2026_09_10_120000_activity_outbox_terminal_at.php",
     "2026_09_12_000000_create_flatrate_member_profiles.php",
     "2026_09_16_000000_repair_activity_table_prefix.php",
     "2026_10_06_000000_create_beta_tester_projection.php",
+    "2026_10_24_000000_default_legacy_counter_columns.php",
+    "2026_10_28_000000_repair_masquerade_field_validation_text.php",
+  ]);
+});
+
+test("F2 member experience: remaining unqualified migrations remain parked in migrations-unqualified/", async () => {
+  const historical = (await readdir(new URL("migrations-unqualified/", root))).filter((name) => name.endsWith(".php")).sort();
+  assert.deepEqual(historical, [
+    "2026_09_10_000000_create_activity_emitter_tables.php",
+    "2026_09_10_120000_activity_outbox_terminal_at.php",
   ]);
   const extend = await text("extend.php");
   assert.equal(extend.includes("migrations-unqualified"), false);

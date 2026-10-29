@@ -48,15 +48,30 @@
 
     app.initializers.add('flatrate-wiki-reply-job-breakdown', function () {
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
-        var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
+        var reg = typeof flarum !== 'undefined' && flarum.reg && typeof flarum.reg.checkModule === 'function' ? flarum.reg : null;
+        var extendModule =
+            compat['extend'] ||
+            compat['flarum/common/extend'] ||
+            compat['flarum/extend'] ||
+            (reg ? (reg.checkModule('flarum/core', 'common/extend') || (typeof reg.get === 'function' ? reg.get('core', 'common/extend') : null)) : null);
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
-        var ReplyComposer = compat['components/ReplyComposer'] || compat['flarum/forum/components/ReplyComposer'];
-        var EditPostComposer = compat['components/EditPostComposer'] || compat['flarum/forum/components/EditPostComposer'];
-        var CommentPost = compat['components/CommentPost'] || compat['flarum/forum/components/CommentPost'];
+        var ReplyComposer =
+            compat['components/ReplyComposer'] ||
+            compat['flarum/forum/components/ReplyComposer'] ||
+            (reg ? (reg.checkModule('flarum/core', 'forum/components/ReplyComposer') || (typeof reg.get === 'function' ? reg.get('core', 'forum/components/ReplyComposer') : null)) : null);
+        var EditPostComposer =
+            compat['components/EditPostComposer'] ||
+            compat['flarum/forum/components/EditPostComposer'] ||
+            (reg ? (reg.checkModule('flarum/core', 'forum/components/EditPostComposer') || (typeof reg.get === 'function' ? reg.get('core', 'forum/components/EditPostComposer') : null)) : null);
+        var CommentPost =
+            compat['components/CommentPost'] ||
+            compat['flarum/forum/components/CommentPost'] ||
+            (reg ? (reg.checkModule('flarum/core', 'forum/components/CommentPost') || (typeof reg.get === 'function' ? reg.get('core', 'forum/components/CommentPost') : null)) : null);
         var tagLabelModule =
             compat['tags/helpers/tagLabel'] ||
             compat['tags/common/helpers/tagLabel'] ||
-            compat['flarum/tags/common/helpers/tagLabel'];
+            compat['flarum/tags/common/helpers/tagLabel'] ||
+            (reg ? (reg.checkModule('flarum-tags', 'common/helpers/tagLabel') || (typeof reg.get === 'function' ? (reg.get('flarum-tags', 'common/helpers/tagLabel') || reg.get('tags', 'common/helpers/tagLabel')) : null)) : null);
         var tagLabel = tagLabelModule && (tagLabelModule.default || tagLabelModule);
         var jobBreakdownTagSlug = 'job-breakdown';
 
@@ -96,7 +111,8 @@
 
             return (
                 tags.filter(function (tag) {
-                    return tag && typeof tag.slug === 'function' && tag.slug() === jobBreakdownTagSlug;
+                    var slug = tag && typeof tag.slug === 'function' ? tag.slug() : '';
+                    return slug === jobBreakdownTagSlug || slug === 'tip';
                 })[0] || null
             );
         }

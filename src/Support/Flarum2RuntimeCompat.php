@@ -26,7 +26,7 @@ use Flarum\User\Guest;
 use Flarum\User\User;
 use Illuminate\Contracts\Container\Container;
 use Laminas\Diactoros\ServerRequest;
-use Tobyz\JsonApiServer\Schema\Attribute;
+use Flarum\Api\Schema\Attribute;
 
 // 1. FoF OAuth error stub
 namespace FoF\OAuth\Errors;
@@ -77,7 +77,6 @@ if (! class_exists(RegisterUserHandler::class, false)) {
             $attributes = $command->data['attributes'] ?? ($command->data['data']['attributes'] ?? $command->data);
             $response = $this->api
                 ->withoutErrorHandling()
-                ->withParentRequest(new ServerRequest())
                 ->withActor($command->actor ?: new Guest())
                 ->withBody([
                     'data' => [
@@ -119,7 +118,6 @@ if (! class_exists(EditUserHandler::class, false)) {
             $attributes = $command->data['attributes'] ?? ($command->data['data']['attributes'] ?? $command->data);
             $response = $this->api
                 ->withErrorHandling()
-                ->withParentRequest(new ServerRequest())
                 ->withActor($command->actor)
                 ->withBody([
                     'data' => [
@@ -167,8 +165,11 @@ if (! class_exists(UserSerializer::class, false)) {
 if (! class_exists(PostSerializer::class, false)) {
     class PostSerializer extends AbstractSerializer {}
 }
+if (! class_exists(BasicDiscussionSerializer::class, false)) {
+    class BasicDiscussionSerializer extends AbstractSerializer {}
+}
 if (! class_exists(DiscussionSerializer::class, false)) {
-    class DiscussionSerializer extends AbstractSerializer {}
+    class DiscussionSerializer extends BasicDiscussionSerializer {}
 }
 if (! class_exists(ForumSerializer::class, false)) {
     class ForumSerializer extends AbstractSerializer {}
@@ -181,6 +182,7 @@ use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Api\Resource\ForumResource;
 use Flarum\Api\Resource\PostResource;
 use Flarum\Api\Resource\UserResource;
+use Flarum\Api\Serializer\BasicDiscussionSerializer;
 use Flarum\Api\Serializer\BasicUserSerializer;
 use Flarum\Api\Serializer\DiscussionSerializer;
 use Flarum\Api\Serializer\ForumSerializer;
@@ -190,19 +192,35 @@ use Flarum\Extend\ApiResource;
 use Flarum\Extend\ExtenderInterface;
 use Flarum\Extension\Extension;
 use Illuminate\Contracts\Container\Container;
-use Tobyz\JsonApiServer\Schema\Attribute;
+use Flarum\Api\Schema\Attribute;
 
 if (! class_exists(ApiSerializer::class, false)) {
     class ApiSerializer implements ExtenderInterface
     {
-        protected array $attributesCallbacks = [];
+        public static array $allAttributesCallbacks = [];
+        protected static array $extendedResources = [];
         protected array $relationships = [];
 
         public function __construct(protected string $serializerClass) {}
 
         public function attributes(callable|string $callback): self
         {
-            $this->attributesCallbacks[] = $callback;
+            static::$allAttributesCallbacks[$this->serializerClass][] = $callback;
+            return $this;
+        }
+
+        public function attribute(string $name, callable|string $callback): self
+        {
+            $cb = function ($serializer, $model, $attributes) use ($name, $callback) {
+                if (is_string($callback)) {
+                    $instance = function_exists('resolve') ? resolve($callback) : new $callback();
+                    $val = is_callable($instance) ? $instance($serializer, $model, $attributes) : null;
+                } else {
+                    $val = $callback($serializer, $model, $attributes);
+                }
+                return [$name => $val];
+            };
+            static::$allAttributesCallbacks[$this->serializerClass][] = $cb;
             return $this;
         }
 
@@ -218,8 +236,8 @@ if (! class_exists(ApiSerializer::class, false)) {
                 return;
             }
 
-            if (is_a($this->serializerClass, BasicUserSerializer::class, true)) {
-                $callbacks = $this->attributesCallbacks;
+            if (is_a($this->serializerClass, BasicUserSerializer::class, true) && ! isset(static::$extendedResources[UserResource::class])) {
+                static::$extendedResources[UserResource::class] = true;
                 (new ApiResource(UserResource::class))
                     ->field('avatarUrl', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? null : $user->avatar_url))
                     ->field('username', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? (string) ($user->username ?? '') : (string) $user->username))
@@ -228,105 +246,128 @@ if (! class_exists(ApiSerializer::class, false)) {
                     ->fields(fn () => [
                         Attribute::make('flatRateMemberNumber')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest())
-                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $callbacks, $user, $c, 'flatRateMemberNumber')),
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateMemberNumber')),
                         Attribute::make('flatRateDisplayMode')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && (int) $c->getActor()->id === (int) $user->id)
-                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $callbacks, $user, $c, 'flatRateDisplayMode')),
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateDisplayMode')),
                         Attribute::make('flatRateCustomDisplayName')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && (int) $c->getActor()->id === (int) $user->id)
-                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $callbacks, $user, $c, 'flatRateCustomDisplayName')),
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateCustomDisplayName')),
                         Attribute::make('flatRateOwnerDashboard')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && (int) $c->getActor()->id === (int) $user->id)
-                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $callbacks, $user, $c, 'flatRateOwnerDashboard')),
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'flatRateOwnerDashboard')),
                         Attribute::make('isFlatRateBetaTester')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest() && ((int) $c->getActor()->id === (int) $user->id || $c->getActor()->isAdmin()))
-                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $callbacks, $user, $c, 'isFlatRateBetaTester')),
+                            ->get(fn ($user, Context $c) => self::resolveUserAttr($container, $user, $c, 'isFlatRateBetaTester')),
                     ])
                     ->extend($container, $extension);
             }
 
-            if (is_a($this->serializerClass, PostSerializer::class, true)) {
-                $callbacks = $this->attributesCallbacks;
+            if (is_a($this->serializerClass, PostSerializer::class, true) && ! isset(static::$extendedResources[PostResource::class])) {
+                static::$extendedResources[PostResource::class] = true;
                 (new ApiResource(PostResource::class))
                     ->fields(fn () => [
-                        Attribute::make('flatrateHelpfulCount')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'flatrateHelpfulCount')),
-                        Attribute::make('flatrateViewerMarkedHelpful')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'flatrateViewerMarkedHelpful')),
-                        Attribute::make('flatrateCanMarkHelpful')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'flatrateCanMarkHelpful')),
-                        Attribute::make('flatrateIsAcceptedSolution')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'flatrateIsAcceptedSolution')),
-                        Attribute::make('flatrateCanAcceptSolution')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'flatrateCanAcceptSolution')),
-                        Attribute::make('votes')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'votes')),
-                        Attribute::make('canVote')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'canVote')),
-                        Attribute::make('hasUpvoted')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'hasUpvoted')),
-                        Attribute::make('hasDownvoted')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'hasDownvoted')),
-                        Attribute::make('canSeeVotes')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'canSeeVotes')),
-                        Attribute::make('flatrateVoteGateEnabled')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $callbacks, $p, $c, 'flatrateVoteGateEnabled')),
+                        Attribute::make('flatRateJobBreakdown')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatRateJobBreakdown')),
+                        Attribute::make('flatrateHelpfulCount')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateHelpfulCount')),
+                        Attribute::make('flatrateViewerMarkedHelpful')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateViewerMarkedHelpful')),
+                        Attribute::make('flatrateCanMarkHelpful')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateCanMarkHelpful')),
+                        Attribute::make('flatrateIsAcceptedSolution')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateIsAcceptedSolution')),
+                        Attribute::make('flatrateCanAcceptSolution')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateCanAcceptSolution')),
+                        Attribute::make('votes')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'votes')),
+                        Attribute::make('canVote')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'canVote')),
+                        Attribute::make('hasUpvoted')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'hasUpvoted')),
+                        Attribute::make('hasDownvoted')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'hasDownvoted')),
+                        Attribute::make('canSeeVotes')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'canSeeVotes')),
+                        Attribute::make('flatrateVoteGateEnabled')->get(fn ($p, Context $c) => self::resolvePostAttr($container, $p, $c, 'flatrateVoteGateEnabled')),
                     ])
                     ->extend($container, $extension);
             }
 
-            if (is_a($this->serializerClass, DiscussionSerializer::class, true)) {
-                $callbacks = $this->attributesCallbacks;
+            if (is_a($this->serializerClass, DiscussionSerializer::class, true) && ! isset(static::$extendedResources[DiscussionResource::class])) {
+                static::$extendedResources[DiscussionResource::class] = true;
                 (new ApiResource(DiscussionResource::class))
                     ->fields(fn () => [
-                        Attribute::make('votes')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $callbacks, $d, $c, 'votes')),
-                        Attribute::make('flatrateDiscussionVoteCount')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $callbacks, $d, $c, 'flatrateDiscussionVoteCount')),
-                        Attribute::make('hasUpvoted')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $callbacks, $d, $c, 'hasUpvoted')),
-                        Attribute::make('canVote')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $callbacks, $d, $c, 'canVote')),
-                        Attribute::make('canSeeVotes')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $callbacks, $d, $c, 'canSeeVotes')),
+                        Attribute::make('votes')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'votes')),
+                        Attribute::make('flatrateDiscussionVoteCount')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'flatrateDiscussionVoteCount')),
+                        Attribute::make('hasUpvoted')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'hasUpvoted')),
+                        Attribute::make('canVote')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'canVote')),
+                        Attribute::make('canSeeVotes')->get(fn ($d, Context $c) => self::resolveDiscussionAttr($container, $d, $c, 'canSeeVotes')),
                     ])
                     ->extend($container, $extension);
             }
 
-            if (is_a($this->serializerClass, ForumSerializer::class, true)) {
-                $callbacks = $this->attributesCallbacks;
+            if (is_a($this->serializerClass, ForumSerializer::class, true) && ! isset(static::$extendedResources[ForumResource::class])) {
+                static::$extendedResources[ForumResource::class] = true;
                 (new ApiResource(ForumResource::class))
                     ->fields(fn () => [
-                        Attribute::make('flatrateBrandVoteTotals')->get(fn ($m, Context $c) => self::resolveForumAttr($container, $callbacks, $m, $c, 'flatrateBrandVoteTotals')),
+                        Attribute::make('flatrateBrandVoteTotals')->get(fn ($m, Context $c) => self::resolveForumAttr($container, $m, $c, 'flatrateBrandVoteTotals')),
                     ])
                     ->extend($container, $extension);
             }
         }
 
-        protected static function resolveUserAttr(Container $container, array $callbacks, $user, Context $context, string $key)
+        protected static function resolveUserAttr(Container $container, $user, Context $context, string $key)
         {
-            $serializer = new class($context->getActor()) extends BasicUserSerializer {};
+            $callbacks = array_merge(
+                static::$allAttributesCallbacks[BasicUserSerializer::class] ?? [],
+                static::$allAttributesCallbacks[UserSerializer::class] ?? []
+            );
+            $serializer = new class($context->getActor()) extends UserSerializer {};
             $attrs = [];
             foreach ($callbacks as $cb) {
                 $fn = is_string($cb) ? $container->make($cb) : $cb;
-                $attrs = $fn($serializer, $user, $attrs);
+                $res = $fn($serializer, $user, $attrs);
+                if (is_array($res)) {
+                    $attrs = array_merge($attrs, $res);
+                }
             }
             return $attrs[$key] ?? null;
         }
 
-        protected static function resolvePostAttr(Container $container, array $callbacks, $post, Context $context, string $key)
+        protected static function resolvePostAttr(Container $container, $post, Context $context, string $key)
         {
+            $callbacks = static::$allAttributesCallbacks[PostSerializer::class] ?? [];
             $serializer = new class($context->getActor()) extends PostSerializer {};
             $attrs = [];
             foreach ($callbacks as $cb) {
                 $fn = is_string($cb) ? $container->make($cb) : $cb;
-                $attrs = $fn($serializer, $post, $attrs);
+                $res = $fn($serializer, $post, $attrs);
+                if (is_array($res)) {
+                    $attrs = array_merge($attrs, $res);
+                }
             }
             return $attrs[$key] ?? null;
         }
 
-        protected static function resolveDiscussionAttr(Container $container, array $callbacks, $discussion, Context $context, string $key)
+        protected static function resolveDiscussionAttr(Container $container, $discussion, Context $context, string $key)
         {
+            $callbacks = array_merge(
+                static::$allAttributesCallbacks[BasicDiscussionSerializer::class] ?? [],
+                static::$allAttributesCallbacks[DiscussionSerializer::class] ?? []
+            );
             $serializer = new class($context->getActor()) extends DiscussionSerializer {};
             $attrs = [];
             foreach ($callbacks as $cb) {
                 $fn = is_string($cb) ? $container->make($cb) : $cb;
-                $attrs = $fn($serializer, $discussion, $attrs);
+                $res = $fn($serializer, $discussion, $attrs);
+                if (is_array($res)) {
+                    $attrs = array_merge($attrs, $res);
+                }
             }
             return $attrs[$key] ?? null;
         }
 
-        protected static function resolveForumAttr(Container $container, array $callbacks, $model, Context $context, string $key)
+        protected static function resolveForumAttr(Container $container, $model, Context $context, string $key)
         {
+            $callbacks = static::$allAttributesCallbacks[ForumSerializer::class] ?? [];
             $serializer = new class($context->getActor()) extends ForumSerializer {};
             $attrs = [];
             foreach ($callbacks as $cb) {
                 $fn = is_string($cb) ? $container->make($cb) : $cb;
-                $attrs = $fn($serializer, $model, $attrs);
+                $res = $fn($serializer, $model, $attrs);
+                if (is_array($res)) {
+                    $attrs = array_merge($attrs, $res);
+                }
             }
             return $attrs[$key] ?? null;
         }

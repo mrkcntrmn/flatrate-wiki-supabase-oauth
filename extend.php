@@ -33,7 +33,6 @@ use Flarum\Post\Event\Saving;
 use Flarum\Post\Post;
 use Flarum\User\Event\RegisteringFromProvider;
 use Flarum\User\Event\Saving as UserSaving;
-use FoF\OAuth\Extend as OAuthExtend;
 
 return [
     // Flarum 1.8 Frontend::js() stores one scalar path (overwrite).
@@ -54,7 +53,7 @@ return [
     (new Extend\Conditional())
         ->whenExtensionDisabled(
             'flatrate-forum-navigation',
-            [
+            fn () => [
                 (new Extend\Frontend('forum'))
                     ->js(__DIR__.'/js/dist/forum-desktop-navigation.js'),
             ]
@@ -107,7 +106,7 @@ return [
     // Additional Post::vote policy only when FoF Gamification is enabled.
     // Soft dependency: no hard require of fof/gamification in composer.json.
     (new Extend\Conditional())
-        ->whenExtensionEnabled('fof-gamification', [
+        ->whenExtensionEnabled('fof-gamification', fn () => [
             (new Extend\Policy())
                 ->modelPolicy(Post::class, PostVotePolicy::class),
         ]),
@@ -116,7 +115,7 @@ return [
     // Bound only when FoF Follow Tags is enabled. Does not hard-depend on FoF
     // classes at boot when the extension is absent/disabled.
     (new Extend\Conditional())
-        ->whenExtensionEnabled('fof-follow-tags', [
+        ->whenExtensionEnabled('fof-follow-tags', fn () => [
             (new Extend\ServiceProvider())
                 ->register(FollowTagsFamilyServiceProvider::class),
 
@@ -129,7 +128,7 @@ return [
 
     // FORUM-F2-FULL-MEMBER-EXPERIENCE-QUAL-001: Masquerade 3.0.1 F2 integration & guest privacy hardening.
     (new Extend\Conditional())
-        ->whenExtensionEnabled('fof-masquerade', [
+        ->whenExtensionEnabled('fof-masquerade', fn () => [
             (new Extend\ModelVisibility(\FoF\Masquerade\Field::class))
                 ->scope(function ($actor, $query) {
                     if ($actor->isGuest()) {
@@ -150,18 +149,16 @@ return [
             (new Extend\ApiResource(UserResource::class))
                 ->field('bioFields', fn ($f) => $f->visible(fn ($u, Context $c) => ! $c->getActor()->isGuest()))
                 ->field('masqueradeAnswers', fn ($f) => $f->visible(fn ($u, Context $c) => ! $c->getActor()->isGuest()))
-                ->endpoint('index', fn ($ep) => $ep->defaultInclude(['masqueradeAnswers', 'masqueradeAnswers.field'])->eagerLoadWhere('masqueradeAnswers', fn ($q, Context $c) => $c->getActor()->isGuest() ? $q->whereRaw('1 = 0') : $q->whereVisibleTo($c->getActor())->with('field')))
-                ->endpoint('show', fn ($ep) => $ep->defaultInclude(['masqueradeAnswers', 'masqueradeAnswers.field'])->eagerLoadWhere('masqueradeAnswers', fn ($q, Context $c) => $c->getActor()->isGuest() ? $q->whereRaw('1 = 0') : $q->whereVisibleTo($c->getActor())->with('field'))),
+                ->endpoint('index', fn ($ep) => $ep->addDefaultInclude(['masqueradeAnswers', 'masqueradeAnswers.field'])->eagerLoadWhere('masqueradeAnswers', fn ($q, Context $c) => $c->getActor()->isGuest() ? $q->whereRaw('1 = 0') : $q->whereVisibleTo($c->getActor())->with('field')))
+                ->endpoint('show', fn ($ep) => $ep->addDefaultInclude(['masqueradeAnswers', 'masqueradeAnswers.field'])->eagerLoadWhere('masqueradeAnswers', fn ($q, Context $c) => $c->getActor()->isGuest() ? $q->whereRaw('1 = 0') : $q->whereVisibleTo($c->getActor())->with('field'))),
 
             (new Extend\ApiResource(PostResource::class))
-                ->endpoint('index', fn ($ep) => $ep->defaultInclude(['user.masqueradeAnswers', 'user.masqueradeAnswers.field']))
-                ->endpoint('show', fn ($ep) => $ep->defaultInclude(['user.masqueradeAnswers', 'user.masqueradeAnswers.field'])),
+                ->endpoint('index', fn ($ep) => $ep->addDefaultInclude(['user.masqueradeAnswers', 'user.masqueradeAnswers.field']))
+                ->endpoint('show', fn ($ep) => $ep->addDefaultInclude(['user.masqueradeAnswers', 'user.masqueradeAnswers.field'])),
 
             (new Extend\ApiResource(DiscussionResource::class))
-                ->endpoint('show', fn ($ep) => $ep->defaultInclude(['firstPost.user.masqueradeAnswers', 'firstPost.user.masqueradeAnswers.field', 'firstPost.user.bioFields', 'firstPost.user.bioFields.field'])),
+                ->endpoint('show', fn ($ep) => $ep->addDefaultInclude(['firstPost.user.masqueradeAnswers', 'firstPost.user.masqueradeAnswers.field', 'firstPost.user.bioFields', 'firstPost.user.bioFields.field'])),
         ]),
-
-    new OAuthExtend\RegisterProvider(Providers\FlatRate::class),
 
     // Replace only the outbound email notification driver. Do not use
     // Notification::beforeSending() for reserved-email filtering; that would
@@ -212,7 +209,7 @@ return [
     // fatals boot (blocks staged provider enablement). With FoF enabled,
     // explicit admin normalization owns these values (GROWTH-001D).
     (new Extend\Conditional())
-        ->whenExtensionDisabled('fof-gamification', [
+        ->whenExtensionDisabled('fof-gamification', fn () => [
             (new Extend\Settings())
                 ->default('fof-gamification.autoUpvotePosts', false)
                 ->default('fof-gamification.rateLimit', true)
