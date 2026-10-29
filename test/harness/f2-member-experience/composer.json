@@ -1,0 +1,115 @@
+{
+  "name": "flatrate/f2-disposable-acceptance",
+  "description": "Disposable Flarum 2 member experience qualification",
+  "type": "project",
+  "require": {
+    "flarum/approval": "2.0.1",
+    "flarum/audit": "2.0.2",
+    "flarum/bbcode": "2.0.1",
+    "flarum/core": "2.0.2",
+    "flarum/deck": "2.0.2",
+    "flarum/emoji": "2.0.1",
+    "flarum/flags": "2.0.1",
+    "flarum/font-awesome": "7.3.1",
+    "flarum/gdpr": "2.0.1",
+    "flarum/json-api-server": "0.1.2",
+    "flarum/lang-english": "2.0.0",
+    "flarum/likes": "2.0.2",
+    "flarum/lock": "2.0.1",
+    "flarum/markdown": "2.0.1",
+    "flarum/mentions": "2.0.2",
+    "flarum/messages": "2.0.2",
+    "flarum/nicknames": "2.0.1",
+    "flarum/realtime": "2.0.2",
+    "flarum/statistics": "2.0.1",
+    "flarum/sticky": "2.0.2",
+    "flarum/subscriptions": "2.0.1",
+    "flarum/suspend": "2.0.2",
+    "flarum/tags": "2.0.2",
+    "fof/masquerade": "3.0.1",
+    "fof/follow-tags": "2.0.0",
+    "fof/formatting": "2.0.0",
+    "fof/polls": "3.0.1",
+    "fof/reactions": "2.0.1",
+    "fof/seo": "4.0.0-beta.16",
+    "fof/sitemap": "3.0.0",
+    "fof/upload": "2.0.3",
+    "flarum/extension-manager": "2.0.1",
+    "league/flysystem-aws-s3-v3": "^3.0",
+    "flatrate/wiki-supabase-oauth": "dev-restoration",
+    "flatrate/flarum-forum-navigation": "dev-restoration",
+    "flatrate/flarum-messaging-ui": "dev-restoration",
+    "flatrate/flarum-private-messages-bridge": "dev-restoration",
+    "flatrate/flarum-live-chat": "dev-restoration",
+    "flatrate/flarum-media-privacy": "dev-restoration"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../sources/oauth",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "flatrate/wiki-supabase-oauth": "dev-restoration"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../sources/navigation",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "flatrate/flarum-forum-navigation": "dev-restoration"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../sources/messaging",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "flatrate/flarum-messaging-ui": "dev-restoration"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../sources/dm",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "flatrate/flarum-private-messages-bridge": "dev-restoration"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../sources/live",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "flatrate/flarum-live-chat": "dev-restoration"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../sources/media",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "flatrate/flarum-media-privacy": "dev-restoration"
+        }
+      }
+    }
+  ],
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "config": {
+    "allow-plugins": false,
+    "preferred-install": "dist",
+    "sort-packages": true
+  }
+}

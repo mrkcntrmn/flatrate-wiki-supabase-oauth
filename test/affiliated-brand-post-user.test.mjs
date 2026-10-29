@@ -287,3 +287,65 @@ test("scoped affiliated brand styles avoid global post header layout changes", a
   assert.match(css, /\.PostUser\s+\.FlatRateAffiliatedBrand/);
   assert.doesNotMatch(css, /\.Post-header\s*>\s*ul\s*\{[^}]*display:\s*flex;/s);
 });
+
+test("Flarum 2 Masquerade 3.0.1 masquerade-fields store type and bioFields/field() relationship resolve affiliated brand", async () => {
+  const bundle = await text("js/dist/forum.js");
+  const initializers = new Map();
+
+  class PostUser {
+    linkChildren() {
+      const items = new ItemList();
+      items.add("username", { selector: "span.username", attrs: {}, children: ["tech_#42"] }, 80);
+      return items;
+    }
+  }
+
+  const fieldModel = masqueradeField({ id: "7", name: "Affiliated Brand", type: "select" });
+  const answerViaBioFields = {
+    attribute: (key) => (key === "content" ? "Ford" : undefined),
+    field: () => fieldModel,
+  };
+  const f2User = {
+    bioFields: () => [answerViaBioFields],
+  };
+
+  const app = {
+    session: { user: { id: () => "1" } },
+    initializers: {
+      add(name, initializer) {
+        initializers.set(name, initializer);
+      },
+    },
+    store: {
+      all(type) {
+        if (type === "masquerade-fields") {
+          return [fieldModel];
+        }
+        return [];
+      },
+    },
+  };
+
+  runInNewContext(bundle, {
+    app,
+    flarum: {
+      core: { compat: {} },
+      reg: {
+        checkModule(ns, id) {
+          if (ns === "flarum/core" && id === "common/extend") return { extend: flarumExtend };
+          if (ns === "flarum/core" && id === "forum/components/PostUser") return PostUser;
+          return null;
+        },
+      },
+    },
+    m: mithril,
+    module: { exports: {} },
+  });
+
+  initializers.get("flatrate-wiki-affiliated-brand")();
+  const items = new PostUser().linkChildren(f2User);
+  const wrapped = items.get("username");
+  assert.equal(wrapped.selector, "span.FlatRatePostUserIdentityStack");
+  assert.equal(wrapped.children[1].selector, "span.FlatRateAffiliatedBrand");
+  assert.equal(wrapped.children[1].children[0], "Ford");
+});

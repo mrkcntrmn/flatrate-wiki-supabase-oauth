@@ -23,7 +23,7 @@ final class SessionController implements RequestHandlerInterface
         $ticket = trim((string) ($request->getQueryParams()['ticket'] ?? ''));
         $entry = $this->tickets->consume($ticket);
 
-        if (! $entry) {
+        if (! $entry || \FlatRate\SupabaseOAuth\Canary\Suspension::active($entry['user'])) {
             return new TextResponse(
                 'This Community sign-in link is invalid or expired.',
                 401,

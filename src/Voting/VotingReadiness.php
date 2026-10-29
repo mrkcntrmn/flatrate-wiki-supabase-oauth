@@ -246,6 +246,27 @@ final class VotingReadiness
      */
     private function buildUnsafe(): array
     {
+        if (class_exists(\Flarum\Api\Resource\PostResource::class)
+            && $this->extensions->isEnabled('flatrate-wiki-supabase-oauth')
+            && !$this->extensions->isEnabled('fof-gamification')) {
+            $schema = $this->db->getSchemaBuilder();
+            $present = $schema->hasTable('post_votes') && $schema->hasColumns('post_votes', ['post_id', 'user_id', 'value', 'created_at', 'updated_at']);
+            $activity = $this->inspectActivitySchema();
+            $permissions = $this->inspectPermissions();
+            $ready = $present && $activity['required_columns_present'] && $activity['outbox_terminal_at_present']
+                && self::permissionsAllowSafeEnable($permissions) && $permissions['member_vote_posts'] === true && !$this->container->bound('Pusher');
+            return [
+                'schema_version' => 2,
+                'plain_voting_enabled' => (bool) $this->settings->get(VoteSafetyGate::SETTING_ENABLED),
+                'provider' => ['kind' => 'flatrate-native-f2', 'class_present' => true, 'extension_enabled' => true, 'vote_table_present' => $present],
+                'activity' => $activity, 'permissions' => $permissions,
+                'privacy' => ['voter_relationships_published' => false, 'rankings_published' => false],
+                'settings' => ['allow_self_votes' => false, 'auto_upvote_posts' => false, 'first_post_only' => false, 'up_votes_only' => true],
+                'safe_to_enable' => $ready && !(bool) $this->settings->get(VoteSafetyGate::SETTING_ENABLED),
+                'operating' => $ready && (bool) $this->settings->get(VoteSafetyGate::SETTING_ENABLED),
+                'blocking_reasons' => $ready ? [] : ['native_vote_prerequisite_missing'],
+            ];
+        }
         $providerClass = class_exists('FoF\\Gamification\\Listeners\\SaveVotesToDatabase');
         $providerEnabled = $this->extensions->isEnabled('fof-gamification');
         $pusherExists = class_exists('Pusher');

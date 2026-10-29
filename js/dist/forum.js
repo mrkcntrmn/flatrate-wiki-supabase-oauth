@@ -48,15 +48,30 @@
 
     app.initializers.add('flatrate-wiki-reply-job-breakdown', function () {
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
-        var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
+        var reg = typeof flarum !== 'undefined' && flarum.reg && typeof flarum.reg.checkModule === 'function' ? flarum.reg : null;
+        var extendModule =
+            compat['extend'] ||
+            compat['flarum/common/extend'] ||
+            compat['flarum/extend'] ||
+            (reg ? (reg.checkModule('flarum/core', 'common/extend') || (typeof reg.get === 'function' ? reg.get('core', 'common/extend') : null)) : null);
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
-        var ReplyComposer = compat['components/ReplyComposer'] || compat['flarum/forum/components/ReplyComposer'];
-        var EditPostComposer = compat['components/EditPostComposer'] || compat['flarum/forum/components/EditPostComposer'];
-        var CommentPost = compat['components/CommentPost'] || compat['flarum/forum/components/CommentPost'];
+        var ReplyComposer =
+            compat['components/ReplyComposer'] ||
+            compat['flarum/forum/components/ReplyComposer'] ||
+            (reg ? (reg.checkModule('flarum/core', 'forum/components/ReplyComposer') || (typeof reg.get === 'function' ? reg.get('core', 'forum/components/ReplyComposer') : null)) : null);
+        var EditPostComposer =
+            compat['components/EditPostComposer'] ||
+            compat['flarum/forum/components/EditPostComposer'] ||
+            (reg ? (reg.checkModule('flarum/core', 'forum/components/EditPostComposer') || (typeof reg.get === 'function' ? reg.get('core', 'forum/components/EditPostComposer') : null)) : null);
+        var CommentPost =
+            compat['components/CommentPost'] ||
+            compat['flarum/forum/components/CommentPost'] ||
+            (reg ? (reg.checkModule('flarum/core', 'forum/components/CommentPost') || (typeof reg.get === 'function' ? reg.get('core', 'forum/components/CommentPost') : null)) : null);
         var tagLabelModule =
             compat['tags/helpers/tagLabel'] ||
             compat['tags/common/helpers/tagLabel'] ||
-            compat['flarum/tags/common/helpers/tagLabel'];
+            compat['flarum/tags/common/helpers/tagLabel'] ||
+            (reg ? (reg.checkModule('flarum-tags', 'common/helpers/tagLabel') || (typeof reg.get === 'function' ? (reg.get('flarum-tags', 'common/helpers/tagLabel') || reg.get('tags', 'common/helpers/tagLabel')) : null)) : null);
         var tagLabel = tagLabelModule && (tagLabelModule.default || tagLabelModule);
         var jobBreakdownTagSlug = 'job-breakdown';
 
@@ -96,7 +111,8 @@
 
             return (
                 tags.filter(function (tag) {
-                    return tag && typeof tag.slug === 'function' && tag.slug() === jobBreakdownTagSlug;
+                    var slug = tag && typeof tag.slug === 'function' ? tag.slug() : '';
+                    return slug === jobBreakdownTagSlug || slug === 'tip';
                 })[0] || null
             );
         }
@@ -179,9 +195,17 @@
 
     app.initializers.add('flatrate-wiki-affiliated-brand', function () {
         var compat = typeof flarum !== 'undefined' && flarum.core && flarum.core.compat ? flarum.core.compat : {};
-        var extendModule = compat['extend'] || compat['flarum/common/extend'] || compat['flarum/extend'];
+        var reg = typeof flarum !== 'undefined' && flarum.reg && typeof flarum.reg.checkModule === 'function' ? flarum.reg : null;
+        var extendModule =
+            compat['extend'] ||
+            compat['flarum/common/extend'] ||
+            compat['flarum/extend'] ||
+            (reg ? (reg.checkModule('flarum/core', 'common/extend') || (typeof reg.get === 'function' ? reg.get('core', 'common/extend') : null)) : null);
         var extend = extendModule && (extendModule.extend || extendModule.default || extendModule);
-        var PostUser = compat['components/PostUser'] || compat['flarum/forum/components/PostUser'];
+        var PostUser =
+            compat['components/PostUser'] ||
+            compat['flarum/forum/components/PostUser'] ||
+            (reg ? (reg.checkModule('flarum/core', 'forum/components/PostUser') || (typeof reg.get === 'function' ? reg.get('core', 'forum/components/PostUser') : null)) : null);
         var affiliatedBrandFieldName = 'Affiliated Brand';
 
         PostUser = PostUser && (PostUser.default || PostUser);
@@ -190,12 +214,18 @@
             return;
         }
 
-        function resolveAffiliatedBrandField() {
+        function storeCollection(type) {
             if (!app || !app.store || typeof app.store.all !== 'function') {
-                return null;
+                return [];
             }
 
-            var fields = app.store.all('masquerade-field');
+            var records = app.store.all(type);
+            return records && typeof records.filter === 'function' ? records : [];
+        }
+
+        function resolveAffiliatedBrandField() {
+            var f2Fields = storeCollection('masquerade-fields');
+            var fields = f2Fields.length ? f2Fields : storeCollection('masquerade-field');
             if (!fields || typeof fields.filter !== 'function') {
                 return null;
             }
@@ -215,24 +245,47 @@
             return matches.length === 1 ? matches[0] : null;
         }
 
+        function answerMatchesFieldId(candidate, fieldId) {
+            if (!candidate) {
+                return false;
+            }
+
+            if (typeof candidate.attribute === 'function' && candidate.attribute('fieldId') !== undefined && candidate.attribute('fieldId') !== null) {
+                return String(candidate.attribute('fieldId')) === fieldId;
+            }
+
+            if (typeof candidate.field === 'function') {
+                var relatedField = candidate.field();
+                if (relatedField && typeof relatedField.id === 'function') {
+                    return String(relatedField.id()) === fieldId;
+                }
+            }
+
+            return false;
+        }
+
         function affiliatedBrandForUser(user) {
             var field = resolveAffiliatedBrandField();
 
-            if (!field || !user || typeof user.masqueradeAnswers !== 'function') {
+            if (!field || !user) {
                 return null;
             }
 
-            var answers = user.masqueradeAnswers() || [];
+            var hasMasqueradeAnswers = typeof user.masqueradeAnswers === 'function';
+            var hasBioFields = typeof user.bioFields === 'function';
+            if (!hasMasqueradeAnswers && !hasBioFields) {
+                return null;
+            }
+
+            var answers = (hasMasqueradeAnswers ? user.masqueradeAnswers() || [] : []).concat(
+                hasBioFields ? user.bioFields() || [] : []
+            );
             var fieldId = String(field.id());
             var answer = answers.filter(function (candidate) {
-                return (
-                    candidate &&
-                    typeof candidate.attribute === 'function' &&
-                    String(candidate.attribute('fieldId')) === fieldId
-                );
+                return answerMatchesFieldId(candidate, fieldId);
             })[0];
 
-            if (!answer) {
+            if (!answer || typeof answer.attribute !== 'function') {
                 return null;
             }
 

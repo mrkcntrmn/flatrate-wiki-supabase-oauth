@@ -136,7 +136,18 @@
             items.add(key, vnode, priority);
         }
 
-        if (UserCard && UserCard.prototype) {
+        function onCoreClass(id, loaded, callback) {
+            if (loaded) {
+                callback(loaded);
+            } else if (typeof flarum !== 'undefined' && flarum.reg && typeof flarum.reg.onLoad === 'function') {
+                flarum.reg.onLoad('core', id, function (module) {
+                    callback(module && (module.default || module));
+                });
+            }
+        }
+
+        onCoreClass('forum/components/UserCard', UserCard, function (UserCard) {
+            if (!UserCard || !UserCard.prototype) return;
             extend(UserCard.prototype, 'infoItems', function (items) {
                 var user = this.attrs && this.attrs.user;
                 var number = FlatRateOwnerDashboard.memberNumber(user);
@@ -149,9 +160,10 @@
                     110
                 );
             });
-        }
+        });
 
-        if (UserPage && UserPage.prototype && LinkButton) {
+        onCoreClass('forum/components/UserPage', UserPage, function (UserPage) {
+            if (!UserPage || !UserPage.prototype || !LinkButton) return;
             extend(UserPage.prototype, 'navItems', function (items) {
                 var dashboard = FlatRateOwnerDashboard.dto(this.user);
                 if (!dashboard) {
@@ -226,9 +238,10 @@
                     );
                 }
             });
-        }
+        });
 
-        if (PostsUserPage && PostsUserPage.prototype && typeof override === 'function') {
+        onCoreClass('forum/components/PostsUserPage', PostsUserPage, function (PostsUserPage) {
+            if (!PostsUserPage || !PostsUserPage.prototype || typeof override !== 'function') return;
             override(PostsUserPage.prototype, 'content', function (original) {
                 var vnode = typeof original === 'function' ? original() : original;
                 var dashboard = FlatRateOwnerDashboard.dto(this.user);
@@ -310,7 +323,7 @@
                         : vnode,
                 ]);
             });
-        }
+        });
     });
 
     if (typeof module !== 'undefined') {

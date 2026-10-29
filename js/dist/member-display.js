@@ -31,7 +31,7 @@
         return;
     }
 
-    app.initializers.add('flatrate-wiki-member-display', function () {
+    app.initializers.add('flatrate-wiki-member-display', function initializeMemberDisplay(loadedSettingsPage) {
         // Flarum 1.8.19 webpack externals resolve through flarum.core.compat
         // using keys such as 'common/extend'. flarum.reg.get exists only on
         // later runtimes. Prefer the registry when present, then the 1.8 map.
@@ -60,8 +60,21 @@
                 ? extendModule.extend
                 : null;
 
-        var settingsModule = coreExport('forum/components/SettingsPage');
+        // Initializer callbacks receive the application, whereas the registry
+        // callback receives the route module. Only accept an actual class here.
+        var settingsModule = typeof loadedSettingsPage === 'function' ||
+            (loadedSettingsPage && typeof loadedSettingsPage.default === 'function')
+            ? loadedSettingsPage : coreExport('forum/components/SettingsPage');
         var SettingsPage = settingsModule && (settingsModule.default || settingsModule);
+
+        // Flarum 2 loads SettingsPage as a route chunk. Register before its
+        // first instance is constructed instead of silently skipping the UI.
+        if (!SettingsPage && typeof flarum !== 'undefined' && flarum.reg && typeof flarum.reg.onLoad === 'function') {
+            flarum.reg.onLoad('core', 'forum/components/SettingsPage', function (loaded) {
+                initializeMemberDisplay(loaded);
+            });
+            return;
+        }
 
         // Flarum 1.8 extend() mutates an object method. It does not accept a
         // module-path string (that API is not present in core 1.8.19).

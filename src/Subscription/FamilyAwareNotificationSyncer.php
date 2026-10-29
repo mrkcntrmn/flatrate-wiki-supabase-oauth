@@ -20,7 +20,7 @@ class FamilyAwareNotificationSyncer extends NotificationSyncer
     /**
      * {@inheritdoc}
      */
-    public function sync(BlueprintInterface $blueprint, array $users)
+    public function sync(BlueprintInterface $blueprint, array $users): void
     {
         $resolved = $this->resolver->resolve($blueprint, $users);
 

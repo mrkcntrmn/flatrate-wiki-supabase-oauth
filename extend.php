@@ -1,48 +1,271 @@
 <?php
 
-/*
- * Flarum 2.0.2 identity canary entry point.
- *
- * This branch replaces the Flarum 1 extend.php. It registers only the
- * server-to-server provisioner, the one-time ticket route, and the verified
- * email listener, and the server-side signup and password-login gate.
- * Voting, analytics, activity, member display, beta projection, and FoF
- * OAuth are not registered and must not boot from this entry point.
- * The legacy Tip path /t/job-breakdown redirects to /t/tip. The reply
- * marker renderer is not registered here.
- */
+declare(strict_types=1);
 
-use FlatRate\SupabaseOAuth\Canary\CsrfServiceProvider;
-use FlatRate\SupabaseOAuth\Canary\ProvisionController;
-use FlatRate\SupabaseOAuth\Canary\SessionController;
-use FlatRate\SupabaseOAuth\Canary\TicketController;
+namespace FlatRate\SupabaseOAuth;
+
+require_once __DIR__.'/src/Support/Flarum2RuntimeCompat.php';
+
 use FlatRate\SupabaseOAuth\Canary\TicketHeaderMiddleware;
 use FlatRate\SupabaseOAuth\Http\LegacyTipSlugMiddleware;
-use FlatRate\SupabaseOAuth\Listeners\TrustVerifiedSupabaseEmail;
-use FlatRate\SupabaseOAuth\Middleware\RequireFlatRateIdentity;
+use FlatRate\SupabaseOAuth\Subscription\FilterInheritedIgnoredTagMentions;
+use FlatRate\SupabaseOAuth\Subscription\FollowTagsFamilyServiceProvider;
+use FlatRate\SupabaseOAuth\Voting\GlobalVotingPolicy;
+use FlatRate\SupabaseOAuth\Voting\PostVotePolicy;
+use FlatRate\SupabaseOAuth\Voting\VotingReadinessController;
+use FlatRate\SupabaseOAuth\Voting\VotingServiceProvider;
+use Flarum\Api\Context;
+use Flarum\Api\Resource\DiscussionResource;
+use Flarum\Api\Resource\ForumResource;
+use Flarum\Api\Resource\PostResource;
+use Flarum\Api\Resource\UserResource;
+use Flarum\Api\Serializer\BasicDiscussionSerializer;
+use Flarum\Api\Serializer\BasicUserSerializer;
+use Flarum\Api\Serializer\ForumSerializer;
+use Flarum\Api\Serializer\PostSerializer;
+use Flarum\Api\Serializer\UserSerializer;
+use Flarum\Discussion\Event\Started;
 use Flarum\Extend;
 use Flarum\Http\Middleware\ReferrerPolicyHeader;
+use Flarum\Post\Event\Deleted;
+use Flarum\Post\Event\Posted;
+use Flarum\Post\Event\Saving;
+use Flarum\Post\Post;
 use Flarum\User\Event\RegisteringFromProvider;
+use Flarum\User\Event\Saving as UserSaving;
 
 return [
+    // Flarum 1.8 Frontend::js() stores one scalar path (overwrite).
+    // Register each forum JS file through its own Frontend extender so all
+    // unconditional sources reach the compiled forum asset in load order.
+    // Legacy desktop IndexPage navigation is a conditional source.
+    (new Extend\Frontend('forum'))
+        ->css(__DIR__.'/resources/less/forum.less')
+        ->css(__DIR__.'/resources/less/mobile-brand-drawer.less')
+        ->js(__DIR__.'/js/dist/forum-navigation.js'),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/forum.js'),
+
+    // Flarum 1.8.19 Conditional::whenExtensionDisabled(). Only the legacy
+    // IndexPage.sidebarItems renderer is gated. The shared
+    // FlatRateForumNavigation contract and mobile drawer stay loaded.
+    (new Extend\Conditional())
+        ->whenExtensionDisabled(
+            'flatrate-forum-navigation',
+            fn () => [
+                (new Extend\Frontend('forum'))
+                    ->js(__DIR__.'/js/dist/forum-desktop-navigation.js'),
+            ]
+        ),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/mobile-brand-drawer.js'),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/member-display.js'),
+
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/member-dashboard.js'),
+
+    // ADMIN-GAMIFY-001: admin-only gamification dashboard. Separate Frontend
+    // extender required (Flarum 1.8 js() overwrites within one extender).
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/admin-gamification.js'),
+
+    // GROWTH-001B: plain-voting UI suppression + gate-aware vote chrome.
+    // Separate Frontend extender required (Flarum 1.8 js() overwrites).
+    // Must end with module.exports = {} (webpack CJS entry contract).
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__.'/js/dist/plain-voting.js'),
+
+    // Native F2 ballots replace the intentionally retired FoF provider.
+    (new Extend\Conditional())
+        ->whenExtensionDisabled('fof-gamification', fn () => [
+            (new Extend\ApiResource(PostResource::class))->fields(Voting\NativeVoteFields::class),
+            (new Extend\Frontend('forum'))->js(__DIR__.'/js/dist/native-voting.js'),
+            (new Extend\Frontend('admin'))->js(__DIR__.'/js/dist/native-voting-admin.js'),
+        ]),
+
+    new Extend\Locales(__DIR__.'/resources/locale'),
+
+    (new Extend\View())
+        ->extendNamespace('flarum-subscriptions', __DIR__.'/views/flarum-subscriptions')
+        ->extendNamespace('flarum-mentions', __DIR__.'/views/flarum-mentions')
+        ->extendNamespace('fof-follow-tags', __DIR__.'/views/fof-follow-tags'),
+
     (new Extend\ServiceProvider())
-        ->register(CsrfServiceProvider::class),
+        ->register(ServiceProvider::class),
+
+    (new Extend\ServiceProvider())
+        ->register(Activity\ActivityServiceProvider::class),
+
+    (new Extend\ServiceProvider())
+        ->register(VotingServiceProvider::class),
+
+    (new Extend\ServiceProvider())
+        ->register(AdminGamify\AdminGamifyServiceProvider::class),
+
+    // Fail-closed rankings denial for ordinary users regardless of provider
+    // migration defaults. Admins may still inspect.
+    (new Extend\Policy())
+        ->globalPolicy(GlobalVotingPolicy::class),
+
+    // Additional Post::vote policy only when FoF Gamification is enabled.
+    // Soft dependency: no hard require of fof/gamification in composer.json.
+    (new Extend\Conditional())
+        ->whenExtensionEnabled('fof-gamification', fn () => [
+            (new Extend\Policy())
+                ->modelPolicy(Post::class, PostVotePolicy::class),
+        ]),
+
+    // FORUM-SUB-001: GM/CDJR family notification inheritance.
+    // Bound only when FoF Follow Tags is enabled. Does not hard-depend on FoF
+    // classes at boot when the extension is absent/disabled.
+    (new Extend\Conditional())
+        ->whenExtensionEnabled('fof-follow-tags', fn () => [
+            (new Extend\ServiceProvider())
+                ->register(FollowTagsFamilyServiceProvider::class),
+
+            // beforeSending may only remove recipients (inherited ignore).
+            // Family recipients are added in FamilyAwareNotificationSyncer
+            // before parent::sync() reconciliation — never here.
+            (new Extend\Notification())
+                ->beforeSending(FilterInheritedIgnoredTagMentions::class),
+        ]),
+
+    // FORUM-F2-FULL-MEMBER-EXPERIENCE-QUAL-001: Masquerade 3.0.1 F2 integration & guest privacy hardening.
+    (new Extend\Conditional())
+        ->whenExtensionEnabled('fof-masquerade', fn () => [
+            (new Extend\ModelVisibility(\FoF\Masquerade\Field::class))
+                ->scope(function ($actor, $query) {
+                    if ($actor->isGuest()) {
+                        $query->whereRaw('1 = 0');
+                    }
+                }),
+
+            (new Extend\ModelVisibility(\FoF\Masquerade\Answer::class))
+                ->scope(function ($actor, $query) {
+                    if ($actor->isGuest()) {
+                        $query->whereRaw('1 = 0');
+                    }
+                }),
+
+            (new Extend\ApiResource(ForumResource::class))
+                ->field('masquerade-fields', fn ($field) => $field->visible(fn ($m, Context $c) => ! $c->getActor()->isGuest() && ($c->getActor()->can('fof.masquerade.view-profile') || $c->getActor()->can('fof.masquerade.have-profile')))->get(fn ($m, Context $c) => $c->getActor()->isGuest() ? [] : \FoF\Masquerade\Field::whereVisibleTo($c->getActor())->orderBy('sort')->get()->all())),
+
+            (new Extend\ApiResource(UserResource::class))
+                ->field('bioFields', fn ($f) => $f->visible(fn ($u, Context $c) => ! $c->getActor()->isGuest()))
+                ->field('masqueradeAnswers', fn ($f) => $f->visible(fn ($u, Context $c) => ! $c->getActor()->isGuest()))
+                ->endpoint('index', fn ($ep) => $ep->addDefaultInclude(['masqueradeAnswers', 'masqueradeAnswers.field'])->eagerLoadWhere('masqueradeAnswers', fn ($q, Context $c) => $c->getActor()->isGuest() ? $q->whereRaw('1 = 0') : $q->whereVisibleTo($c->getActor())->with('field')))
+                ->endpoint('show', fn ($ep) => $ep->addDefaultInclude(['masqueradeAnswers', 'masqueradeAnswers.field'])->eagerLoadWhere('masqueradeAnswers', fn ($q, Context $c) => $c->getActor()->isGuest() ? $q->whereRaw('1 = 0') : $q->whereVisibleTo($c->getActor())->with('field'))),
+
+            (new Extend\ApiResource(PostResource::class))
+                ->endpoint('index', fn ($ep) => $ep->addDefaultInclude(['user.masqueradeAnswers', 'user.masqueradeAnswers.field']))
+                ->endpoint('show', fn ($ep) => $ep->addDefaultInclude(['user.masqueradeAnswers', 'user.masqueradeAnswers.field'])),
+
+            (new Extend\ApiResource(DiscussionResource::class))
+                ->endpoint('show', fn ($ep) => $ep->addDefaultInclude(['firstPost.user.masqueradeAnswers', 'firstPost.user.masqueradeAnswers.field', 'firstPost.user.bioFields', 'firstPost.user.bioFields.field'])),
+        ]),
+
+    // Replace only the outbound email notification driver. Do not use
+    // Notification::beforeSending() for reserved-email filtering; that would
+    // filter recipients for every driver (including browser/on-site alerts).
+    (new Extend\Notification())
+        ->driver('email', Notification\DeliverableEmailNotificationDriver::class),
+
+    (new Extend\Event())
+        ->listen(RegisteringFromProvider::class, Listeners\TrustVerifiedSupabaseEmail::class)
+        ->listen(UserSaving::class, Listeners\RejectReservedTechNickname::class)
+        ->listen(UserSaving::class, Listeners\SyncMemberDisplayFromNickname::class)
+        ->listen(Saving::class, Markers\SaveJobBreakdownMarker::class)
+        ->listen(Deleted::class, Markers\DeletePostMarkers::class)
+        ->listen(Started::class, Activity\EmitDiscussionCreated::class)
+        ->listen(Posted::class, Activity\EmitReplyCreated::class),
+
+    (new Extend\ApiSerializer(PostSerializer::class))
+        ->attribute('flatRateJobBreakdown', Api\SerializePostJobBreakdownMarker::class),
+
+    (new Extend\ApiSerializer(UserSerializer::class))
+        ->attributes(Api\SerializeMemberProfile::class),
+
+    // Guest-only public identity projection (avatar + displayName defense-in-depth).
+    // Registered on BasicUserSerializer so post/like/mention includes are covered.
+    (new Extend\ApiSerializer(BasicUserSerializer::class))
+        ->attributes(Api\SerializeGuestPublicIdentity::class),
+
+    (new Extend\ApiSerializer(ForumSerializer::class))
+        ->attributes(Api\SerializeFlatRateVotingEnabled::class)
+        ->attributes(Api\SerializeBrandVoteSummary::class),
+
+    // GROWTH-001UI: whole-discussion upvote aggregate (not FoF first-post votes).
+    (new Extend\ApiSerializer(BasicDiscussionSerializer::class))
+        ->attributes(Api\SerializeDiscussionVoteSummary::class),
+
+    (new Extend\Settings())
+        ->default('flatrate-activity.emit_enabled', false)
+        ->default('flatrate-activity.ingest_url', '')
+        ->default('flatrate-activity.drain_token_sha256', '')
+        // GROWTH-001B: FlatRate vote gate. Default CLOSED.
+        ->default('flatrate-voting.enabled', false)
+        ->default('flatrate-admin-gamify.bridge_url', '')
+        ->default('flatrate-admin-gamify.bridge_secret', ''),
+
+    // Safe FoF setting defaults only while the provider is absent/disabled.
+    // Flarum Settings::default() is immutable — registering the same keys
+    // while fof-gamification is enabled collides with FoF's own defaults and
+    // fatals boot (blocks staged provider enablement). With FoF enabled,
+    // explicit admin normalization owns these values (GROWTH-001D).
+    (new Extend\Conditional())
+        ->whenExtensionDisabled('fof-gamification', fn () => [
+            (new Extend\Settings())
+                ->default('fof-gamification.autoUpvotePosts', false)
+                ->default('fof-gamification.rateLimit', true)
+                ->default('fof-gamification.firstPostOnly', false)
+                ->default('fof-gamification.upVotesOnly', true)
+                ->default('fof-gamification.allowSelfVotes', false),
+        ]),
+
+    // Automatic outbox drain via Flarum scheduler (requires host cron:
+    // * * * * * php flarum schedule:run). CLI alone is not the only retry path.
+    // Primary production executor (when host cron is absent): authenticated
+    // POST /api/flatrate-activity/drain invoked by an external clock
+    // (e.g. Cloudflare Cron). Both paths share ActivityOutboxDrainer + claim lease.
+    (new Extend\Console())
+        ->command(Activity\DrainActivityOutboxCommand::class)
+        ->schedule(Activity\DrainActivityOutboxCommand::class, function ($event) {
+            $event->everyMinute()->withoutOverlapping();
+        })
+        ->command(Identity\BackfillMemberProfilesCommand::class),
+
+    (new Extend\Routes('api'))
+        ->post('/flatrate-sso/provision', 'flatrate-sso.provision', Sso\ProvisionController::class)
+        ->post('/flatrate-sso/ticket', 'flatrate-sso.ticket', Sso\TicketController::class)
+        ->post('/flatrate-sso/beta-access', 'flatrate-sso.beta-access', Sso\BetaAccessSyncController::class)
+        ->patch('/flatrate/member-display', 'flatrate.member-display', Api\MemberDisplayController::class)
+        ->post('/flatrate-activity/drain', 'flatrate.activity.drain', Activity\DrainActivityOutboxController::class)
+        ->get('/flatrate-voting/readiness', 'flatrate.voting.readiness', VotingReadinessController::class)
+        ->get('/flatrate-admin/gamification/overview', 'flatrate.admin.gamification.overview', AdminGamify\OverviewController::class)
+        ->get('/flatrate-admin/gamification/quality', 'flatrate.admin.gamification.quality', AdminGamify\QualityController::class)
+        ->get('/flatrate-admin/gamification/sharing', 'flatrate.admin.gamification.sharing', AdminGamify\SharingController::class)
+        ->get('/flatrate-admin/gamification/referrals', 'flatrate.admin.gamification.referrals', AdminGamify\ReferralsController::class)
+        ->post('/flatrate-admin/gamification/test-lab/session/start', 'flatrate.admin.gamification.test_lab.session.start', AdminGamify\TestSessionStartController::class)
+        ->post('/flatrate-admin/gamification/test-lab/session/end', 'flatrate.admin.gamification.test_lab.session.end', AdminGamify\TestSessionEndController::class)
+        ->post('/flatrate-admin/gamification/test-lab/session/status', 'flatrate.admin.gamification.test_lab.session.status', AdminGamify\TestSessionStatusController::class)
+        ->post('/flatrate-admin/gamification/test-lab/share/create', 'flatrate.admin.gamification.test_lab.share.create', AdminGamify\TestShareCreateController::class)
+        ->post('/flatrate-admin/gamification/test-lab/share/status', 'flatrate.admin.gamification.test_lab.share.status', AdminGamify\TestShareStatusController::class)
+        ->post('/flatrate-admin/gamification/test-lab/launch/create', 'flatrate.admin.gamification.test_lab.launch.create', AdminGamify\TestLaunchCreateController::class),
+
+    (new Extend\Routes('forum'))
+        ->get('/auth/flatrate/session', 'flatrate-sso.session', Sso\SessionController::class),
 
     (new Extend\Middleware('forum'))
         ->insertBefore(ReferrerPolicyHeader::class, TicketHeaderMiddleware::class)
         ->insertBefore('flarum.forum.route_resolver', LegacyTipSlugMiddleware::class)
-        ->add(RequireFlatRateIdentity::class),
+        ->add(Middleware\ViewerIdentityContextMiddleware::class)
+        ->add(Middleware\RequireFlatRateIdentity::class),
 
     (new Extend\Middleware('api'))
-        ->add(RequireFlatRateIdentity::class),
-
-    (new Extend\Event())
-        ->listen(RegisteringFromProvider::class, TrustVerifiedSupabaseEmail::class),
-
-    (new Extend\Routes('api'))
-        ->post('/flatrate-sso/provision', 'flatrate.sso.provision', ProvisionController::class)
-        ->post('/flatrate-sso/ticket', 'flatrate.sso.ticket', TicketController::class),
-
-    (new Extend\Routes('forum'))
-        ->get('/auth/flatrate/session', 'flatrate.sso.session', SessionController::class),
+        ->add(Middleware\ViewerIdentityContextMiddleware::class)
+        ->add(Middleware\RequireFlatRateIdentity::class),
 ];

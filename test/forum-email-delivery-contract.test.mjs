@@ -120,7 +120,7 @@ test("placeholder outbound suppression does not use a global recipient filter", 
 
 function beforeSendingCountOutsideFollowTagsConditional(src) {
   const withoutConditional = src.replace(
-    /\(new Extend\\Conditional\(\)\)\s*->whenExtensionEnabled\(\s*'fof-follow-tags'\s*,\s*\[[\s\S]*?\]\s*\)\s*,/,
+    /\(new Extend\\Conditional\(\)\)\s*->whenExtensionEnabled\(\s*'fof-follow-tags'\s*,\s*(?:fn\s*\(\)\s*=>\s*)?\[[\s\S]*?\]\s*\)\s*,/,
     "",
   );
   return [...withoutConditional.matchAll(/->beforeSending\s*\(/g)].length;

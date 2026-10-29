@@ -25,14 +25,14 @@ final class BackfillMemberProfilesCommand extends AbstractCommand
             ->addOption('plan-sha256', null, InputOption::VALUE_REQUIRED, 'Accepted dry-run digest required for --apply');
     }
 
-    protected function fire(): void
+    protected function fire(): int
     {
         $dryRun = (bool) $this->input->getOption('dry-run');
         $apply = (bool) $this->input->getOption('apply');
         if ($dryRun === $apply) {
             $this->error('Specify exactly one of --dry-run or --apply');
 
-            return;
+            return 1;
         }
 
         $users = User::query()
@@ -48,18 +48,20 @@ final class BackfillMemberProfilesCommand extends AbstractCommand
         $this->printSummary($plan);
 
         if ($dryRun) {
-            return;
+            return 0;
         }
 
         $expected = trim((string) $this->input->getOption('plan-sha256'));
         if ($expected === '') {
             $this->error('BACKFILL_PLAN_DRIFT');
 
-            return;
+            return 1;
         }
 
         $written = $this->profiles->applyPlan($plan, $expected);
         $this->info('BACKFILL_APPLIED_COUNT='.$written);
+
+        return 0;
     }
 
     /**

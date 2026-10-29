@@ -2,6 +2,10 @@
 // Keep the FoF OAuth provider button visible, but remove Flarum's native
 // username/password controls and public signup affordances.
 
+@muted-color: var(--muted-color);
+@text-color: var(--text-color);
+@control-bg: var(--control-bg);
+
 .LogInModal {
   .Form,
   .Modal-footer {
@@ -625,6 +629,17 @@
 
 .FlatRateMemberNumber {
   font-weight: 700;
+}
+
+.FlatRateNativeVote {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  &--mine { color: @primary-color; }
+  &:focus-visible { outline: 2px solid @primary-color; outline-offset: 2px; }
 }
 
 .FlatRateOwnerDashboard {
