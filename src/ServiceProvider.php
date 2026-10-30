@@ -8,6 +8,7 @@ use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionStore;
 use FlatRate\SupabaseOAuth\Beta\BetaTesterProjectionTable;
 use FlatRate\SupabaseOAuth\Identity\GuestAwareDisplayNameDriver;
 use FlatRate\SupabaseOAuth\Identity\GuestIdentityProjection;
+use FlatRate\SupabaseOAuth\Identity\GuestAwareUserSlugDriver;
 use FlatRate\SupabaseOAuth\Identity\ViewerIdentityContext;
 use Flarum\Foundation\AbstractServiceProvider;
 use Flarum\Forum\Auth\ResponseFactory;
@@ -43,8 +44,23 @@ final class ServiceProvider extends AbstractServiceProvider
 
             return new GuestAwareDisplayNameDriver(
                 $driver,
-                $container->make(ViewerIdentityContext::class)
+                $container->make(ViewerIdentityContext::class),
+                $container->make(GuestIdentityProjection::class)
             );
+        });
+
+        // Wrap the selected user driver without changing administrator settings.
+        // Old username URLs still resolve through the original driver.
+        $this->container->extend('flarum.http.selectedSlugDrivers', function (array $drivers, $container) {
+            if (isset($drivers[User::class]) && ! $drivers[User::class] instanceof GuestAwareUserSlugDriver) {
+                $drivers[User::class] = new GuestAwareUserSlugDriver(
+                    $drivers[User::class],
+                    $container->make(GuestIdentityProjection::class),
+                    $container->make(\Flarum\User\UserRepository::class)
+                );
+            }
+
+            return $drivers;
         });
 
         // These routes are authenticated by their own credentials (HMAC SSO or

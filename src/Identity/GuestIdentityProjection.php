@@ -19,11 +19,30 @@ final class GuestIdentityProjection
     }
 
     /**
-     * Existing Flarum username is the guest public alias (tech_<8hex> for linked users).
+     * Keep linked neutral usernames; never expose a legacy/custom username as an alias.
      */
     public function publicAlias(User $user): string
     {
-        return (string) $user->username;
+        $username = (string) $user->username;
+        if (preg_match('/^tech_[0-9a-f]{8}$/D', $username) === 1) {
+            return $username;
+        }
+
+        // The Flarum row id is already public in JSON:API. Domain separation
+        // avoids deriving this fallback from a nickname, email or external sub.
+        // This is presentation only: no stored username or mapping changes.
+        return (int) $user->id > 0
+            ? NeutralIdentity::handle('flatrate:legacy-public-user:'.(int) $user->id)
+            : 'tech_00000000';
+    }
+
+    public function publicSlug(User $user): string
+    {
+        $alias = $this->publicAlias($user);
+
+        // Existing neutral routes stay byte-identical. A row-id prefix lets a
+        // legacy profile resolve without an alias table or a full-table scan.
+        return $alias === (string) $user->username ? $alias : (int) $user->id.'-'.$alias;
     }
 
     public function projectDisplayName(User $user, string $authenticatedDisplayName): string

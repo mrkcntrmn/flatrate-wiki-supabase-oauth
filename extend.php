@@ -87,6 +87,9 @@ return [
             (new Extend\Frontend('admin'))->js(__DIR__.'/js/dist/native-voting-admin.js'),
         ]),
 
+    (new Extend\Event())
+        ->listen(\FoF\Seo\Event\PreparingPageMeta::class, Identity\ProjectGuestProfileSeo::class),
+
     new Extend\Locales(__DIR__.'/resources/locale'),
 
     (new Extend\View())

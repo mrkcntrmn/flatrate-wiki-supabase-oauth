@@ -27,6 +27,8 @@ final class SerializeGuestPublicIdentity
 
         return [
             'displayName' => $this->projection->publicAlias($user),
+            'username' => $this->projection->publicAlias($user),
+            'slug' => $this->projection->publicSlug($user),
             'avatarUrl' => null,
         ];
     }

@@ -155,7 +155,7 @@ assert_true($real->depth() === 0, 'pop on empty is safe');
 
 $driverSrc = file_get_contents($root.'/src/Identity/GuestAwareDisplayNameDriver.php');
 assert_true(str_contains($driverSrc, 'isGuestProjectionActive'), 'driver uses context not implicit request');
-assert_true(str_contains($driverSrc, 'return (string) $user->username'), 'guest uses username no hash');
+assert_true(str_contains($driverSrc, '$this->projection->publicAlias($user)'), 'guest uses shared neutral projection');
 assert_true(! str_contains($driverSrc, 'hash('), 'NEW_HASH_COMPUTATION_PER_RENDER=false');
 assert_true(! str_contains($driverSrc, 'sha256'), 'no sha256 in driver');
 
