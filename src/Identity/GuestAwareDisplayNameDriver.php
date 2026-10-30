@@ -13,14 +13,15 @@ final class GuestAwareDisplayNameDriver implements DriverInterface
 {
     public function __construct(
         private DriverInterface $inner,
-        private ViewerIdentityContext $context
+        private ViewerIdentityContext $context,
+        private GuestIdentityProjection $projection
     ) {
     }
 
     public function displayName(User $user): string
     {
         if ($this->context->isGuestProjectionActive()) {
-            return (string) $user->username;
+            return $this->projection->publicAlias($user);
         }
 
         return $this->inner->displayName($user);

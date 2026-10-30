@@ -41,7 +41,7 @@ run(php, [...ini, 'flarum', 'install', '--file=' + env.F2_INSTALL_FILE]);
 // Enable third-party extensions after core installation, with an initialized ORM.
 for (const id of ['fof-masquerade', 'flatrate-wiki-supabase-oauth', 'fof-follow-tags', 'fof-formatting', 'fof-polls', 'fof-reactions', 'fof-seo', 'fof-sitemap', 'fof-upload', 'flatrate-forum-navigation', 'flatrate-private-messages-bridge', 'flatrate-messaging-ui', 'flatrate-media-privacy', 'flarum-extension-manager']) run(php, [...ini, 'flarum', 'extension:enable', id]);
 run(php, [...ini, resolve(source, 'test/f2-member-experience-seed.php')]);
-for (const name of ['f2-resource-contract-boot.php', 'f2-member-features-boot.php', 'f2-native-voting-boot.php', 'f2-upload-privacy-boot.php', 'f2-masquerade-completion-boot.php', 'f2-migration-ledger-preservation.php']) run(php, [...ini, resolve(source, 'test', name)]);
+for (const name of ['f2-guest-identity-boot.php', 'f2-resource-contract-boot.php', 'f2-member-features-boot.php', 'f2-native-voting-boot.php', 'f2-upload-privacy-boot.php', 'f2-masquerade-completion-boot.php', 'f2-migration-ledger-preservation.php']) run(php, [...ini, resolve(source, 'test', name)]);
 const server = spawn(php, [...ini, '-S', base.host, '-t', 'public', 'public/router.php'], { cwd: app, env, stdio: ['ignore', 'ignore', 'ignore'] });
 try {
   await new Promise(r => setTimeout(r, 150));

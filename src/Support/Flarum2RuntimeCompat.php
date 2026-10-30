@@ -240,9 +240,9 @@ if (! class_exists(ApiSerializer::class, false)) {
                 static::$extendedResources[UserResource::class] = true;
                 (new ApiResource(UserResource::class))
                     ->field('avatarUrl', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? null : $user->avatar_url))
-                    ->field('username', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? (string) ($user->username ?? '') : (string) $user->username))
-                    ->field('displayName', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? (string) ($user->username ?? '') : $user->display_name))
-                    ->field('slug', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? (string) ($user->username ?? '') : $container->make(\Flarum\Http\SlugManager::class)->forResource(\Flarum\User\User::class)->toSlug($user)))
+                    ->field('username', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? $container->make(\FlatRate\SupabaseOAuth\Identity\GuestIdentityProjection::class)->publicAlias($user) : (string) $user->username))
+                    ->field('displayName', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? $container->make(\FlatRate\SupabaseOAuth\Identity\GuestIdentityProjection::class)->publicAlias($user) : $user->display_name))
+                    ->field('slug', fn ($field) => $field->get(fn ($user, Context $c) => $c->getActor()->isGuest() ? $container->make(\FlatRate\SupabaseOAuth\Identity\GuestIdentityProjection::class)->publicSlug($user) : $container->make(\Flarum\Http\SlugManager::class)->forResource(\Flarum\User\User::class)->toSlug($user)))
                     ->fields(fn () => [
                         Attribute::make('flatRateMemberNumber')
                             ->visible(fn ($user, Context $c) => ! $c->getActor()->isGuest())
